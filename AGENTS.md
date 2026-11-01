@@ -104,3 +104,8 @@ The justfile runs recipes in PowerShell (`pwsh -Command`). Recipes that take pat
 - Tesseract and its models come from scoop (`tesseract`, `tesseract-languages`); `tesseract-languages` sets `TESSDATA_PREFIX`.
 - LanguageTool is run by `language_tool_python`, which downloads it to its cache on the first check-translate run (about 260 MB) and runs it on the scoop `openjdk26`. check-translate starts one server in the main process, only when a file needs checking, and the worker processes connect to it.
 - No test suite. Verify changes manually, using a scratch copy of a movie folder rather than the library.
+
+## Git
+
+- Commit every major change on its own, as soon as it is done, with a Conventional Commits message. Push after committing.
+- The project folder is on the NAS, so git refuses it as dubious ownership until the folder is added to `safe.directory`.
