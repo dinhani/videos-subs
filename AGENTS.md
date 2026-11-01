@@ -94,7 +94,7 @@ The justfile runs recipes in PowerShell (`pwsh -Command`). Recipes that take pat
 
 ## Translation
 
-- Model: Gemma 4 26B A4B QAT Q4_0 on llama.cpp, with thinking disabled (`llama-translate` recipe). OCR uses Gemma 4 12B with its vision projector (`llama-ocr` recipe), which fits the GPU with room to spare. `llama-ocr` runs 8 slots (`--parallel 8`) so the GPU batches the concurrent OCR requests; `--ctx-size` is split across the slots, 4096 tokens each; a chunk of 10 entries measured at most about 1200 prompt tokens (about 70 per image) and 600 reply tokens.
+- Model: Gemma 4 26B A4B QAT Q4_0 on llama.cpp, with thinking disabled (`llama-translate` recipe). OCR uses Gemma 4 12B with its vision projector (`llama-ocr` recipe), which fits the GPU with room to spare. `llama-ocr` runs 12 slots (`--parallel 12`) so the GPU batches the concurrent OCR requests; `--ctx-size` is split across the slots, 4096 tokens each; a chunk of 10 entries measured at most about 1200 prompt tokens (about 70 per image) and 600 reply tokens.
 - Subtitles are translated in chunks of `CHUNK_SIZE` entries, with `CHUNK_CONTEXT_BEFORE` earlier entries (with their accepted translations) and `CHUNK_CONTEXT_AFTER` upcoming entries as read-only context.
 - The reply is constrained by a JSON schema that fixes the ids and the number of lines per entry. The `en` field in the reply is not used by the code; it makes the model restate each line before translating it.
 - A failed chunk is retried at temperatures 0.0, 0.5 and 1.0, then split in halves up to `LLM_SPLITS` times. After that, the last reply is accepted and a warning entry is added at the start of the subtitle.
