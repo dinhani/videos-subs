@@ -24,6 +24,15 @@ from shared import IMAGE_EXTENSIONS, SUBS_FOLDER, Batch, Color, SubtitleEntry, f
 # ------------------------------------------------------------------------------
 LANGUAGES = ("eng",)
 
+RULES_ENABLED = {
+    IssueKind.OCR_FAILED: True,
+    IssueKind.WRONG_ORDER: True,
+    IssueKind.INCONSISTENT: True,
+    IssueKind.ARTIFACT: True,
+    IssueKind.GLYPH_CONFUSION: True,
+    IssueKind.UNBALANCED: True,
+}
+
 OCR_FAILED_TEXT = "[OCR failed]"
 ENTRY_START_TOLERANCE = timedelta(milliseconds=2)
 
@@ -138,6 +147,8 @@ class OcrCheck:
         return cls(subtitle=subtitle, entries=[OcrEntry.from_entries(text, entry) for text, entry in zip(texts, images)])
 
     def flag(self, entry: OcrEntry, kind: IssueKind, detail: str) -> None:
+        if not RULES_ENABLED[kind]:
+            return
         self.issues.append(Issue(entry=entry.subtitle, kind=kind, detail=detail, quote=tuple(entry.subtitle.content.split("\n"))))
 
     def check_entries(self) -> None:

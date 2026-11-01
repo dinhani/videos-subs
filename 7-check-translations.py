@@ -29,6 +29,18 @@ TRANSLATION_SUFFIX = ".pob.translated.srt"
 SOURCE_LANGUAGE = TextLanguage.ENGLISH
 TARGET_LANGUAGE = TextLanguage.PORTUGUESE_BRAZIL
 
+RULES_ENABLED = {
+    IssueKind.ACCEPTED_WITH_PROBLEM: True,
+    IssueKind.UNTRANSLATED: True,
+    IssueKind.ADDED_SYMBOLS: True,
+    IssueKind.DUPLICATED_LINE: True,
+    IssueKind.BROKEN_LINE: True,
+    IssueKind.GRAMMAR: True,
+    IssueKind.UNKNOWN_WORD: True,
+    IssueKind.UNKNOWN_WORD_CAPS: True,
+    IssueKind.PORTUGAL_PORTUGUESE: True,
+}
+
 UNTRANSLATED_VOTES_MIN = 3
 UNTRANSLATED_UNCHANGED_VOTES_MIN = 2
 
@@ -40,14 +52,15 @@ UNKNOWN_WORD_FREQUENCY_MAX = 2.0
 UNKNOWN_WORD_LENGTH_MIN = 3
 
 LANGUAGETOOL_LANGUAGE = "pt-BR"
-LANGUAGETOOL_RULES = (
-    "AUXILIARY_VERB_INFINITIVE",
-    "CONTRACOES_OBRIGATORIAS",
-    "QUE_QUÊ",
-    "GENERAL_GENDER_AGREEMENT_ERRORS",
-    "ERRO_DE_CONCORDNCIA_DO_GÉNERO_MASCULINO_O",
-    "LINKING_VERB_PREDICATE_AGREEMENT",
-)
+LANGUAGETOOL_RULES_ENABLED = {
+    "AUXILIARY_VERB_INFINITIVE": True,
+    "CONTRACOES_OBRIGATORIAS": True,
+    "QUE_QUÊ": True,
+    "GENERAL_GENDER_AGREEMENT_ERRORS": True,
+    "ERRO_DE_CONCORDNCIA_DO_GÉNERO_MASCULINO_O": True,
+    "LINKING_VERB_PREDICATE_AGREEMENT": True,
+}
+LANGUAGETOOL_RULES = {rule for rule, enabled in LANGUAGETOOL_RULES_ENABLED.items() if enabled} if RULES_ENABLED[IssueKind.GRAMMAR] else set()
 
 SONG = re.compile(r"[♪♫]")
 LINE_BROKEN = re.compile(r"^[^\w♪♫]*$|^\s*[,;:]")
@@ -91,11 +104,12 @@ class TranslationCheck:
         )
 
     def flag(self, i: int, kind: IssueKind, detail: str) -> None:
+        if not RULES_ENABLED[kind]:
+            return
         quote = tuple(f"en  {line}" for line in self.sources[i].content.split("\n")) + tuple(f"pt  {line}" for line in self.targets[i].content.split("\n"))
         self.issues.append(Issue(entry=self.targets[i], kind=kind, detail=detail, quote=quote))
 
     def check_lines(self) -> None:
-        dictionary = load_dictionary()
         for i, (source, source_text, target_text) in enumerate(zip(self.sources, self.source_texts, self.target_texts)):
             if source.index in self.problems_accepted:
                 self.flag(i, IssueKind.ACCEPTED_WITH_PROBLEM, self.problems_accepted[source.index])
@@ -125,20 +139,27 @@ class TranslationCheck:
                 self.flag(i, IssueKind.PORTUGAL_PORTUGUESE, ", ".join(f"\"{word}\"" for word in portugal))
             if symbols := sorted(parse_symbols(self.targets[i].content) - parse_symbols(source.content)):
                 self.flag(i, IssueKind.ADDED_SYMBOLS, ", ".join(f"\"{symbol}\"" for symbol in symbols))
+            if not RULES_ENABLED[IssueKind.UNKNOWN_WORD] and not RULES_ENABLED[IssueKind.UNKNOWN_WORD_CAPS]:
+                continue
             source_words = {word.key for word in parse_words(source_text)}
-            if words_unknown := sorted({
+            words_unknown = sorted({
                 word.text
                 for word in parse_words(target_text)
                 if not word.name
                 and len(word.text) >= UNKNOWN_WORD_LENGTH_MIN
                 and word.key not in source_words
                 and TARGET_LANGUAGE.measure_frequency(word.text) < UNKNOWN_WORD_FREQUENCY_MAX
-                and not dictionary.lookup(word.text)
-                and not dictionary.lookup(word.text.lower())
-            }):
-                self.flag(i, IssueKind.UNKNOWN_WORD, ", ".join(f"\"{word}\"" for word in words_unknown))
+                and not load_dictionary().lookup(word.text)
+                and not load_dictionary().lookup(word.text.lower())
+            })
+            if words_unknown_caps := [word for word in words_unknown if word.isupper()]:
+                self.flag(i, IssueKind.UNKNOWN_WORD_CAPS, ", ".join(f"\"{word}\"" for word in words_unknown_caps))
+            if words_unknown_lower := [word for word in words_unknown if not word.isupper()]:
+                self.flag(i, IssueKind.UNKNOWN_WORD, ", ".join(f"\"{word}\"" for word in words_unknown_lower))
 
     def check_grammar(self, languagetool_server: str) -> None:
+        if not LANGUAGETOOL_RULES:
+            return
         text = "\n\n".join(self.target_texts)
         entry_starts = list(itertools.accumulate((len(target_text) + 2 for target_text in self.target_texts[:-1]), initial=0))
         for match in connect_languagetool(languagetool_server).check(text):
@@ -166,7 +187,7 @@ def load_dictionary() -> Dictionary:
 @functools.cache
 def connect_languagetool(server: str) -> language_tool_python.LanguageTool:
     languagetool = language_tool_python.LanguageTool(LANGUAGETOOL_LANGUAGE, remote_server=server)
-    languagetool.enabled_rules = set(LANGUAGETOOL_RULES)
+    languagetool.enabled_rules = LANGUAGETOOL_RULES
     languagetool.enabled_rules_only = True
     return languagetool
 
@@ -188,12 +209,11 @@ if __name__ == "__main__":
     scores = [score for score in scores_current.values() if score is not None]
     subs_pending = [sub for sub in subs if scores_current[sub] is None]
 
-    # start one LanguageTool server for all workers, only when there is a sub to check
-    with (language_tool_python.LanguageTool(LANGUAGETOOL_LANGUAGE) if subs_pending else contextlib.nullcontext()) as languagetool, ProcessPoolExecutor(max_workers=CHECK_WORKERS) as executor:
+    # start one LanguageTool server for all workers, only when there is a sub to check and a LanguageTool rule enabled
+    with (language_tool_python.LanguageTool(LANGUAGETOOL_LANGUAGE) if subs_pending and LANGUAGETOOL_RULES else contextlib.nullcontext()) as languagetool, ProcessPoolExecutor(max_workers=CHECK_WORKERS) as executor:
         # check every sub without a report, CHECK_WORKERS at a time across movies
-        checks: dict[Path, Future[ReportScore]] = {
-            sub: executor.submit(check_subtitle, sub, reports[sub], f"http://{languagetool.host}:{languagetool.port}") for sub in subs_pending if languagetool is not None
-        }
+        languagetool_server = f"http://{languagetool.host}:{languagetool.port}" if languagetool is not None else ""
+        checks: dict[Path, Future[ReportScore]] = {sub: executor.submit(check_subtitle, sub, reports[sub], languagetool_server) for sub in subs_pending}
 
         try:
             for movie_dir, movie_subs in itertools.groupby(subs, key=parse_movie_dir):

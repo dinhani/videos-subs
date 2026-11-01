@@ -47,6 +47,7 @@ class IssueKind(Enum):
     BROKEN_LINE = ("broken line", 4, "a line without words or starting with a comma")
     GRAMMAR = ("grammar", 3, "LanguageTool found a grammar error, such as a verb or contraction broken at the line break, or a wrong gender")
     UNKNOWN_WORD = ("unknown word", 3, "a rare word missing from the Brazilian Portuguese dictionary: a typo, a broken word or a word of another language")
+    UNKNOWN_WORD_CAPS = ("unknown word in caps", 3, "an unknown word in capital letters, usually a misspelled sound description such as GRUNNIDO")
     PORTUGAL_PORTUGUESE = ("portugal portuguese", 3, "a word used in Portugal, not in Brazil")
 
     def __init__(self, label: str, weight: int, description: str) -> None:
