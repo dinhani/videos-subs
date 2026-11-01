@@ -1,0 +1,17 @@
+[project]
+name = "videos-subs"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "av>=19.0.2",
+    "language-tool-python>=3.4.0",
+    "lingua-language-detector",
+    "openai",
+    "pillow",
+    "rich",
+    "simplemma>=2.0.0",
+    "spylls>=0.1.7",
+    "srt",
+    "tenacity>=9.2.1",
+    "wordfreq>=3.1.1",
+]
