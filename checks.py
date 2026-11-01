@@ -128,7 +128,7 @@ class Report:
             self.subtitle.name,
             f"score {self.score} (weighted issues per 100 entries) · {self.entries_count} entries · {len(self.issues)} issues",
             "",
-            *(f"{count:>5}  {kind.label:<21} {kind.description}" for kind, count in kinds.most_common()),
+            *(f"{count:>5}  {kind.label:<21} {kind.description}" for kind, count in sorted(kinds.items(), key=lambda item: (-item[1], list(IssueKind).index(item[0])))),
         ]
         for _, entry_issues in itertools.groupby(sorted(self.issues, key=lambda issue: (issue.entry.index, list(IssueKind).index(issue.kind))), key=lambda issue: issue.entry.index):
             entry_issues = list(entry_issues)

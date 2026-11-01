@@ -10,9 +10,12 @@ import itertools
 import json
 import os
 import re
+from collections.abc import Iterator
 from concurrent.futures import Future, ProcessPoolExecutor
 from dataclasses import dataclass, field
+from enum import Enum
 from pathlib import Path
+from typing import ClassVar
 
 import language_tool_python
 import srt
@@ -29,59 +32,229 @@ TRANSLATION_SUFFIX = ".pob.translated.srt"
 SOURCE_LANGUAGE = TextLanguage.ENGLISH
 TARGET_LANGUAGE = TextLanguage.PORTUGUESE_BRAZIL
 
-RULES_ENABLED = {
-    IssueKind.ACCEPTED_WITH_PROBLEM: True,
-    IssueKind.UNTRANSLATED: True,
-    IssueKind.ADDED_SYMBOLS: True,
-    IssueKind.DUPLICATED_LINE: True,
-    IssueKind.BROKEN_LINE: True,
-    IssueKind.GRAMMAR: True,
-    IssueKind.UNKNOWN_WORD: True,
-    IssueKind.UNKNOWN_WORD_CAPS: True,
-    IssueKind.PORTUGAL_PORTUGUESE: True,
-}
+# ------------------------------------------------------------------------------
+# Rules
+# ------------------------------------------------------------------------------
+@dataclass(frozen=True)
+class AcceptedWithProblemRule:
+    kind: ClassVar[IssueKind] = IssueKind.ACCEPTED_WITH_PROBLEM
+    enabled: bool
 
-UNTRANSLATED_VOTES_MIN = 3
-UNTRANSLATED_UNCHANGED_VOTES_MIN = 2
+    def find_issues(self, check: "TranslationCheck") -> Iterator[tuple[int, str]]:
+        for i, entry in enumerate(check.entries):
+            if entry.source.index in check.problems_accepted:
+                yield i, check.problems_accepted[entry.source.index]
 
-DUPLICATED_LINE_LENGTH_MIN = 8
-DUPLICATED_LINE_RATIO_MIN = 1.6
+
+@dataclass(frozen=True)
+class UntranslatedRule:
+    kind: ClassVar[IssueKind] = IssueKind.UNTRANSLATED
+    SONG: ClassVar[re.Pattern[str]] = re.compile(r"[♪♫]")
+    enabled: bool
+    votes_min: int
+    unchanged_votes_min: int
+
+    def find_issues(self, check: "TranslationCheck") -> Iterator[tuple[int, str]]:
+        for i, entry in enumerate(check.entries):
+            if lines_english := [
+                n
+                for n, (source_line, target_line) in enumerate(itertools.zip_longest(entry.source_lines, entry.target_lines, fillvalue=""), start=1)
+                if (target_line == source_line and SOURCE_LANGUAGE.outweighs(TARGET_LANGUAGE, parse_words(target_line), votes_min=self.unchanged_votes_min))
+                or (not self.SONG.search(target_line) and SOURCE_LANGUAGE.outweighs(TARGET_LANGUAGE, parse_words(target_line), votes_min=self.votes_min))
+            ]:
+                yield i, f"line {', '.join(map(str, lines_english))} is in english"
+
+
+@dataclass(frozen=True)
+class AddedSymbolsRule:
+    kind: ClassVar[IssueKind] = IssueKind.ADDED_SYMBOLS
+    SYMBOL: ClassVar[re.Pattern[str]] = re.compile(r"[{}\[\]_<>`\\]")
+    LATIN_LAST: ClassVar[str] = chr(0x024F)
+    enabled: bool
+
+    def find_issues(self, check: "TranslationCheck") -> Iterator[tuple[int, str]]:
+        for i, entry in enumerate(check.entries):
+            if symbols := sorted(self.parse_symbols(entry.target.content) - self.parse_symbols(entry.source.content)):
+                yield i, ", ".join(f"\"{symbol}\"" for symbol in symbols)
+
+    def parse_symbols(self, content: str) -> set[str]:
+        text = FORMATTING_TAGS.sub("", content)
+        tags = {tag.lower() for tag in FORMATTING_TAGS.findall(content)}
+        letters_foreign = {character for character in text if character.isalpha() and character > self.LATIN_LAST}
+        return tags | set(self.SYMBOL.findall(text)) | letters_foreign
+
+
+@dataclass(frozen=True)
+class DuplicatedLineRule:
+    kind: ClassVar[IssueKind] = IssueKind.DUPLICATED_LINE
+    enabled: bool
+    length_min: int
+    ratio_min: float
+
+    def find_issues(self, check: "TranslationCheck") -> Iterator[tuple[int, str]]:
+        for i, entry in enumerate(check.entries):
+            source_keys, target_keys = ([" ".join(word.key for word in parse_words(line)) for line in lines] for lines in (entry.source_lines, entry.target_lines))
+            if len(source_keys) != len(target_keys):
+                continue
+            if lines_duplicated := [
+                (a, b)
+                for a, b in itertools.permutations(range(len(target_keys)), 2)
+                if len(target_keys[a]) >= self.length_min
+                and target_keys[a] in target_keys[b]
+                and source_keys[a] not in source_keys[b]
+                and len(target_keys[b]) >= self.ratio_min * len(source_keys[b])
+            ]:
+                line_repeated, line_whole = lines_duplicated[0]
+                yield i, f"line {line_whole + 1} holds the whole entry, line {line_repeated + 1} repeats part of it"
+
+
+@dataclass(frozen=True)
+class BrokenLineRule:
+    kind: ClassVar[IssueKind] = IssueKind.BROKEN_LINE
+    LINE_BROKEN: ClassVar[re.Pattern[str]] = re.compile(r"^[^\w♪♫]*$|^\s*[,;:]")
+    enabled: bool
+
+    def find_issues(self, check: "TranslationCheck") -> Iterator[tuple[int, str]]:
+        for i, entry in enumerate(check.entries):
+            if lines_broken := [n for n, (source_line, target_line) in enumerate(zip(entry.source_lines, entry.target_lines), start=1) if self.LINE_BROKEN.search(target_line) and not self.LINE_BROKEN.search(source_line)]:
+                yield i, f"line {', '.join(map(str, lines_broken))}"
+
+
+@dataclass(frozen=True)
+class GrammarRule:
+    kind: ClassVar[IssueKind] = IssueKind.GRAMMAR
+    LANGUAGE: ClassVar[str] = "pt-BR"
+    enabled: bool
+    languagetool_rules: dict[str, bool]
+
+    @property
+    def languagetool_rules_enabled(self) -> set[str]:
+        return {rule for rule, enabled in self.languagetool_rules.items() if enabled} if self.enabled else set()
+
+    def find_issues(self, check: "TranslationCheck") -> Iterator[tuple[int, str]]:
+        if not self.languagetool_rules_enabled:
+            return
+        text = "\n\n".join(entry.target_text for entry in check.entries)
+        entry_starts = list(itertools.accumulate((len(entry.target_text) + 2 for entry in check.entries[:-1]), initial=0))
+        for match in connect_languagetool(check.languagetool_server, frozenset(self.languagetool_rules_enabled)).check(text):
+            i = bisect.bisect_right(entry_starts, match.offset) - 1
+            flagged = text[match.offset:match.offset + match.error_length].replace("\n", " / ")
+            replacements = [replacement.replace("\n", " / ") for replacement in match.replacements[:1]]
+            yield i, f"\"{flagged}\"" + "".join(f", maybe \"{replacement}\"" for replacement in replacements)
+
+
+class WordCase(Enum):
+    CAPS = "caps"
+    OTHER = "other"
+
+    def matches(self, word: str) -> bool:
+        return word.isupper() == (self == WordCase.CAPS)
+
+
+@dataclass(frozen=True)
+class UnknownWordRule:
+    enabled: bool
+    case: WordCase
+    frequency_max: float
+    length_min: int
+    dictionary: Path
+
+    @property
+    def kind(self) -> IssueKind:
+        return IssueKind.UNKNOWN_WORD_CAPS if self.case == WordCase.CAPS else IssueKind.UNKNOWN_WORD
+
+    def find_issues(self, check: "TranslationCheck") -> Iterator[tuple[int, str]]:
+        dictionary = load_dictionary(self.dictionary)
+        for i, entry in enumerate(check.entries):
+            source_words = {word.key for word in parse_words(entry.source_text)}
+            if words_unknown := sorted({
+                word.text
+                for word in parse_words(entry.target_text)
+                if not word.name
+                and self.case.matches(word.text)
+                and len(word.text) >= self.length_min
+                and word.key not in source_words
+                and TARGET_LANGUAGE.measure_frequency(word.text) < self.frequency_max
+                and not dictionary.lookup(word.text)
+                and not dictionary.lookup(word.text.lower())
+            }):
+                yield i, ", ".join(f"\"{word}\"" for word in words_unknown)
+
+
+@dataclass(frozen=True)
+class PortugalPortugueseRule:
+    kind: ClassVar[IssueKind] = IssueKind.PORTUGAL_PORTUGUESE
+    enabled: bool
+
+    def find_issues(self, check: "TranslationCheck") -> Iterator[tuple[int, str]]:
+        for i, entry in enumerate(check.entries):
+            if portugal := sorted({match[0].lower() for match in WORDS_PT_PT.finditer(entry.target_text)}):
+                yield i, ", ".join(f"\"{word}\"" for word in portugal)
+
+
+TranslationRule = AcceptedWithProblemRule | UntranslatedRule | AddedSymbolsRule | DuplicatedLineRule | BrokenLineRule | GrammarRule | UnknownWordRule | PortugalPortugueseRule
 
 DICTIONARY = Path(os.environ["LOCALAPPDATA"]) / "hunspell" / "pt_BR"
-UNKNOWN_WORD_FREQUENCY_MAX = 2.0
-UNKNOWN_WORD_LENGTH_MIN = 3
-
-LANGUAGETOOL_LANGUAGE = "pt-BR"
-LANGUAGETOOL_RULES_ENABLED = {
-    "AUXILIARY_VERB_INFINITIVE": True,
-    "CONTRACOES_OBRIGATORIAS": True,
-    "QUE_QUÊ": True,
-    "GENERAL_GENDER_AGREEMENT_ERRORS": True,
-    "ERRO_DE_CONCORDNCIA_DO_GÉNERO_MASCULINO_O": True,
-    "LINKING_VERB_PREDICATE_AGREEMENT": True,
-}
-LANGUAGETOOL_RULES = {rule for rule, enabled in LANGUAGETOOL_RULES_ENABLED.items() if enabled} if RULES_ENABLED[IssueKind.GRAMMAR] else set()
-
-SONG = re.compile(r"[♪♫]")
-LINE_BROKEN = re.compile(r"^[^\w♪♫]*$|^\s*[,;:]")
-SYMBOL = re.compile(r"[{}\[\]_<>`\\]")
-LATIN_LAST = chr(0x024F)
+GRAMMAR = GrammarRule(
+    enabled=True,
+    languagetool_rules={
+        "AUXILIARY_VERB_INFINITIVE": True,
+        "CONTRACOES_OBRIGATORIAS": True,
+        "QUE_QUÊ": True,
+        "GENERAL_GENDER_AGREEMENT_ERRORS": True,
+        "ERRO_DE_CONCORDNCIA_DO_GÉNERO_MASCULINO_O": True,
+        "LINKING_VERB_PREDICATE_AGREEMENT": True,
+    },
+)
+RULES: tuple[TranslationRule, ...] = (
+    AcceptedWithProblemRule(enabled=True),
+    UntranslatedRule(enabled=True, votes_min=3, unchanged_votes_min=2),
+    AddedSymbolsRule(enabled=True),
+    DuplicatedLineRule(enabled=True, length_min=8, ratio_min=1.6),
+    BrokenLineRule(enabled=True),
+    GRAMMAR,
+    UnknownWordRule(enabled=True, case=WordCase.OTHER, frequency_max=2.0, length_min=3, dictionary=DICTIONARY),
+    UnknownWordRule(enabled=True, case=WordCase.CAPS, frequency_max=2.0, length_min=3, dictionary=DICTIONARY),
+    PortugalPortugueseRule(enabled=True),
+)
 
 # ------------------------------------------------------------------------------
 # Checks
 # ------------------------------------------------------------------------------
+@dataclass(frozen=True)
+class TranslationEntry:
+    source: srt.Subtitle
+    target: srt.Subtitle
+    source_text: str
+    target_text: str
+
+    @classmethod
+    def from_entries(cls, source: srt.Subtitle, target: srt.Subtitle) -> "TranslationEntry":
+        return cls(source=source, target=target, source_text=parse_plain_text(source), target_text=parse_plain_text(target))
+
+    @property
+    def source_lines(self) -> list[str]:
+        return self.source_text.split("\n")
+
+    @property
+    def target_lines(self) -> list[str]:
+        return self.target_text.split("\n")
+
+    @property
+    def quote(self) -> tuple[str, ...]:
+        return tuple(f"en  {line}" for line in self.source.content.split("\n")) + tuple(f"pt  {line}" for line in self.target.content.split("\n"))
+
+
 @dataclass
 class TranslationCheck:
     subtitle: Path
-    sources: list[srt.Subtitle]
-    targets: list[srt.Subtitle]
-    source_texts: list[str]
-    target_texts: list[str]
+    entries: list[TranslationEntry]
     problems_accepted: dict[int, str]
+    languagetool_server: str
     issues: list[Issue] = field(default_factory=list)
 
     @classmethod
-    def from_file(cls, subtitle: Path) -> "TranslationCheck":
+    def from_file(cls, subtitle: Path, languagetool_server: str) -> "TranslationCheck":
         # find the English source and the trace of the translation
         movie_dir = parse_movie_dir(subtitle)
         name = subtitle.name.removesuffix(TRANSLATION_SUFFIX)
@@ -93,109 +266,40 @@ class TranslationCheck:
 
         # pair each translated entry with the source entry of the same index
         sources_by_index = {entry.index: entry for entry in parse_srt(source)}
-        pairs = [(sources_by_index[entry.index], entry) for entry in parse_srt(subtitle) if entry.index in sources_by_index]
         return cls(
             subtitle=subtitle,
-            sources=[source for source, _ in pairs],
-            targets=[target for _, target in pairs],
-            source_texts=[parse_plain_text(source) for source, _ in pairs],
-            target_texts=[parse_plain_text(target) for _, target in pairs],
+            entries=[TranslationEntry.from_entries(sources_by_index[target.index], target) for target in parse_srt(subtitle) if target.index in sources_by_index],
             problems_accepted={index: record["accepted_with_problem"] for record in records if "accepted_with_problem" in record for index in record["entries"]},
+            languagetool_server=languagetool_server,
         )
 
-    def flag(self, i: int, kind: IssueKind, detail: str) -> None:
-        if not RULES_ENABLED[kind]:
-            return
-        quote = tuple(f"en  {line}" for line in self.sources[i].content.split("\n")) + tuple(f"pt  {line}" for line in self.targets[i].content.split("\n"))
-        self.issues.append(Issue(entry=self.targets[i], kind=kind, detail=detail, quote=quote))
-
-    def check_lines(self) -> None:
-        for i, (source, source_text, target_text) in enumerate(zip(self.sources, self.source_texts, self.target_texts)):
-            if source.index in self.problems_accepted:
-                self.flag(i, IssueKind.ACCEPTED_WITH_PROBLEM, self.problems_accepted[source.index])
-            source_lines = source_text.split("\n")
-            target_lines = target_text.split("\n")
-            if lines_english := [
-                n
-                for n, (source_line, target_line) in enumerate(itertools.zip_longest(source_lines, target_lines, fillvalue=""), start=1)
-                if (target_line == source_line and SOURCE_LANGUAGE.outweighs(TARGET_LANGUAGE, parse_words(target_line), votes_min=UNTRANSLATED_UNCHANGED_VOTES_MIN))
-                or (not SONG.search(target_line) and SOURCE_LANGUAGE.outweighs(TARGET_LANGUAGE, parse_words(target_line), votes_min=UNTRANSLATED_VOTES_MIN))
-            ]:
-                self.flag(i, IssueKind.UNTRANSLATED, f"line {', '.join(map(str, lines_english))} is in english")
-            if lines_broken := [n for n, (source_line, target_line) in enumerate(zip(source_lines, target_lines), start=1) if LINE_BROKEN.search(target_line) and not LINE_BROKEN.search(source_line)]:
-                self.flag(i, IssueKind.BROKEN_LINE, f"line {', '.join(map(str, lines_broken))}")
-            source_keys, target_keys = ([" ".join(word.key for word in parse_words(line)) for line in lines] for lines in (source_lines, target_lines))
-            if len(source_keys) == len(target_keys) and (lines_duplicated := [
-                (a, b)
-                for a, b in itertools.permutations(range(len(target_keys)), 2)
-                if len(target_keys[a]) >= DUPLICATED_LINE_LENGTH_MIN
-                and target_keys[a] in target_keys[b]
-                and source_keys[a] not in source_keys[b]
-                and len(target_keys[b]) >= DUPLICATED_LINE_RATIO_MIN * len(source_keys[b])
-            ]):
-                line_repeated, line_whole = lines_duplicated[0]
-                self.flag(i, IssueKind.DUPLICATED_LINE, f"line {line_whole + 1} holds the whole entry, line {line_repeated + 1} repeats part of it")
-            if portugal := sorted({match[0].lower() for match in WORDS_PT_PT.finditer(target_text)}):
-                self.flag(i, IssueKind.PORTUGAL_PORTUGUESE, ", ".join(f"\"{word}\"" for word in portugal))
-            if symbols := sorted(parse_symbols(self.targets[i].content) - parse_symbols(source.content)):
-                self.flag(i, IssueKind.ADDED_SYMBOLS, ", ".join(f"\"{symbol}\"" for symbol in symbols))
-            if not RULES_ENABLED[IssueKind.UNKNOWN_WORD] and not RULES_ENABLED[IssueKind.UNKNOWN_WORD_CAPS]:
+    def check(self) -> None:
+        for rule in RULES:
+            if not rule.enabled:
                 continue
-            source_words = {word.key for word in parse_words(source_text)}
-            words_unknown = sorted({
-                word.text
-                for word in parse_words(target_text)
-                if not word.name
-                and len(word.text) >= UNKNOWN_WORD_LENGTH_MIN
-                and word.key not in source_words
-                and TARGET_LANGUAGE.measure_frequency(word.text) < UNKNOWN_WORD_FREQUENCY_MAX
-                and not load_dictionary().lookup(word.text)
-                and not load_dictionary().lookup(word.text.lower())
-            })
-            if words_unknown_caps := [word for word in words_unknown if word.isupper()]:
-                self.flag(i, IssueKind.UNKNOWN_WORD_CAPS, ", ".join(f"\"{word}\"" for word in words_unknown_caps))
-            if words_unknown_lower := [word for word in words_unknown if not word.isupper()]:
-                self.flag(i, IssueKind.UNKNOWN_WORD, ", ".join(f"\"{word}\"" for word in words_unknown_lower))
-
-    def check_grammar(self, languagetool_server: str) -> None:
-        if not LANGUAGETOOL_RULES:
-            return
-        text = "\n\n".join(self.target_texts)
-        entry_starts = list(itertools.accumulate((len(target_text) + 2 for target_text in self.target_texts[:-1]), initial=0))
-        for match in connect_languagetool(languagetool_server).check(text):
-            i = bisect.bisect_right(entry_starts, match.offset) - 1
-            flagged = text[match.offset:match.offset + match.error_length].replace("\n", " / ")
-            replacements = [replacement.replace("\n", " / ") for replacement in match.replacements[:1]]
-            self.flag(i, IssueKind.GRAMMAR, f"\"{flagged}\"" + "".join(f", maybe \"{replacement}\"" for replacement in replacements))
+            for i, detail in rule.find_issues(self):
+                self.issues.append(Issue(entry=self.entries[i].target, kind=rule.kind, detail=detail, quote=self.entries[i].quote))
 
     def to_report(self) -> Report:
-        return Report(subtitle=self.subtitle, entries_count=len(self.targets), issues=self.issues)
-
-
-def parse_symbols(content: str) -> set[str]:
-    text = FORMATTING_TAGS.sub("", content)
-    tags = {tag.lower() for tag in FORMATTING_TAGS.findall(content)}
-    letters_foreign = {character for character in text if character.isalpha() and character > LATIN_LAST}
-    return tags | set(SYMBOL.findall(text)) | letters_foreign
+        return Report(subtitle=self.subtitle, entries_count=len(self.entries), issues=self.issues)
 
 
 @functools.cache
-def load_dictionary() -> Dictionary:
-    return Dictionary.from_files(str(DICTIONARY))
+def load_dictionary(path: Path) -> Dictionary:
+    return Dictionary.from_files(str(path))
 
 
 @functools.cache
-def connect_languagetool(server: str) -> language_tool_python.LanguageTool:
-    languagetool = language_tool_python.LanguageTool(LANGUAGETOOL_LANGUAGE, remote_server=server)
-    languagetool.enabled_rules = LANGUAGETOOL_RULES
+def connect_languagetool(server: str, rules: frozenset[str]) -> language_tool_python.LanguageTool:
+    languagetool = language_tool_python.LanguageTool(GrammarRule.LANGUAGE, remote_server=server)
+    languagetool.enabled_rules = set(rules)
     languagetool.enabled_rules_only = True
     return languagetool
 
 
 def check_subtitle(subtitle: Path, report: Path, languagetool_server: str) -> ReportScore:
-    check = TranslationCheck.from_file(subtitle)
-    check.check_lines()
-    check.check_grammar(languagetool_server)
+    check = TranslationCheck.from_file(subtitle, languagetool_server)
+    check.check()
     return check.to_report().write(report)
 
 # ------------------------------------------------------------------------------
@@ -210,7 +314,7 @@ if __name__ == "__main__":
     subs_pending = [sub for sub in subs if scores_current[sub] is None]
 
     # start one LanguageTool server for all workers, only when there is a sub to check and a LanguageTool rule enabled
-    with (language_tool_python.LanguageTool(LANGUAGETOOL_LANGUAGE) if subs_pending and LANGUAGETOOL_RULES else contextlib.nullcontext()) as languagetool, ProcessPoolExecutor(max_workers=CHECK_WORKERS) as executor:
+    with (language_tool_python.LanguageTool(GrammarRule.LANGUAGE) if subs_pending and GRAMMAR.languagetool_rules_enabled else contextlib.nullcontext()) as languagetool, ProcessPoolExecutor(max_workers=CHECK_WORKERS) as executor:
         # check every sub without a report, CHECK_WORKERS at a time across movies
         languagetool_server = f"http://{languagetool.host}:{languagetool.port}" if languagetool is not None else ""
         checks: dict[Path, Future[ReportScore]] = {sub: executor.submit(check_subtitle, sub, reports[sub], languagetool_server) for sub in subs_pending}

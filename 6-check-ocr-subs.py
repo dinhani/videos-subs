@@ -7,10 +7,12 @@ import itertools
 import re
 import statistics
 from collections import Counter, defaultdict
+from collections.abc import Iterator
 from concurrent.futures import Future, ProcessPoolExecutor
 from dataclasses import dataclass, field
 from datetime import timedelta
 from pathlib import Path
+from typing import ClassVar
 
 import srt
 from PIL import ImageFont, ImageOps
@@ -24,34 +26,157 @@ from shared import IMAGE_EXTENSIONS, SUBS_FOLDER, Batch, Color, SubtitleEntry, f
 # ------------------------------------------------------------------------------
 LANGUAGES = ("eng",)
 
-RULES_ENABLED = {
-    IssueKind.OCR_FAILED: True,
-    IssueKind.WRONG_ORDER: True,
-    IssueKind.INCONSISTENT: True,
-    IssueKind.ARTIFACT: True,
-    IssueKind.GLYPH_CONFUSION: True,
-    IssueKind.UNBALANCED: True,
-}
-
 OCR_FAILED_TEXT = "[OCR failed]"
 ENTRY_START_TOLERANCE = timedelta(milliseconds=2)
 
 FONT_SIZE = 100
 FONT = ImageFont.truetype("arial.ttf", FONT_SIZE)
 LINE_HEIGHT_MIN = 0.45
-LINE_LENGTH_SCALE_MIN = 10
-LINE_TOLERANCE_EM = 2.5
-LINE_TOLERANCE_SHARE = 0.3
 
-MARKDOWN_EMPHASIS = re.compile(r"(?<![\w*_])([*_])(\S(?:.*?\S)?)\1(?![\w*_])")
-ARTIFACT = re.compile(r"[`{}\\<>�]|\bImage \d+:")
-TAG_UNEXPECTED = re.compile(r"<(?!/?i>)[^<>]*>|\{(?!\\an8\})[^{}]*\}")
-GLYPH_CONFUSION = re.compile(r"\||[^\W\d_][015][^\W\d_]|\bl[A-Z]|\bl'(?:ll|m|ve|d|re)\b|\b[a-z]+I[a-z]*\b")
-PAIRS = (("(", ")"), ("[", "]"))
 QUOTES_PLAIN = str.maketrans("‘’‚“”„", "'''\"\"\"")
-NOT_BRACKET = re.compile(r"[:;]-?[()]")
-LIST_NUMBER = re.compile(r"^([^(\n]*?)(?<!\S)\d\)(?=\s)", re.MULTILINE)
-BRACKET_ENTRIES_MAX = 3
+
+# ------------------------------------------------------------------------------
+# Rules
+# ------------------------------------------------------------------------------
+@dataclass(frozen=True)
+class OcrFailedRule:
+    kind: ClassVar[IssueKind] = IssueKind.OCR_FAILED
+    enabled: bool
+
+    def find_issues(self, check: "OcrCheck") -> Iterator[tuple["OcrEntry", str]]:
+        for entry in check.entries:
+            if entry.failed():
+                yield entry, "the model gave no usable reply"
+
+
+@dataclass(frozen=True)
+class WrongOrderRule:
+    kind: ClassVar[IssueKind] = IssueKind.WRONG_ORDER
+    enabled: bool
+    line_length_scale_min: int
+    tolerance_em: float
+    tolerance_share: float
+
+    def find_issues(self, check: "OcrCheck") -> Iterator[tuple["OcrEntry", str]]:
+        entries_read = [entry for entry in check.entries if not entry.failed()]
+
+        # the font is the same in the whole file, so long lines with a line on the image each set the pixels per em
+        ratios = [
+            width / measure_em(line)
+            for entry in entries_read
+            if len(entry.image_lines.widths) == len(entry.lines)
+            for width, line in zip(entry.image_lines.widths, entry.lines)
+            if len(line) >= self.line_length_scale_min
+        ]
+        if not ratios:
+            return
+        pixels_per_em = statistics.median(ratios)
+
+        for entry in entries_read:
+            image = [width / pixels_per_em for width in entry.image_lines.widths]
+            text = [measure_em(line) for line in entry.lines]
+            if len(image) != len(text) or len(text) < 2:
+                continue
+            if self.fits(image, text[::-1]) and not self.fits(image, text):
+                yield entry, "the image shows these lines in the other order"
+
+    def fits(self, image: list[float], text: list[float]) -> bool:
+        return all(abs(image_em - text_em) <= max(self.tolerance_em, self.tolerance_share * text_em) for image_em, text_em in zip(image, text))
+
+
+@dataclass(frozen=True)
+class InconsistentRule:
+    kind: ClassVar[IssueKind] = IssueKind.INCONSISTENT
+    enabled: bool
+
+    def find_issues(self, check: "OcrCheck") -> Iterator[tuple["OcrEntry", str]]:
+        # the same image must have the same text everywhere in the file
+        entries_by_image: defaultdict[int, list[OcrEntry]] = defaultdict(list)
+        for entry in check.entries:
+            if not entry.failed():
+                entries_by_image[entry.image_key].append(entry)
+        for entries_same in entries_by_image.values():
+            text_common = Counter(entry.text_compared for entry in entries_same).most_common(1)[0][0]
+            reference = next(entry for entry in entries_same if entry.text_compared == text_common)
+            for entry in entries_same:
+                if entry.text_compared != text_common:
+                    yield entry, f"entry {reference.subtitle.index} has the same image and reads \"{' / '.join(reference.lines)}\""
+
+
+@dataclass(frozen=True)
+class ArtifactRule:
+    kind: ClassVar[IssueKind] = IssueKind.ARTIFACT
+    MARKDOWN_EMPHASIS: ClassVar[re.Pattern[str]] = re.compile(r"(?<![\w*_])([*_])(\S(?:.*?\S)?)\1(?![\w*_])")
+    ARTIFACT: ClassVar[re.Pattern[str]] = re.compile(r"[`{}\\<>�]|\bImage \d+:")
+    TAG_UNEXPECTED: ClassVar[re.Pattern[str]] = re.compile(r"<(?!/?i>)[^<>]*>|\{(?!\\an8\})[^{}]*\}")
+    enabled: bool
+
+    def find_issues(self, check: "OcrCheck") -> Iterator[tuple["OcrEntry", str]]:
+        for entry in check.entries:
+            if entry.failed():
+                continue
+            if artifacts := [match[0] for pattern in (self.MARKDOWN_EMPHASIS, self.ARTIFACT) for match in pattern.finditer(entry.text)] + [match[0] for match in self.TAG_UNEXPECTED.finditer(entry.subtitle.content)]:
+                yield entry, "markup in the text: " + ", ".join(f'"{artifact}"' for artifact in dict.fromkeys(artifacts))
+
+
+@dataclass(frozen=True)
+class GlyphConfusionRule:
+    kind: ClassVar[IssueKind] = IssueKind.GLYPH_CONFUSION
+    GLYPH_CONFUSION: ClassVar[re.Pattern[str]] = re.compile(r"\||[^\W\d_][015][^\W\d_]|\bl[A-Z]|\bl'(?:ll|m|ve|d|re)\b|\b[a-z]+I[a-z]*\b")
+    enabled: bool
+
+    def find_issues(self, check: "OcrCheck") -> Iterator[tuple["OcrEntry", str]]:
+        for entry in check.entries:
+            if entry.failed():
+                continue
+            if confusions := [match[0] for match in self.GLYPH_CONFUSION.finditer(entry.text)]:
+                yield entry, "probably misread: " + ", ".join(f'"{confusion}"' for confusion in dict.fromkeys(confusions))
+
+
+@dataclass(frozen=True)
+class UnbalancedRule:
+    kind: ClassVar[IssueKind] = IssueKind.UNBALANCED
+    PAIRS: ClassVar[tuple[tuple[str, str], ...]] = (("(", ")"), ("[", "]"))
+    NOT_BRACKET: ClassVar[re.Pattern[str]] = re.compile(r"[:;]-?[()]")
+    LIST_NUMBER: ClassVar[re.Pattern[str]] = re.compile(r"^([^(\n]*?)(?<!\S)\d\)(?=\s)", re.MULTILINE)
+    enabled: bool
+    entries_max: int
+
+    def find_issues(self, check: "OcrCheck") -> Iterator[tuple["OcrEntry", str]]:
+        texts = [self.LIST_NUMBER.sub(r"\1", self.NOT_BRACKET.sub("", entry.text)) for entry in check.entries]
+        for opening, closing in self.PAIRS:
+            # a bracket may close up to entries_max - 1 entries later, as in a caption split over entries
+            entries_open: list[int] = []
+            unclosed: Counter[int] = Counter()
+            unopened: Counter[int] = Counter()
+            for i, text in enumerate(texts):
+                for character in text:
+                    if character == opening:
+                        entries_open.append(i)
+                    elif character == closing and entries_open:
+                        entries_open.pop()
+                    elif character == closing:
+                        unopened[i] += 1
+                while entries_open and entries_open[0] + self.entries_max <= i + 1:
+                    unclosed[entries_open.pop(0)] += 1
+            unclosed.update(entries_open)
+            for i in sorted(unclosed.keys() | unopened.keys()):
+                if unclosed[i]:
+                    yield check.entries[i], f'{unclosed[i]} "{opening}" without "{closing}"'
+                if unopened[i]:
+                    yield check.entries[i], f'{unopened[i]} "{closing}" without "{opening}"'
+
+
+OcrRule = OcrFailedRule | WrongOrderRule | InconsistentRule | ArtifactRule | GlyphConfusionRule | UnbalancedRule
+
+RULES: tuple[OcrRule, ...] = (
+    OcrFailedRule(enabled=True),
+    WrongOrderRule(enabled=True, line_length_scale_min=10, tolerance_em=2.5, tolerance_share=0.3),
+    InconsistentRule(enabled=True),
+    ArtifactRule(enabled=True),
+    GlyphConfusionRule(enabled=True),
+    UnbalancedRule(enabled=True, entries_max=3),
+)
 
 # ------------------------------------------------------------------------------
 # Checks
@@ -116,15 +241,6 @@ class OcrEntry:
     def failed(self) -> bool:
         return OCR_FAILED_TEXT in self.text
 
-    def reads_reversed(self, pixels_per_em: float) -> bool:
-        image = [width / pixels_per_em for width in self.image_lines.widths]
-        text = [measure_em(line) for line in self.lines]
-        if len(image) != len(text) or len(text) < 2:
-            return False
-        fits = all(measure_excess(image_em, text_em) <= 0 for image_em, text_em in zip(image, text))
-        fits_reversed = all(measure_excess(image_em, text_em) <= 0 for image_em, text_em in zip(image, reversed(text)))
-        return fits_reversed and not fits
-
 
 @dataclass
 class OcrCheck:
@@ -146,72 +262,12 @@ class OcrCheck:
             raise ValueError(f"entry {shifted} starts at a different time than in {image.name}")
         return cls(subtitle=subtitle, entries=[OcrEntry.from_entries(text, entry) for text, entry in zip(texts, images)])
 
-    def flag(self, entry: OcrEntry, kind: IssueKind, detail: str) -> None:
-        if not RULES_ENABLED[kind]:
-            return
-        self.issues.append(Issue(entry=entry.subtitle, kind=kind, detail=detail, quote=tuple(entry.subtitle.content.split("\n"))))
-
-    def check_entries(self) -> None:
-        for entry in self.entries:
-            if entry.failed():
-                self.flag(entry, IssueKind.OCR_FAILED, "the model gave no usable reply")
+    def check(self) -> None:
+        for rule in RULES:
+            if not rule.enabled:
                 continue
-            if artifacts := [match[0] for pattern in (MARKDOWN_EMPHASIS, ARTIFACT) for match in pattern.finditer(entry.text)] + [match[0] for match in TAG_UNEXPECTED.finditer(entry.subtitle.content)]:
-                self.flag(entry, IssueKind.ARTIFACT, "markup in the text: " + ", ".join(f'"{artifact}"' for artifact in dict.fromkeys(artifacts)))
-            if confusions := [match[0] for match in GLYPH_CONFUSION.finditer(entry.text)]:
-                self.flag(entry, IssueKind.GLYPH_CONFUSION, "probably misread: " + ", ".join(f'"{confusion}"' for confusion in dict.fromkeys(confusions)))
-
-    def check_brackets(self) -> None:
-        texts = [LIST_NUMBER.sub(r"\1", NOT_BRACKET.sub("", entry.text)) for entry in self.entries]
-        for opening, closing in PAIRS:
-            # a bracket may close up to BRACKET_ENTRIES_MAX - 1 entries later, as in a caption split over entries
-            entries_open: list[int] = []
-            unclosed: Counter[int] = Counter()
-            unopened: Counter[int] = Counter()
-            for i, text in enumerate(texts):
-                for character in text:
-                    if character == opening:
-                        entries_open.append(i)
-                    elif character == closing and entries_open:
-                        entries_open.pop()
-                    elif character == closing:
-                        unopened[i] += 1
-                while entries_open and entries_open[0] + BRACKET_ENTRIES_MAX <= i + 1:
-                    unclosed[entries_open.pop(0)] += 1
-            unclosed.update(entries_open)
-            for i in sorted(unclosed.keys() | unopened.keys()):
-                if unclosed[i]:
-                    self.flag(self.entries[i], IssueKind.UNBALANCED, f'{unclosed[i]} "{opening}" without "{closing}"')
-                if unopened[i]:
-                    self.flag(self.entries[i], IssueKind.UNBALANCED, f'{unopened[i]} "{closing}" without "{opening}"')
-
-    def check_images(self) -> None:
-        entries_read = [entry for entry in self.entries if not entry.failed()]
-
-        # the font is the same in the whole file, so long lines with a line on the image each set the pixels per em
-        ratios = [
-            width / measure_em(line)
-            for entry in entries_read
-            if len(entry.image_lines.widths) == len(entry.lines)
-            for width, line in zip(entry.image_lines.widths, entry.lines)
-            if len(line) >= LINE_LENGTH_SCALE_MIN
-        ]
-        if ratios:
-            pixels_per_em = statistics.median(ratios)
-            for entry in entries_read:
-                if entry.reads_reversed(pixels_per_em):
-                    self.flag(entry, IssueKind.WRONG_ORDER, "the image shows these lines in the other order")
-
-        # the same image must have the same text everywhere in the file
-        entries_by_image: defaultdict[int, list[OcrEntry]] = defaultdict(list)
-        for entry in entries_read:
-            entries_by_image[entry.image_key].append(entry)
-        for entries_same in entries_by_image.values():
-            text_common = Counter(entry.text_compared for entry in entries_same).most_common(1)[0][0]
-            reference = next(entry for entry in entries_same if entry.text_compared == text_common)
-            for entry in entries_same:
-                if entry.text_compared != text_common:
-                    self.flag(entry, IssueKind.INCONSISTENT, f"entry {reference.subtitle.index} has the same image and reads \"{' / '.join(reference.lines)}\"")
+            for entry, detail in rule.find_issues(self):
+                self.issues.append(Issue(entry=entry.subtitle, kind=rule.kind, detail=detail, quote=tuple(entry.subtitle.content.split("\n"))))
 
     def to_report(self) -> Report:
         return Report(subtitle=self.subtitle, entries_count=len(self.entries), issues=self.issues)
@@ -221,15 +277,9 @@ def measure_em(text: str) -> float:
     return FONT.getlength(text) / FONT_SIZE
 
 
-def measure_excess(image_em: float, text_em: float) -> float:
-    return abs(image_em - text_em) - max(LINE_TOLERANCE_EM, LINE_TOLERANCE_SHARE * text_em)
-
-
 def check_subtitle(subtitle: Path, report: Path) -> ReportScore:
     check = OcrCheck.from_file(subtitle)
-    check.check_entries()
-    check.check_brackets()
-    check.check_images()
+    check.check()
     return check.to_report().write(report)
 
 # ------------------------------------------------------------------------------
