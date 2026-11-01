@@ -6,9 +6,9 @@ The output is `<video>.<track>.pob.translated.srt` next to each video, where the
 
 ## Requirements
 
-Windows, with these tools on the `PATH`:
+These tools on the `PATH`:
 
-- [just](https://github.com/casey/just) and [uv](https://github.com/astral-sh/uv)
+- [just](https://github.com/casey/just), [uv](https://github.com/astral-sh/uv) and PowerShell 7 (`pwsh`), which runs the recipes
 - ffmpeg and ffprobe
 - Tesseract with the `script/Latin` model (scoop `tesseract` and `tesseract-languages`)
 - Java for LanguageTool (scoop `openjdk26`)
