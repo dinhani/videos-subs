@@ -98,7 +98,7 @@ llama-ocr:
         --model D:/AI-Models-LMStudio/lmstudio-community/gemma-4-12B-it-QAT-GGUF/gemma-4-12B-it-QAT-Q4_0.gguf \
         --mmproj D:/AI-Models-LMStudio/lmstudio-community/gemma-4-12B-it-QAT-GGUF/mmproj-gemma-4-12B-it-QAT-BF16.gguf \
         --device CUDA0 --n-gpu-layers all --fit off --flash-attn on --jinja --reasoning-budget 0 \
-        --ctx-size 16384 --parallel 4 --top-p 0.95 --top-k 64 --port 9931
+        --ctx-size 32768 --parallel 8 --top-p 0.95 --top-k 64 --port 9931
 
 [group('llm')]
 [doc('Start translation llama server')]
