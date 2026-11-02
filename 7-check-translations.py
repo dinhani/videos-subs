@@ -22,8 +22,7 @@ import srt
 from rich.progress import MofNCompleteColumn, TimeElapsedColumn, TimeRemainingColumn
 from spylls.hunspell import Dictionary
 
-from checks import CHECK_WORKERS, Issue, IssueKind, Report, ReportScore, TextLanguage, log_ranking, parse_plain_text, parse_words
-from shared import CHECKS_FOLDER, FORMATTING_TAGS, SUBS_FOLDER, TRACES_FOLDER, WORDS_PT_PT, Batch, Color, SubtitleKind, find_files, log_action, parse_movie_dir, parse_srt, progress_bar
+from shared import CHECKS_FOLDER, CHECK_WORKERS, FORMATTING_TAGS, SUBS_FOLDER, TRACES_FOLDER, WORDS_PT_PT, Batch, Color, Issue, IssueKind, Report, ReportScore, SubtitleKind, TextLanguage, find_files, log_action, log_ranking, parse_movie_dir, parse_plain_text, parse_srt, parse_words, progress_bar
 
 # ------------------------------------------------------------------------------
 # Constants

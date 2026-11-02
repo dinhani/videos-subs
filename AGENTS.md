@@ -90,7 +90,6 @@ The virtual environment lives in `uv/envs/videos-subs` under the local data dire
 ## Code layout
 
 - `shared.py`: code used by more than one script.
-- `checks.py`: code used by the two check scripts: issue kinds, word frequency and reports.
 - `crosscheck-subs.py`: not a pipeline step; it only reads and reports, per movie folder, a text subtitle made by ocr whose language code or kind differs from its image subtitle, a track with more than one text subtitle, a translation without an English source of its kind, a report without its subtitle, and a `.part` file left by a write that did not finish. The track index (`<video>.embed.<index>`) is the key that matches the files of one track.
 - Each script is a top-level script, not a module: constants, then its own types, then the execution loop. The check scripts put their rules between the constants and the types they check. check-ocr and check-translate run their checks in `CHECK_WORKERS` processes, since they are CPU work in Python; the worker processes import the script, so its execution loop is under `if __name__ == "__main__":`.
 - Every script follows the same per-file pattern: log the movie, skip when already done, do the work inside `try`, report failures through `Batch`, write output through a `.part` file and rename it.
