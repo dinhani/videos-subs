@@ -30,6 +30,7 @@ DIR_MIDIAS_ROOT = DIR_FILMES.parent
 BACKUPS_FOLDER = DIR_MIDIAS_ROOT / "_backups"
 
 LINE_WORDS = re.compile(r"[^\W\d_]|[♪♫]")
+QUOTES = '"“”'
 NUMBER = re.compile(r"\d+")
 
 NLP_MODEL = "en_core_web_sm"
@@ -103,6 +104,10 @@ class LeftoversFix:
                 continue
             quote = end["quote"] if end["quote"] and source_plain.endswith(end["quote"]) else ""
             lines[n] = (line[:end.start()] + quote).rstrip()
+
+        # an entry left with other quotes than the English entry keeps its leftovers, so check-translate still flags it
+        if sum(line.count(quote) for line in lines for quote in QUOTES) != sum(line.count(quote) for line in entry.source_lines for quote in QUOTES):
+            return entry.target_lines
         return tuple(lines)
 
 
@@ -113,7 +118,6 @@ class BracketsFix:
     TAGS_END: ClassVar[re.Pattern[str]] = re.compile(r"(?:\s*<[^<>]+>)*\s*$")
     TAGS_START: ClassVar[re.Pattern[str]] = re.compile(r"^(?:\{\\[^{}]*\}|<[^<>]+>|[\s\-–—])*")
     LINE_WRAPPED: ClassVar[re.Pattern[str]] = re.compile(r"^(?P<start>(?:\{\\[^{}]*\}|<[^<>]+>|[\s\-–—])*)[\[(](?P<text>[^\[\]()]+)[\])](?P<end>(?:\s*<[^<>]+>)*\s*)$")
-    QUOTES: ClassVar[str] = '"“”'
     enabled: bool
 
     def fix(self, entry: "TranslationEntry") -> tuple[str, ...]:
@@ -150,16 +154,16 @@ class BracketsFix:
                     lines[n] = lines[n][:position] + opening + lines[n][position:]
 
         # one quote more than the English entry, at the start or end of the only line where the English line has none; curly quotes count as quotes
-        if sum(line.count(quote) for line in lines for quote in self.QUOTES) != sum(line.count(quote) for line in entry.source_lines for quote in self.QUOTES) + 1:
+        if sum(line.count(quote) for line in lines for quote in QUOTES) != sum(line.count(quote) for line in entry.source_lines for quote in QUOTES) + 1:
             return tuple(lines)
         quotes_added: list[tuple[int, int]] = []
         for n, (source_line, line) in enumerate(zip(entry.source_lines, lines)):
             source_plain = FORMATTING_TAGS.sub("", source_line).strip().lstrip("-–— ")
             plain = FORMATTING_TAGS.sub("", line).strip().lstrip("-–— ")
-            if plain.endswith(tuple(self.QUOTES)) and not source_plain.endswith(tuple(self.QUOTES)):
-                quotes_added.append((n, max(line.rfind(quote) for quote in self.QUOTES)))
-            if plain.startswith(tuple(self.QUOTES)) and not source_plain.startswith(tuple(self.QUOTES)):
-                quotes_added.append((n, min(position for quote in self.QUOTES if (position := line.find(quote)) >= 0)))
+            if plain.endswith(tuple(QUOTES)) and not source_plain.endswith(tuple(QUOTES)):
+                quotes_added.append((n, max(line.rfind(quote) for quote in QUOTES)))
+            if plain.startswith(tuple(QUOTES)) and not source_plain.startswith(tuple(QUOTES)):
+                quotes_added.append((n, min(position for quote in QUOTES if (position := line.find(quote)) >= 0)))
         if len(quotes_added) == 1:
             n, position = quotes_added[0]
             lines[n] = (lines[n][:position] + lines[n][position + 1:]).strip()
