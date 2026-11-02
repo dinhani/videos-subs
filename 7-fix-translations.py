@@ -95,6 +95,8 @@ class BracketsFix:
     PAIRS: ClassVar[tuple[tuple[str, str], ...]] = (("(", ")"), ("[", "]"))
     TAGS_END: ClassVar[re.Pattern[str]] = re.compile(r"(?:\s*<[^<>]+>)*\s*$")
     TAGS_START: ClassVar[re.Pattern[str]] = re.compile(r"^(?:\{\\[^{}]*\}|<[^<>]+>|[\s\-–—])*")
+    LINE_WRAPPED: ClassVar[re.Pattern[str]] = re.compile(r"^(?P<start>(?:\{\\[^{}]*\}|<[^<>]+>|[\s\-–—])*)[\[(](?P<text>[^\[\]()]+)[\])](?P<end>(?:\s*<[^<>]+>)*\s*)$")
+    QUOTE: ClassVar[str] = '"'
     enabled: bool
 
     def fix(self, entry: "TranslationEntry") -> tuple[str, ...]:
@@ -103,6 +105,13 @@ class BracketsFix:
         lines = list(entry.target_lines)
         for n, source_line in enumerate(entry.source_lines):
             source_plain = FORMATTING_TAGS.sub("", source_line).strip()
+
+            # brackets around a line that the English line has without brackets
+            wrapped = self.LINE_WRAPPED.match(lines[n])
+            if wrapped is not None and not any(bracket in source_plain for bracket in "[]()"):
+                lines[n] = f"{wrapped['start']}{wrapped['text'].strip()}{wrapped['end']}"
+                continue
+
             for (opening, closing), (opening_other, closing_other) in itertools.permutations(self.PAIRS, 2):
                 if not source_plain.count(opening) or source_plain.count(opening) != source_plain.count(closing):
                     continue
@@ -122,6 +131,21 @@ class BracketsFix:
                     tags_start = self.TAGS_START.match(lines[n])
                     position = tags_start.end() if tags_start else 0
                     lines[n] = lines[n][:position] + opening + lines[n][position:]
+
+        # one quote more than the English entry, at the start or end of the only line where the English line has none
+        if sum(line.count(self.QUOTE) for line in lines) != sum(line.count(self.QUOTE) for line in entry.source_lines) + 1:
+            return tuple(lines)
+        quotes_added: list[tuple[int, int]] = []
+        for n, (source_line, line) in enumerate(zip(entry.source_lines, lines)):
+            source_plain = FORMATTING_TAGS.sub("", source_line).strip().lstrip("-–— ")
+            plain = FORMATTING_TAGS.sub("", line).strip().lstrip("-–— ")
+            if plain.endswith(self.QUOTE) and not source_plain.endswith(self.QUOTE):
+                quotes_added.append((n, line.rfind(self.QUOTE)))
+            if plain.startswith(self.QUOTE) and not source_plain.startswith(self.QUOTE):
+                quotes_added.append((n, line.find(self.QUOTE)))
+        if len(quotes_added) == 1:
+            n, position = quotes_added[0]
+            lines[n] = (lines[n][:position] + lines[n][position + 1:]).strip()
         return tuple(lines)
 
 

@@ -568,7 +568,7 @@ class DescriptionTranslation:
         if not self.name:
             return True
         words = normalize_description(translation)
-        return words != normalize_description(self.source) and words.startswith(f"{normalize_description(self.name)} ")
+        return words != normalize_description(self.source) and f" {normalize_description(self.name)} " in f" {words} "
 
 
 @dataclass(frozen=True)
