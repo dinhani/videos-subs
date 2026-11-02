@@ -216,7 +216,7 @@ The warning entries at the start of a translation, `[Legenda SDH...]` and `[Lege
 
 ## 2.5 broken line
 
-- **About**: a line without letters or digits, or starting with `,`, `;` or `:`.
+- **About**: a line without letters, or starting with `,`, `;` or `:`, when its English line has letters. A line of digits only, such as `27` or `14-15-16`, is a piece of the model reply.
 - **Examples**:
   ```
   en   I don't know,
@@ -225,6 +225,13 @@ The warning entries at the start of a translation, `[Legenda SDH...]` and `[Lege
        ,
   fix  Não sei,
        talvez amanhã.
+
+  en   THANOS:
+       <i>You should be grateful.</i>
+  pt   THANOS: <i>Você deveria ser grata.</i>
+       27
+  fix  THANOS:
+       <i>Você deveria ser grata.</i>
   ```
 - **Correction**: replace the line with the translation of its English line.
 - **Caution**: the other line may already hold this line's text; then split it as in duplicated line.

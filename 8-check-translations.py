@@ -114,7 +114,7 @@ class DuplicatedLineRule:
 @dataclass(frozen=True)
 class BrokenLineRule:
     kind: ClassVar[IssueKind] = IssueKind.BROKEN_LINE
-    LINE_BROKEN: ClassVar[re.Pattern[str]] = re.compile(r"^[^\w♪♫]*$|^\s*[,;:]")
+    LINE_BROKEN: ClassVar[re.Pattern[str]] = re.compile(r"^(?:[^\w♪♫]|[\d_])*$|^\s*[,;:]")
     enabled: bool
 
     def find_issues(self, check: "TranslationCheck") -> Iterator[tuple[int, str]]:

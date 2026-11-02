@@ -29,6 +29,9 @@ TRANSLATION_SUFFIXES = tuple(kind.to_translation_suffix() for kind in SubtitleKi
 DIR_MIDIAS_ROOT = DIR_FILMES.parent
 BACKUPS_FOLDER = DIR_MIDIAS_ROOT / "_backups"
 
+LINE_WORDS = re.compile(r"[^\W\d_]|[♪♫]")
+NUMBER = re.compile(r"\d+")
+
 NLP_MODEL = "en_core_web_sm"
 NLP_NAME_LABELS = frozenset({"PERSON", "ORG"})
 NLP_BATCH_SIZE = 256
@@ -96,7 +99,7 @@ class LeftoversFix:
                 continue
             closing = end["closers"][0]
             opening = "[" if closing == "]" else "{"
-            if line.count(closing) <= line.count(opening):
+            if line.count(closing) <= line.count(opening) or (end["quote"] == "'" and source_plain.endswith("'")):
                 continue
             quote = end["quote"] if end["quote"] and source_plain.endswith(end["quote"]) else ""
             lines[n] = (line[:end.start()] + quote).rstrip()
@@ -110,7 +113,7 @@ class BracketsFix:
     TAGS_END: ClassVar[re.Pattern[str]] = re.compile(r"(?:\s*<[^<>]+>)*\s*$")
     TAGS_START: ClassVar[re.Pattern[str]] = re.compile(r"^(?:\{\\[^{}]*\}|<[^<>]+>|[\s\-–—])*")
     LINE_WRAPPED: ClassVar[re.Pattern[str]] = re.compile(r"^(?P<start>(?:\{\\[^{}]*\}|<[^<>]+>|[\s\-–—])*)[\[(](?P<text>[^\[\]()]+)[\])](?P<end>(?:\s*<[^<>]+>)*\s*)$")
-    QUOTE: ClassVar[str] = '"'
+    QUOTES: ClassVar[str] = '"“”'
     enabled: bool
 
     def fix(self, entry: "TranslationEntry") -> tuple[str, ...]:
@@ -146,17 +149,17 @@ class BracketsFix:
                     position = tags_start.end() if tags_start else 0
                     lines[n] = lines[n][:position] + opening + lines[n][position:]
 
-        # one quote more than the English entry, at the start or end of the only line where the English line has none
-        if sum(line.count(self.QUOTE) for line in lines) != sum(line.count(self.QUOTE) for line in entry.source_lines) + 1:
+        # one quote more than the English entry, at the start or end of the only line where the English line has none; curly quotes count as quotes
+        if sum(line.count(quote) for line in lines for quote in self.QUOTES) != sum(line.count(quote) for line in entry.source_lines for quote in self.QUOTES) + 1:
             return tuple(lines)
         quotes_added: list[tuple[int, int]] = []
         for n, (source_line, line) in enumerate(zip(entry.source_lines, lines)):
             source_plain = FORMATTING_TAGS.sub("", source_line).strip().lstrip("-–— ")
             plain = FORMATTING_TAGS.sub("", line).strip().lstrip("-–— ")
-            if plain.endswith(self.QUOTE) and not source_plain.endswith(self.QUOTE):
-                quotes_added.append((n, line.rfind(self.QUOTE)))
-            if plain.startswith(self.QUOTE) and not source_plain.startswith(self.QUOTE):
-                quotes_added.append((n, line.find(self.QUOTE)))
+            if plain.endswith(tuple(self.QUOTES)) and not source_plain.endswith(tuple(self.QUOTES)):
+                quotes_added.append((n, max(line.rfind(quote) for quote in self.QUOTES)))
+            if plain.startswith(tuple(self.QUOTES)) and not source_plain.startswith(tuple(self.QUOTES)):
+                quotes_added.append((n, min(position for quote in self.QUOTES if (position := line.find(quote)) >= 0)))
         if len(quotes_added) == 1:
             n, position = quotes_added[0]
             lines[n] = (lines[n][:position] + lines[n][position + 1:]).strip()
@@ -183,13 +186,17 @@ class DescriptionsFix:
             descriptions_target = list(DESCRIPTION_SIMPLE.finditer(line))
             paired = len(descriptions_target) == len(descriptions)
 
-            # each translation from the tables, kept only when the model kept its name
+            # each translation from the tables, kept only when the model kept its name, and left out when the model already wrote one of its forms
             translations = [table.find_translation(description[1] or description[2]) for description in descriptions]
             models = [description[1] or description[2] for description in descriptions_target] if paired else [line] * len(descriptions)
-            texts = [
-                f"{description[0][0]}{translation.text}{description[0][-1]}" if translation is not None and translation.is_confirmed_by(model, entry.names) else None
-                for description, translation, model in zip(descriptions, translations, models)
-            ]
+            texts: list[str | None] = []
+            for description, translation, model in zip(descriptions, translations, models):
+                if translation is None or not translation.is_confirmed_by(model, entry.names) or (paired and translation.is_already_in(model)):
+                    texts.append(None)
+                    continue
+                inner = description[0][1:-1]
+                space_before, space_after = inner[:len(inner) - len(inner.lstrip())], inner[len(inner.rstrip()):]
+                texts.append(f"{description[0][0]}{space_before}{translation.text}{space_after}{description[0][-1]}")
 
             # a line that is only descriptions is the English line with the descriptions translated
             line_whole = not self.LINE_REST.sub("", FORMATTING_TAGS.sub("", DESCRIPTION_SIMPLE.sub("", source_line)))
@@ -260,6 +267,13 @@ class TranslationEntry:
     def is_aligned(self) -> bool:
         return len(self.source_lines) == len(self.target_lines)
 
+    @property
+    def is_broken(self) -> bool:
+        # a blank line, a line without words, or a number the English entry does not have, such as the ids of the model reply
+        lines_without_words = sum(1 for line in self.target_lines if not LINE_WORDS.search(FORMATTING_TAGS.sub("", line)))
+        numbers_added = set(NUMBER.findall("\n".join(self.target_lines))) - set(NUMBER.findall("\n".join(self.source_lines)))
+        return any(not line.strip() for line in self.target_lines) or lines_without_words > sum(1 for line in self.source_lines if not LINE_WORDS.search(FORMATTING_TAGS.sub("", line))) or bool(numbers_added)
+
     def apply(self, fix: TranslationFix) -> "TranslationEntry | None":
         lines = fix.fix(self)
         if lines == self.target_lines or any(not line.strip() for line in lines):
@@ -328,7 +342,7 @@ if __name__ == "__main__":
                 raise FileNotFoundError(f"English source not found: {source}")
             sources_by_index = {entry.index: entry for entry in parse_srt(source)}
 
-            # fix every entry that has a source entry; a changed entry loses its marker, so it is judged again
+            # fix every entry that has a source entry and no broken line, which check-translate must still see; a changed entry loses its marker, so it is judged again
             entries = parse_srt(sub)
             fixes_applied: Counter[str] = Counter()
             entries_fixed: list[tuple[srt.Subtitle, srt.Subtitle, srt.Subtitle]] = []
@@ -336,6 +350,8 @@ if __name__ == "__main__":
                 if entry.index not in sources_by_index:
                     continue
                 translation = TranslationEntry.from_entries(sources_by_index[entry.index], entry, load_movie_names(source.parent))
+                if translation.is_broken:
+                    continue
                 for fix in FIXES:
                     if not fix.enabled or (translation_fixed := translation.apply(fix)) is None:
                         continue
