@@ -3,6 +3,7 @@
 # ------------------------------------------------------------------------------
 # Libraries
 # ------------------------------------------------------------------------------
+import argparse
 import re
 from collections import defaultdict
 from pathlib import Path
@@ -26,7 +27,7 @@ TRANSLATION_REPORT_SUFFIX = ".translated.txt"
 # Execution
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
-    files = find_files("Crosschecks the subtitles, translations and reports of each movie folder.", extensions_file=IMAGE_EXTENSIONS + (".srt",), extensions_folder=IMAGE_EXTENSIONS + (".srt", PART_SUFFIX))
+    files = find_files(argparse.ArgumentParser(description="Crosschecks the subtitles, translations and reports of each movie folder."), extensions_file=IMAGE_EXTENSIONS + (".srt",), extensions_folder=IMAGE_EXTENSIONS + (".srt", PART_SUFFIX))
     movie_dirs = sorted({file.parent.parent if file.parent.name in WORK_FOLDERS else file.parent for file in files})
     batch = Batch()
 

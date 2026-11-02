@@ -332,7 +332,7 @@ def load_words(file: Path) -> tuple[dict[str, list[tuple[str, str]]], re.Pattern
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Fixes the mistakes of the translations that have a mechanical fix, by comparing each entry with its English source. Shows the changes of each translation and asks before writing it.")
     parser.add_argument("--yes", action="store_true", help="write every translation without showing its changes or asking")
-    subs = find_files(parser.description or "", extensions_file=TRANSLATION_SUFFIXES, extensions_folder=TRANSLATION_SUFFIXES, parser=parser)
+    subs = find_files(parser, extensions_file=TRANSLATION_SUFFIXES, extensions_folder=TRANSLATION_SUFFIXES)
     confirmed: bool = parser.parse_args().yes
     backups_run = BACKUPS_FOLDER / datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
     batch = Batch()

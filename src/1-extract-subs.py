@@ -3,6 +3,7 @@
 # ------------------------------------------------------------------------------
 # Libraries
 # ------------------------------------------------------------------------------
+import argparse
 import json
 import subprocess
 import tempfile
@@ -57,7 +58,7 @@ class SubtitleExtraction:
 # Execution
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
-    videos = find_files("Extracts the tracks of each video into text subtitles and image subtitles.", extensions_file=VIDEO_EXTENSIONS, extensions_folder=VIDEO_EXTENSIONS)
+    videos = find_files(argparse.ArgumentParser(description="Extracts the tracks of each video into text subtitles and image subtitles."), extensions_file=VIDEO_EXTENSIONS, extensions_folder=VIDEO_EXTENSIONS)
     batch = Batch()
 
     for video in videos:

@@ -3,6 +3,7 @@
 # ------------------------------------------------------------------------------
 # Libraries
 # ------------------------------------------------------------------------------
+import argparse
 import itertools
 import math
 import os
@@ -68,7 +69,7 @@ def read_sample(sub: Path) -> list[str] | None:
 # Execution
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
-    subs = find_files("Identifies the language of image subtitles (PGS .sup, DVD .mks) by reading their first entries with Tesseract, and renames each file with that language code.", extensions_file=IMAGE_EXTENSIONS, extensions_folder=IMAGE_EXTENSIONS, folder=SUBS_FOLDER)
+    subs = find_files(argparse.ArgumentParser(description="Identifies the language of image subtitles (PGS .sup, DVD .mks) by reading their first entries with Tesseract, and renames each file with that language code."), extensions_file=IMAGE_EXTENSIONS, extensions_folder=IMAGE_EXTENSIONS, folder=SUBS_FOLDER)
     batch = Batch()
 
     with ThreadPoolExecutor(max_workers=SAMPLE_WORKERS) as executor:

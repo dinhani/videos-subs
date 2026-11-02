@@ -3,6 +3,7 @@
 # ------------------------------------------------------------------------------
 # Libraries
 # ------------------------------------------------------------------------------
+import argparse
 import itertools
 import json
 import re
@@ -160,7 +161,7 @@ class SubtitleTranscription:
 # Execution
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
-    subs = find_files("Transcribes image subtitles to text subtitles with a vision LLM; folders only in the wanted languages.", extensions_file=IMAGE_EXTENSIONS, extensions_folder=tuple(f".{language}{kind}{extension}" for language in LANGUAGES for kind in SubtitleKind for extension in IMAGE_EXTENSIONS), folder=SUBS_FOLDER)
+    subs = find_files(argparse.ArgumentParser(description="Transcribes image subtitles to text subtitles with a vision LLM; folders only in the wanted languages."), extensions_file=IMAGE_EXTENSIONS, extensions_folder=tuple(f".{language}{kind}{extension}" for language in LANGUAGES for kind in SubtitleKind for extension in IMAGE_EXTENSIONS), folder=SUBS_FOLDER)
     llama = connect_llama()
     llama_slots = llama.get(LLM_PROPS_URL, cast_to=LlamaProps).total_slots
     batch = Batch()

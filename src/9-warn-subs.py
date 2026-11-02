@@ -3,6 +3,7 @@
 # ------------------------------------------------------------------------------
 # Libraries
 # ------------------------------------------------------------------------------
+import argparse
 import json
 from datetime import timedelta
 
@@ -25,7 +26,7 @@ WARNING_DURATION = timedelta(seconds=5)
 # Execution
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
-    subs = find_files("Adds warnings at the start of every translation: SDH, and possible errors.", extensions_file=TRANSLATION_SUFFIXES, extensions_folder=TRANSLATION_SUFFIXES)
+    subs = find_files(argparse.ArgumentParser(description="Adds warnings at the start of every translation: SDH, and possible errors."), extensions_file=TRANSLATION_SUFFIXES, extensions_folder=TRANSLATION_SUFFIXES)
     batch = Batch()
 
     for sub in subs:

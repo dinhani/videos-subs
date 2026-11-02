@@ -3,6 +3,7 @@
 # ------------------------------------------------------------------------------
 # Libraries
 # ------------------------------------------------------------------------------
+import argparse
 import json
 from dataclasses import dataclass, field
 
@@ -181,7 +182,7 @@ class SubtitleTranslation:
 # Execution
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
-    subs_src = find_files("Translates English subtitles to Brazilian Portuguese; folders only English ones.", extensions_file=(".srt",), extensions_folder=tuple(f".eng{kind}.srt" for kind in SubtitleKind), folder=SUBS_FOLDER)
+    subs_src = find_files(argparse.ArgumentParser(description="Translates English subtitles to Brazilian Portuguese; folders only English ones."), extensions_file=(".srt",), extensions_folder=tuple(f".eng{kind}.srt" for kind in SubtitleKind), folder=SUBS_FOLDER)
     llama = connect_llama()
 
     batch = Batch()

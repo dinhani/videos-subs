@@ -3,6 +3,7 @@
 # ------------------------------------------------------------------------------
 # Libraries
 # ------------------------------------------------------------------------------
+import argparse
 import bisect
 import contextlib
 import functools
@@ -363,7 +364,7 @@ def check_subtitle(subtitle: Path, report: Path, languagetool_server: str) -> Re
 # Execution
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
-    subs = find_files("Checks translated subtitles against their English source for common translation mistakes.", extensions_file=TRANSLATION_SUFFIXES, extensions_folder=TRANSLATION_SUFFIXES)
+    subs = find_files(argparse.ArgumentParser(description="Checks translated subtitles against their English source for common translation mistakes."), extensions_file=TRANSLATION_SUFFIXES, extensions_folder=TRANSLATION_SUFFIXES)
     reports = {sub: parse_movie_dir(sub) / CHECKS_FOLDER / f"{sub.stem}.txt" for sub in subs}
     scores_current = {sub: ReportScore.find(reports[sub]) for sub in subs}
     batch = Batch()

@@ -3,6 +3,7 @@
 # ------------------------------------------------------------------------------
 # Libraries
 # ------------------------------------------------------------------------------
+import argparse
 import itertools
 import re
 import statistics
@@ -305,7 +306,7 @@ def check_subtitle(subtitle: Path, report: Path) -> ReportScore:
 if __name__ == "__main__":
     subs = [
         sub
-        for sub in find_files("Checks text subtitles made by OCR against their image subtitles; only ones next to an image subtitle, folders only in the wanted languages.", extensions_file=(".srt",), extensions_folder=tuple(f".{language}{kind}.srt" for language in LANGUAGES for kind in SubtitleKind), folder=SUBS_FOLDER)
+        for sub in find_files(argparse.ArgumentParser(description="Checks text subtitles made by OCR against their image subtitles; only ones next to an image subtitle, folders only in the wanted languages."), extensions_file=(".srt",), extensions_folder=tuple(f".{language}{kind}.srt" for language in LANGUAGES for kind in SubtitleKind), folder=SUBS_FOLDER)
         if any(f"{sub.stem}{extension}" in list_folder(sub.parent) for extension in IMAGE_EXTENSIONS)
     ]
     reports = {sub: parse_movie_dir(sub) / CHECKS_FOLDER / f"{sub.stem}.ocr.txt" for sub in subs}

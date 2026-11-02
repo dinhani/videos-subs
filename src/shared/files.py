@@ -25,8 +25,7 @@ IMAGE_EXTENSIONS = (".sup", ".mks")
 LANGUAGE_CODES = {language.iso_code_639_3.name.lower() for language in Language.all()} | {"pob", "und"}
 
 
-def find_files(description: str, extensions_file: tuple[str, ...], extensions_folder: tuple[str, ...], folder: str | None = None, parser: argparse.ArgumentParser | None = None) -> list[Path]:
-    parser = parser or argparse.ArgumentParser(description=description)
+def find_files(parser: argparse.ArgumentParser, extensions_file: tuple[str, ...], extensions_folder: tuple[str, ...], folder: str | None = None) -> list[Path]:
     parser.add_argument("paths", nargs="*", type=Path, help=f"folders (scanned for {'/'.join(extensions_folder)}) or {'/'.join(extensions_file)} files (default: {', '.join(map(str, DIRS_MIDIAS))})")
     paths: list[Path] = parser.parse_args().paths or list(DIRS_MIDIAS)
 

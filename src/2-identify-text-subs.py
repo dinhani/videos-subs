@@ -3,6 +3,8 @@
 # ------------------------------------------------------------------------------
 # Libraries
 # ------------------------------------------------------------------------------
+import argparse
+
 from shared.console import Batch, Color, log_action
 from shared.files import IMAGE_EXTENSIONS, SUBS_FOLDER, find_files, find_language_code, parse_movie_dir, parse_srt
 from shared.languages import SubtitleLanguage
@@ -12,7 +14,7 @@ from shared.subtitles import SubtitleKind
 # Execution
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
-    subs = find_files("Identifies the language of text subtitles and renames each file with that language code.", extensions_file=(".srt",), extensions_folder=(".srt",), folder=SUBS_FOLDER)
+    subs = find_files(argparse.ArgumentParser(description="Identifies the language of text subtitles and renames each file with that language code."), extensions_file=(".srt",), extensions_folder=(".srt",), folder=SUBS_FOLDER)
     batch = Batch()
 
     for sub in subs:
