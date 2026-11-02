@@ -1,8 +1,9 @@
-# Fixes the mistakes of the translations that have a mechanical fix, by comparing each entry with its English source, and deletes the report of every translation it changes.
+# Fixes the mistakes of the translations that have a mechanical fix, by comparing each entry with its English source, shows the changes of each translation and asks before writing it, and deletes the report of every translation it changes.
 
 # ------------------------------------------------------------------------------
 # Libraries
 # ------------------------------------------------------------------------------
+import argparse
 import functools
 import itertools
 import re
@@ -12,8 +13,10 @@ from pathlib import Path
 from typing import ClassVar
 
 import srt
+from rich.prompt import Confirm
+from rich.text import Text
 
-from shared import CHECKS_FOLDER, DESCRIPTION_SIMPLE, FIX_SOUNDS, FIX_SUBJECTS, FIX_WORDS, FORMATTING_TAGS, IGNORE_MARKER, SUBS_FOLDER, WORD, Batch, Color, DescriptionTable, SubtitleKind, find_files, log_action, parse_movie_dir, parse_pairs, parse_srt, write_text_replacing
+from shared import CHECKS_FOLDER, DESCRIPTION_SIMPLE, FIX_SOUNDS, FIX_SUBJECTS, FIX_WORDS, FORMATTING_TAGS, IGNORE_MARKER, SUBS_FOLDER, WORD, Batch, Color, DescriptionTable, SubtitleKind, console, find_files, log_action, parse_movie_dir, parse_pairs, parse_srt, write_text_replacing
 
 # ------------------------------------------------------------------------------
 # Constants
@@ -265,7 +268,10 @@ def load_words(file: Path) -> tuple[dict[str, str], re.Pattern[str] | None]:
 # Execution
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
-    subs = find_files("Fixes the mistakes of the translations that have a mechanical fix, by comparing each entry with its English source.", extensions_file=TRANSLATION_SUFFIXES, extensions_folder=TRANSLATION_SUFFIXES)
+    parser = argparse.ArgumentParser(description="Fixes the mistakes of the translations that have a mechanical fix, by comparing each entry with its English source. Shows the changes of each translation and asks before writing it.")
+    parser.add_argument("--yes", action="store_true", help="write every translation without showing its changes or asking")
+    subs = find_files(parser.description or "", extensions_file=TRANSLATION_SUFFIXES, extensions_folder=TRANSLATION_SUFFIXES, parser=parser)
+    confirmed: bool = parser.parse_args().yes
     batch = Batch()
 
     for sub in subs:
@@ -285,7 +291,7 @@ if __name__ == "__main__":
             # fix every entry that has a source entry; a changed entry loses its marker, so it is judged again
             entries = parse_srt(sub)
             fixes_applied: Counter[str] = Counter()
-            entries_fixed = 0
+            entries_fixed: list[tuple[srt.Subtitle, srt.Subtitle, srt.Subtitle]] = []
             for position, entry in enumerate(entries):
                 if entry.index not in sources_by_index:
                     continue
@@ -299,17 +305,29 @@ if __name__ == "__main__":
                 if content == entry.content:
                     continue
                 entries[position] = srt.Subtitle(index=entry.index, start=entry.start, end=entry.end, content=content, proprietary=IGNORE_MARKER.sub("", entry.proprietary or "").strip())
-                entries_fixed += 1
+                entries_fixed.append((sources_by_index[entry.index], entry, entries[position]))
 
             # skip subs with nothing to fix
             if not entries_fixed:
                 log_action("skip", Color.BLUE, sub.name)
                 continue
 
+            # show every changed entry and ask before writing, unless confirmed beforehand
+            summary = f"{sub.name} · {len(entries_fixed)} entries · {', '.join(f'{name} {count}' for name, count in fixes_applied.items())}"
+            if not confirmed:
+                for source_entry, entry_old, entry_new in entries_fixed:
+                    console.print(f"    entry {entry_old.index}")
+                    for prefix, content, color in (("en ", source_entry.content, ""), ("old", entry_old.content, Color.RED), ("new", entry_new.content, Color.GREEN)):
+                        for n, line in enumerate(content.split("\n")):
+                            console.print(Text.assemble(f"      {prefix if n == 0 else '   '}  ", (line, color)))
+                if not Confirm.ask(f"  Apply {summary}?", console=console, default=False):
+                    log_action("declined", Color.YELLOW, sub.name)
+                    continue
+
             # write the fixed sub and delete its report, which no longer matches it
             write_text_replacing(sub, srt.compose(entries, reindex=False))
             (movie_dir / CHECKS_FOLDER / f"{sub.stem}.txt").unlink(missing_ok=True)
-            log_action("fix", Color.GREEN, f"{sub.name} · {entries_fixed} entries · {', '.join(f'{name} {count}' for name, count in fixes_applied.items())}")
+            log_action("fix", Color.GREEN, summary)
         except Exception as error:
             batch.fail(sub, error)
 
