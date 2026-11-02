@@ -129,36 +129,6 @@ crosscheck *paths:
     exit $LASTEXITCODE
 
 [group('data')]
-[doc('Apply fixes decided by hand to subtitles')]
-[env('PYTHONPATH', '.')]
-[script]
-[extension('.ps1')]
-[positional-arguments]
-apply-fixes fixes:
-    uv run fix-tools/apply-fixes.py @args
-    exit $LASTEXITCODE
-
-[group('data')]
-[doc('Add words to check-translate dictionary')]
-[env('PYTHONPATH', '.')]
-[script]
-[extension('.ps1')]
-[positional-arguments]
-add-words +words:
-    uv run fix-tools/add-to-dictionary.py words @args
-    exit $LASTEXITCODE
-
-[group('data')]
-[doc('Add expressions to check-translate dictionary')]
-[env('PYTHONPATH', '.')]
-[script]
-[extension('.ps1')]
-[positional-arguments]
-add-expressions +expressions:
-    uv run fix-tools/add-to-dictionary.py expressions @args
-    exit $LASTEXITCODE
-
-[group('data')]
 [doc('Delete OCR reports')]
 [confirm('Delete every OCR report in _checks under the given paths, or under Z:/midias/filmes and Z:/midias/series without paths? (y/N)')]
 [script]
@@ -212,3 +182,33 @@ reset-identifier-pt *paths:
         Rename-Item -LiteralPath $_.FullName -NewName $name
         Write-Output $name
     }
+
+[group('data/fix')]
+[doc('Apply fixes decided by hand to subtitles')]
+[env('PYTHONPATH', '.')]
+[script]
+[extension('.ps1')]
+[positional-arguments]
+apply-fixes fixes:
+    uv run fix-tools/apply-fixes.py @args
+    exit $LASTEXITCODE
+
+[group('data/fix')]
+[doc('Add words to check-translate dictionary')]
+[env('PYTHONPATH', '.')]
+[script]
+[extension('.ps1')]
+[positional-arguments]
+add-words +words:
+    uv run fix-tools/add-to-dictionary.py words @args
+    exit $LASTEXITCODE
+
+[group('data/fix')]
+[doc('Add expressions to check-translate dictionary')]
+[env('PYTHONPATH', '.')]
+[script]
+[extension('.ps1')]
+[positional-arguments]
+add-expressions +expressions:
+    uv run fix-tools/add-to-dictionary.py expressions @args
+    exit $LASTEXITCODE
