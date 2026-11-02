@@ -128,6 +128,7 @@ class GrammarRule:
     LANGUAGE: ClassVar[str] = "pt-BR"
     enabled: bool
     languagetool_rules: dict[str, bool]
+    dictionary_expressions: Path
 
     @property
     def languagetool_rules_enabled(self) -> set[str]:
@@ -136,11 +137,23 @@ class GrammarRule:
     def find_issues(self, check: "TranslationCheck") -> Iterator[tuple[int, str]]:
         if not self.languagetool_rules_enabled:
             return
+        expressions = [re.compile(rf"(?<!\w){re.escape(line.strip().lower())}(?!\w)") for line in self.dictionary_expressions.read_text(encoding="utf-8").splitlines() if line.strip()]
         text = "\n\n".join(entry.target_text for entry in check.entries)
         entry_starts = list(itertools.accumulate((len(entry.target_text) + 2 for entry in check.entries[:-1]), initial=0))
         for match in connect_languagetool(check.languagetool_server, frozenset(self.languagetool_rules_enabled)).check(text):
             i = bisect.bisect_right(entry_starts, match.offset) - 1
-            flagged = text[match.offset:match.offset + match.error_length].replace("\n", " / ")
+            flagged_text = text[match.offset:match.offset + match.error_length]
+
+            # flags inside a correct expression, and flags on a name, pass
+            entry_text = check.entries[i].target_text.replace("\n", " ").lower()
+            flagged_start = match.offset - entry_starts[i]
+            if any(found.start() <= flagged_start and flagged_start + match.error_length <= found.end() for expression in expressions for found in expression.finditer(entry_text)):
+                continue
+            words_flagged = parse_words(flagged_text)
+            if words_flagged and any(word.name and not word.text.isupper() for word in parse_words(text[entry_starts[i]:match.offset + match.error_length])[-len(words_flagged):]):
+                continue
+
+            flagged = flagged_text.replace("\n", " / ")
             replacements = [replacement.replace("\n", " / ") for replacement in match.replacements[:1]]
             yield i, f"\"{flagged}\"" + "".join(f", maybe \"{replacement}\"" for replacement in replacements)
 
@@ -159,14 +172,16 @@ class UnknownWordRule:
     case: WordCase
     frequency_max: float
     length_min: int
-    dictionary: Path
+    dictionary_hunspell: Path
+    dictionary_words: Path
 
     @property
     def kind(self) -> IssueKind:
         return IssueKind.UNKNOWN_WORD_CAPS if self.case == WordCase.CAPS else IssueKind.UNKNOWN_WORD
 
     def find_issues(self, check: "TranslationCheck") -> Iterator[tuple[int, str]]:
-        dictionary = load_dictionary(self.dictionary)
+        dictionary_hunspell = load_dictionary(self.dictionary_hunspell)
+        dictionary_words = {line.strip().lower() for line in self.dictionary_words.read_text(encoding="utf-8").splitlines() if line.strip()}
         for i, entry in enumerate(check.entries):
             source_words = {word.key for word in parse_words(entry.source_text)}
             if words_unknown := sorted({
@@ -176,9 +191,10 @@ class UnknownWordRule:
                 and self.case.matches(word.text)
                 and len(word.text) >= self.length_min
                 and word.key not in source_words
+                and word.text.lower() not in dictionary_words
                 and TARGET_LANGUAGE.measure_frequency(word.text) < self.frequency_max
-                and not dictionary.lookup(word.text)
-                and not dictionary.lookup(word.text.lower())
+                and not dictionary_hunspell.lookup(word.text)
+                and not dictionary_hunspell.lookup(word.text.lower())
             }):
                 yield i, ", ".join(f"\"{word}\"" for word in words_unknown)
 
@@ -196,7 +212,9 @@ class PortugalPortugueseRule:
 
 TranslationRule = AcceptedWithProblemRule | UntranslatedRule | AddedSymbolsRule | DuplicatedLineRule | BrokenLineRule | GrammarRule | UnknownWordRule | PortugalPortugueseRule
 
-DICTIONARY = Path(os.environ["LOCALAPPDATA"]) / "hunspell" / "pt_BR"
+DICTIONARY_HUNSPELL = Path(os.environ["LOCALAPPDATA"]) / "hunspell" / "pt_BR"
+DICTIONARY_WORDS = Path(__file__).parent / "data" / "dict-words.txt"
+DICTIONARY_EXPRESSIONS = Path(__file__).parent / "data" / "dict-expressions.txt"
 GRAMMAR = GrammarRule(
     enabled=True,
     languagetool_rules={
@@ -206,6 +224,7 @@ GRAMMAR = GrammarRule(
         "GENERAL_GENDER_AGREEMENT_ERRORS": True,
         "ERRO_DE_CONCORDNCIA_DO_GÉNERO_MASCULINO_O": True,
     },
+    dictionary_expressions=DICTIONARY_EXPRESSIONS,
 )
 RULES: tuple[TranslationRule, ...] = (
     AcceptedWithProblemRule(enabled=True),
@@ -214,8 +233,8 @@ RULES: tuple[TranslationRule, ...] = (
     DuplicatedLineRule(enabled=True, length_min=8, ratio_min=1.6),
     BrokenLineRule(enabled=True),
     GRAMMAR,
-    UnknownWordRule(enabled=True, case=WordCase.OTHER, frequency_max=2.0, length_min=3, dictionary=DICTIONARY),
-    UnknownWordRule(enabled=True, case=WordCase.CAPS, frequency_max=2.0, length_min=3, dictionary=DICTIONARY),
+    UnknownWordRule(enabled=True, case=WordCase.OTHER, frequency_max=2.0, length_min=3, dictionary_hunspell=DICTIONARY_HUNSPELL, dictionary_words=DICTIONARY_WORDS),
+    UnknownWordRule(enabled=True, case=WordCase.CAPS, frequency_max=2.0, length_min=3, dictionary_hunspell=DICTIONARY_HUNSPELL, dictionary_words=DICTIONARY_WORDS),
     PortugalPortugueseRule(enabled=True),
 )
 
