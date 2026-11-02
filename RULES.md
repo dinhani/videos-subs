@@ -4,19 +4,12 @@ Each example shows an entry line by line: `ocr` is the OCR text, `en` the Englis
 
 A rule is a heuristic: it can flag a correct entry. Judge every flag, and leave the entry when it is right.
 
-Each rule has a status:
-
-- **accepted**: evaluated; its flags are worth fixing.
-- **in review**: in the check, still being evaluated.
-- **discarded**: evaluated and removed from the check; listed so it is not tried again.
-
 # 1. OCR
 
 Every correction writes what the picture most likely says.
 
 ## 1.1 ocr failed
 
-- **Status**: accepted
 - **About**: every attempt to transcribe the entry failed.
 - **Examples**:
   ```
@@ -27,7 +20,6 @@ Every correction writes what the picture most likely says.
 
 ## 1.2 wrong order
 
-- **Status**: accepted
 - **About**: the lines fit the picture only in reverse order. Happens in SDH tracks, where Gemma reads the left speaker first.
 - **Examples**:
   ```
@@ -41,7 +33,6 @@ Every correction writes what the picture most likely says.
 
 ## 1.3 inconsistent
 
-- **Status**: accepted
 - **About**: the entry has the same picture as another entry but a different text.
 - **Examples**:
   ```
@@ -54,7 +45,6 @@ Every correction writes what the picture most likely says.
 
 ## 1.4 artifact
 
-- **Status**: accepted
 - **About**: markup the model added.
 - **Examples**:
   ```
@@ -84,7 +74,6 @@ Every correction writes what the picture most likely says.
 
 ## 1.5 glyph confusion
 
-- **Status**: accepted
 - **About**: a character read as a similar one.
 - **Examples**:
   ```
@@ -111,7 +100,6 @@ Every correction writes what the picture most likely says.
 
 ## 1.6 unbalanced
 
-- **Status**: accepted
 - **About**: a bracket opened and not closed within 3 entries, or closed with nothing open.
 - **Examples**:
   ```
@@ -137,7 +125,6 @@ The warning entry `[Legenda traduzida automaticamente...]` at the start of a tra
 
 ## 2.1 accepted with problem
 
-- **Status**: in review
 - **About**: the translation of the entry failed every retry and its last reply was kept.
 - **Examples**:
   ```
@@ -150,7 +137,6 @@ The warning entry `[Legenda traduzida automaticamente...]` at the start of a tra
 
 ## 2.2 untranslated
 
-- **Status**: accepted
 - **About**: a line reads as English, or is its English line unchanged.
 - **Examples**:
   ```
@@ -163,7 +149,6 @@ The warning entry `[Legenda traduzida automaticamente...]` at the start of a tra
 
 ## 2.3 added symbols
 
-- **Status**: accepted
 - **About**: symbols, tags or letters of another script that the English entry does not have, mostly pieces of the model reply.
 - **Examples**:
   ```
@@ -200,7 +185,6 @@ The warning entry `[Legenda traduzida automaticamente...]` at the start of a tra
 
 ## 2.4 duplicated line
 
-- **Status**: accepted
 - **About**: one line holds the translation of the whole entry and another line repeats part of it.
 - **Examples**:
   ```
@@ -216,7 +200,6 @@ The warning entry `[Legenda traduzida automaticamente...]` at the start of a tra
 
 ## 2.5 broken line
 
-- **Status**: accepted
 - **About**: a line without letters or digits, or starting with `,`, `;` or `:`.
 - **Examples**:
   ```
@@ -232,7 +215,6 @@ The warning entry `[Legenda traduzida automaticamente...]` at the start of a tra
 
 ## 2.6 grammar: verb broken at a line break
 
-- **Status**: accepted
 - **About**: LanguageTool `AUXILIARY_VERB_INFINITIVE`.
 - **Examples**:
   ```
@@ -248,7 +230,6 @@ The warning entry `[Legenda traduzida automaticamente...]` at the start of a tra
 
 ## 2.7 grammar: missing contraction
 
-- **Status**: accepted
 - **About**: LanguageTool `CONTRACOES_OBRIGATORIAS`.
 - **Examples**:
   ```
@@ -264,7 +245,6 @@ The warning entry `[Legenda traduzida automaticamente...]` at the start of a tra
 
 ## 2.8 grammar: que and quê
 
-- **Status**: accepted
 - **About**: LanguageTool `QUE_QUÊ`.
 - **Examples**:
   ```
@@ -277,21 +257,23 @@ The warning entry `[Legenda traduzida automaticamente...]` at the start of a tra
 
 ## 2.9 grammar: gender agreement
 
-- **Status**: in review
-- **About**: LanguageTool `GENERAL_GENDER_AGREEMENT_ERRORS` and `ERRO_DE_CONCORDNCIA_DO_GÉNERO_MASCULINO_O`.
+- **About**: LanguageTool `GENERAL_GENDER_AGREEMENT_ERRORS` and `ERRO_DE_CONCORDNCIA_DO_GÉNERO_MASCULINO_O`. A flag on a name, or inside an expression of `data/dict-expressions.txt`, is not reported.
 - **Examples**:
   ```
   en   Get in a trench!
   pt   Entre em um trincheira!
   fix  Entre em uma trincheira!
+
+  en   It's on the fucking ceiling!
+  pt   Está no porra do teto!
+  fix  Está na porra do teto!
   ```
-- **Correction**: fix the article or adjective, with the LanguageTool suggestion when it is right.
-- **Caution**: slang with `porra` (`seu porra`, `o porra` for a person), feminine forms for women (`uma ciborgue`), names, `os relés` and `o maître` are right.
+- **Correction**: fix the article or adjective, with the LanguageTool suggestion when it is right. `porra` as an intensifier is feminine: `a porra do`, `na porra do`, `uma porra de`.
+- **Caution**: `seu porra!` as an insult to a man, and feminine forms for women (`uma ciborgue`), are right. Add a right expression to `data/dict-expressions.txt` as it is in the entry, in lowercase and whole (`os relés`, `luta corpo a corpo`), so it is not flagged again.
 
 ## 2.10 unknown word
 
-- **Status**: in review
-- **About**: a rare word missing from the pt_BR dictionary: a typo, a broken word or a word of another language.
+- **About**: a rare word missing from the pt_BR dictionary and from `data/dict-words.txt`: a typo, a broken word or a word of another language.
 - **Examples**:
   ```
   en   A growl.
@@ -303,11 +285,10 @@ The warning entry `[Legenda traduzida automaticamente...]` at the start of a tra
   fix  Você percebe?
   ```
 - **Correction**: write the right Brazilian Portuguese word, keeping its case.
-- **Caution**: interjections (`uhuu`), names, terms of the movie's world (`wakandanos`, `tulkun`, `droide`, `hipersono`), valid coinages (`criogênese`) and diminutives (`homemzinho`) are right.
+- **Caution**: interjections (`uhuu`), names, terms of the movie's world (`wakandanos`, `tulkun`, `droide`, `hipersono`), valid coinages (`criogênese`) and diminutives (`homemzinho`) are right. Add a right word to `data/dict-words.txt`, so it is not flagged again.
 
 ## 2.11 unknown word in caps
 
-- **Status**: accepted
 - **About**: an unknown word in capital letters, usually a misspelled sound description.
 - **Examples**:
   ```
@@ -328,11 +309,10 @@ The warning entry `[Legenda traduzida automaticamente...]` at the start of a tra
   fix  TRIPULANTES
   ```
 - **Correction**: write the right word in capitals.
-- **Caution**: a shouted word or a name in capitals can be right.
+- **Caution**: a shouted word or a name in capitals can be right. Add a right word to `data/dict-words.txt` in lowercase, so it is not flagged again.
 
 ## 2.12 portugal portuguese
 
-- **Status**: in review
 - **About**: a word or form used in Portugal and not in Brazil.
 - **Examples**:
   ```
@@ -354,33 +334,3 @@ The warning entry `[Legenda traduzida automaticamente...]` at the start of a tra
   ```
 - **Correction**: write the Brazilian form.
 - **Caution**: `estar a` before a noun is Brazilian too, as in `estou a favor`.
-
-## 2.13 length against the English
-
-- **Status**: discarded: no real flags on model translations; human translations trip it often because they paraphrase.
-- **About**: a line or entry much shorter or longer than its English one.
-
-## 2.14 digits missing or added
-
-- **Status**: discarded: no real flags on model translations.
-- **About**: a digit in the English entry that the translation does not have, or the other way.
-
-## 2.15 question or exclamation mark lost
-
-- **Status**: discarded: no real flags on model translations.
-- **About**: an English entry with `?` or `!` whose translation has none.
-
-## 2.16 same line in consecutive entries
-
-- **Status**: discarded: no real flags on model translations.
-- **About**: two entries in a row with the same translated line.
-
-## 2.17 line repeated from the neighbour entry
-
-- **Status**: discarded: no real flags on model translations.
-- **About**: a translated line that repeats a line of the entry before or after.
-
-## 2.18 grammar: other LanguageTool rules
-
-- **Status**: discarded: they flagged mostly correct Portuguese in subtitles.
-- **About**: LanguageTool spelling, style, punctuation, `onde`/`aonde`, crase and diacritics rules.

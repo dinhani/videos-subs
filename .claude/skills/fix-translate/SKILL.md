@@ -34,3 +34,5 @@ The first line of a report names its translation, the `.pob.translated.srt` in t
 Read `RULES.md` at the project root first. Fix each entry with the rules for every correction at the start of section 2 (Translation), and the Correction and Caution of its rule in that section. The report does not name the LanguageTool rule of a grammar issue; find its rule (2.6 to 2.9) by the flagged text.
 
 After fixing a file, delete its report so the next check-translate run checks it again. Never edit a report and never run check-translate; the user does. At the end, list the skipped entries and the flags left alone because the text was already right.
+
+When an unknown word flag is wrong because the word is right, add the word to `data/dict-words.txt`: one word per line, lowercase, with its accents, in alphabetical order, each form on its own line (`wakandano`, `wakandanos`). When a gender flag is wrong because the expression is right, add the whole expression as it is in the entry to `data/dict-expressions.txt`, in the same format (`os relés`, `luta corpo a corpo`); never add a wrong translation there. List the added words and expressions at the end too.
