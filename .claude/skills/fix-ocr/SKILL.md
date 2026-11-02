@@ -17,18 +17,25 @@ The corrections in `RULES.md` are the usual fixes, not substitutions. When a cor
 
 ## Procedure
 
-Fix each entry flagged in the check-ocr reports directly in its text subtitle, from the report alone. Never run `just ocr` again.
+Work from the reports. Your job is the flagged entries; do not look for other errors, such as by reading whole subtitles or searching for more of a mistake you fixed.
 
-Each run fixes one movie folder: every OCR report with issues in its `_checks`, and in other files only the errors you see while working. When the user names a movie or files, fix those. Otherwise take the movie folder of the report with the worst score, the first line of:
+1. Read `RULES.md` at the project root: section 1 (OCR), and the rules the reports name.
+2. Take one movie folder: the one the user names, or the one of the worst report, the first line of:
 
-```
-find Z:/midias/filmes Z:/midias/series -path '*/_checks/*.ocr.txt' -exec awk 'FNR == 2 && !/· 0 issues/ { print $2 "\t" FILENAME }' {} + | sort -rn
-```
+   ```
+   find Z:/midias/filmes Z:/midias/series -path '*/_checks/*.ocr.txt' -exec awk 'FNR == 2 && !/· 0 issues/ { print $2 "\t" FILENAME }' {} + | sort -rn
+   ```
 
-Fix the text subtitles of the movie together: an error found in several gets the same fix in each.
+   Fix every OCR report with issues in its `_checks`. An error flagged in several text subtitles gets the same fix in each.
+3. For each flagged entry, from the last to the first in its file: read it in the `.srt` at its `line`, from that line to its last text line. Decide, then fix it with the Correction and Caution of its rule, or mark the flag when the text is right. When the entry is not at its line, the file changed after the check: leave the file.
+4. When an error shows up while you work, in a context entry or in anything else you read for a flagged entry, fix it too.
+5. Delete the report of every file you change. Never edit a report, and never run check-ocr or ocr.
+6. At the end, list: the fixes outside the flagged entries, the marked entries, the skipped entries and files, and the `.eng.srt` files that already had a `.pob.translated.srt`, since that translation was made from the old text. Then give the number of movie folders that still have an OCR report with issues, and stop.
 
-The first line of a report is the full path of its text subtitle. Each flagged entry starts with `entry <number> · line <line> · ` and its timing line exactly as it is in the `.srt`, then its issues, each with its rule in `RULES.md` and the marker that ignores it, as in `artifact · rule 1.4 · ignore:artifact · markup in the text: "*never*"`. Then comes its exact text from the `.srt`, marked with `>>` and its number, between the entries before and after it. Those entries are context: use them for a caption that continues across entries. The entry marked `>>` is the priority: fix every flagged entry first. Then fix any other clear error you saw while working, in any entry or file: an entry around a flagged one, or an entry a search shows in another subtitle. The hard rule applies: read the entry, decide it on its own, and do not extend the fix to entries you did not read. Delete the report of every file you change. At the end, list these fixes apart from the flagged ones. `line` is the line of the entry number in the `.srt`: read the entry there, from that line to its last text line, and nothing else; no search is needed. Fix the entries of a file from the last to the first, so a fix that adds or removes a line does not move the entries still to fix. The entry number, the timing line and the text together are unique in the file: put them in the edit, as they are in the report. When the entry is not at its line, the file changed after the check: leave the file and list it at the end.
+## Reference
 
-Read `RULES.md` at the project root first. Fix each entry with the Correction and Caution of the rule the report names, in section 1 (OCR).
+**Report.** The first line is the full path of the text subtitle. Each flagged entry starts with `entry <number> · line <line> · ` and its timing line exactly as it is in the `.srt`, then its issues, each with its rule in `RULES.md` and the marker that ignores it, as in `artifact · rule 1.4 · ignore:artifact · markup in the text: "*never*"`. Then comes its exact text, marked with `>>` and its number, between the entries before and after it. Those entries are context: use them for a caption that continues across entries. `line` is the line of the entry number in the `.srt`.
 
-After fixing a file, delete its report so the next check-ocr run checks it again. Never edit a report and never run check-ocr; the user does. When a flag is wrong because the text is already right, add the marker the report gives for that issue at the end of the entry's timing line, as `RULES.md` says; several markers of one entry are joined by commas after one `ignore:`. When you change the text of an entry with a marker, remove the marker. At the end, list the skipped entries, the entries you marked, and the `.eng.srt` files that already had a `.pob.translated.srt`, since that translation was made from the old text. Last, give the number of movie folders that still have an OCR report with issues, and stop: do not start another movie.
+**Edit.** Fix the entries of a file from the last to the first, so a fix that adds or removes a line does not move the entries still to fix. The entry number, the timing line and the text together are unique in the file: put them in the edit, as they are in the report.
+
+**Marker.** When a flag is wrong because the text is right, add the marker the report gives for that issue at the end of the entry's timing line, as `RULES.md` says; several markers of one entry are joined by commas after one `ignore:`. When you change the text of an entry with a marker, remove the marker.

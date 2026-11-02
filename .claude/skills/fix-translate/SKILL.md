@@ -23,20 +23,27 @@ The corrections in `RULES.md` are the usual fixes, not substitutions. When a cor
 
 ## Procedure
 
-Fix each entry flagged in the check-translate reports directly in its translation, from the report alone. Never run `just translate` again and never change the English `.eng.srt`.
+Work from the reports. Your job is the flagged entries; do not look for other errors, such as by reading whole subtitles or searching for more of a mistake you fixed.
 
-Each run fixes one movie folder: every translation report with issues in its `_checks`, base and SDH, and in other files only the errors you see while working. When the user names a movie or files, fix those. Otherwise take the movie folder of the report with the worst score, the first line of:
+1. Read `RULES.md` at the project root: the rules for every correction at the start of section 2 (Translation), and the rules the reports name.
+2. Take one movie folder: the one the user names, or the one of the worst report, the first line of:
 
-```
-find Z:/midias/filmes Z:/midias/series -path '*/_checks/*.translated.txt' -exec awk 'FNR == 2 && !/· 0 issues/ { print $2 "\t" FILENAME }' {} + | sort -rn
-```
+   ```
+   find Z:/midias/filmes Z:/midias/series -path '*/_checks/*.translated.txt' -exec awk 'FNR == 2 && !/· 0 issues/ { print $2 "\t" FILENAME }' {} + | sort -rn
+   ```
 
-Fix the base and SDH translations of the movie together: an error found in both gets the same fix in both.
+   Fix every translation report with issues in its `_checks`, base and SDH. An error flagged in both gets the same fix in both.
+3. For each flagged entry, from the last to the first in its file: read it in the `.srt` at its `line`, from that line to its last text line. Decide, then fix it with the Correction and Caution of its rule, or mark the flag when the text is right. When the entry is not at its line, the file changed after the check: leave the file.
+4. When an error shows up while you work, in a context entry or in anything else you read for a flagged entry, fix it too.
+5. Delete the report of every file you change. Never edit a report, never run check-translate or translate, and never change the English `.eng.srt`.
+6. At the end, list: the fixes outside the flagged entries, the marked entries, the skipped entries and files, the words and expressions added to `data`, and the notes added to `IMPROVEMENTS.md`. Then give the number of movie folders that still have a translation report with issues, and stop.
 
-The first line of a report is the full path of its translation. Each flagged entry starts with `entry <number> · line <line> · ` and its timing line exactly as it is in the `.srt`, then its issues, each with its rule in `RULES.md` and the marker that ignores it, as in `unknown word · rule 2.10 · ignore:unknown-word · "parafusadeira"`. Then come its exact `en` and `pt` lines from the `.srt`, with tags, marked with `>>` and its number, between the 2 entries before and after it. Those entries are context: use them for a sentence that continues across entries, gender, and the form of address between the characters. The entry marked `>>` is the priority: fix every flagged entry first. Then fix any other clear error you saw while working, in any entry or file: an entry around a flagged one, or an entry a search shows in another subtitle. The hard rule applies: read the entry, decide it on its own, and do not extend the fix to entries you did not read. Delete the report of every file you change. At the end, list these fixes apart from the flagged ones. `line` is the line of the entry number in the `.srt`: read the entry there, from that line to its last text line, and nothing else; no search is needed. Fix the entries of a file from the last to the first, so a fix that adds or removes a line does not move the entries still to fix. The entry number, the timing line and the text together are unique in the file: put them in the edit, as they are in the report. When the entry is not at its line, the file changed after the check: leave the file and list it at the end.
+## Reference
 
-Read `RULES.md` at the project root first. Fix each entry with the rules for every correction at the start of section 2 (Translation), and the Correction and Caution of the rule the report names.
+**Report.** The first line is the full path of the translation. Each flagged entry starts with `entry <number> · line <line> · ` and its timing line exactly as it is in the `.srt`, then its issues, each with its rule in `RULES.md` and the marker that ignores it, as in `unknown word · rule 2.10 · ignore:unknown-word · "parafusadeira"`. Then come its exact `en` and `pt` lines, with tags, marked with `>>` and its number, between the 2 entries before and after it. Those entries are context: use them for a sentence that continues across entries, gender, and the form of address between the characters. `line` is the line of the entry number in the `.srt`.
 
-After fixing a file, delete its report so the next check-translate run checks it again. Never edit a report and never run check-translate; the user does. When a flag is wrong because the text is already right, add the marker the report gives for that issue at the end of the entry's timing line, as `RULES.md` says; several markers of one entry are joined by commas after one `ignore:`. When you change the text of an entry with a marker, remove the marker. At the end, list the skipped entries and the entries you marked.
+**Edit.** Fix the entries of a file from the last to the first, so a fix that adds or removes a line does not move the entries still to fix. The entry number, the timing line and the text together are unique in the file: put them in the edit, as they are in the report.
 
-When an unknown word flag is wrong because the word is right, add the word to `data/dict-words.txt`: one word per line, lowercase, with its accents, in alphabetical order, each form on its own line (`wakandano`, `wakandanos`). When a gender flag is wrong because the expression is right, add the whole expression as it is in the entry to `data/dict-expressions.txt`, in the same format (`os relés`, `luta corpo a corpo`); never add a wrong translation there. List the added words and expressions at the end too. Last, give the number of movie folders that still have a translation report with issues, and stop: do not start another movie.
+**Marker.** When a flag is wrong because the text is right, add the marker the report gives for that issue at the end of the entry's timing line, as `RULES.md` says; several markers of one entry are joined by commas after one `ignore:`. When you change the text of an entry with a marker, remove the marker.
+
+**Data lists.** When an unknown word flag is wrong because the word is right, add the word to `data/dict-words.txt`: one word per line, lowercase, with its accents, in alphabetical order, each form on its own line (`wakandano`, `wakandanos`). When a gender flag is wrong because the expression is right, add the whole expression as it is in the entry to `data/dict-expressions.txt`, in the same format (`os relés`, `luta corpo a corpo`); never add a wrong translation there.
