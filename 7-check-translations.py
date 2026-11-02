@@ -209,7 +209,24 @@ class PortugalPortugueseRule:
                 yield i, ", ".join(f"\"{word}\"" for word in portugal)
 
 
-TranslationRule = AcceptedWithProblemRule | UntranslatedRule | AddedSymbolsRule | DuplicatedLineRule | BrokenLineRule | GrammarRule | UnknownWordRule | PortugalPortugueseRule
+@dataclass(frozen=True)
+class UnbalancedRule:
+    kind: ClassVar[IssueKind] = IssueKind.UNBALANCED_TRANSLATION
+    PAIRS: ClassVar[tuple[tuple[str, str], ...]] = (("(", ")"), ("[", "]"), ("“", "”"), ('"', '"'))
+    enabled: bool
+
+    def find_issues(self, check: "TranslationCheck") -> Iterator[tuple[int, str]]:
+        for i, entry in enumerate(check.entries):
+            if pairs := [f"{opening}{closing}" for opening, closing in self.PAIRS if self.is_paired(entry.source_text, opening, closing) and not self.is_paired(entry.target_text, opening, closing)]:
+                yield i, f"{', '.join(pairs)} unpaired"
+
+    def is_paired(self, text: str, opening: str, closing: str) -> bool:
+        if opening == closing:
+            return text.count(opening) % 2 == 0
+        return text.count(opening) == text.count(closing)
+
+
+TranslationRule = AcceptedWithProblemRule | UntranslatedRule | AddedSymbolsRule | DuplicatedLineRule | BrokenLineRule | GrammarRule | UnknownWordRule | PortugalPortugueseRule | UnbalancedRule
 
 DICTIONARY_HUNSPELL = Path(os.environ["LOCALAPPDATA"]) / "hunspell" / "pt_BR"
 DICTIONARY_WORDS = Path(__file__).parent / "data" / "dict-words.txt"
@@ -227,6 +244,7 @@ RULES: tuple[TranslationRule, ...] = (
     UnknownWordRule(enabled=True, case=WordCase.OTHER, frequency_max=2.0, length_min=3, dictionary_hunspell=DICTIONARY_HUNSPELL, dictionary_words=DICTIONARY_WORDS),
     UnknownWordRule(enabled=True, case=WordCase.CAPS, frequency_max=2.0, length_min=3, dictionary_hunspell=DICTIONARY_HUNSPELL, dictionary_words=DICTIONARY_WORDS),
     PortugalPortugueseRule(enabled=True),
+    UnbalancedRule(enabled=True),
 )
 LANGUAGETOOL_RULES = frozenset(languagetool_rule for rule in RULES if isinstance(rule, GrammarRule) and rule.enabled for languagetool_rule in rule.languagetool_rules)
 

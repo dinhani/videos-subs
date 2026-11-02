@@ -350,3 +350,23 @@ The warning entries at the start of a translation, `[Legenda SDH...]` and `[Lege
   ```
 - **Correction**: write the Brazilian form.
 - **Caution**: `estar a` before a noun is Brazilian too, as in `estou a favor`.
+
+## 2.13 unbalanced
+
+- **About**: a bracket or quote that pairs in the English entry and not in the translation: `(` and `)`, `[` and `]`, `“` and `”`, or an odd number of `"`.
+- **Examples**:
+  ```
+  en   (CROWD EXCLAIMS)
+  pt   (A MULTIDÃO EXCLAMA]
+  fix  (A MULTIDÃO EXCLAMA)
+
+  en   [GWEN CHUCKLES]
+  pt   [GWEN RI
+  fix  [GWEN RI]
+
+  en   "and whatever's in it, it's gotta be good."
+  pt   e o que estiver lá dentro, deve ser bom."
+  fix  "e o que estiver lá dentro, deve ser bom."
+  ```
+- **Correction**: write the bracket or quote the English entry has, in the same place.
+- **Caution**: when the entry also has pieces of the model reply, such as `"]},`, fix it as in added symbols.

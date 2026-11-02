@@ -51,6 +51,7 @@ class IssueKind(Enum):
     UNKNOWN_WORD = ("unknown word", 3, "2.10", "a rare word missing from the Brazilian Portuguese dictionary: a typo, a broken word or a word of another language")
     UNKNOWN_WORD_CAPS = ("unknown word in caps", 3, "2.11", "an unknown word in capital letters, usually a misspelled sound description such as GRUNNIDO")
     PORTUGAL_PORTUGUESE = ("portugal portuguese", 3, "2.12", "a word used in Portugal, not in Brazil")
+    UNBALANCED_TRANSLATION = ("unbalanced", 3, "2.13", "a bracket or quote that pairs in the English entry and not in the translation")
 
     def __init__(self, label: str, weight: int, rule: str, description: str) -> None:
         self.label = label
