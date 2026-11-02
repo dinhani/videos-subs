@@ -5,6 +5,8 @@ from pathlib import Path
 import pytest
 import srt
 
+from shared.data_lists import DataList, DataListFormat
+
 fix_translations = importlib.import_module("7-fix-translations")
 TranslationEntry = fix_translations.TranslationEntry
 
@@ -93,7 +95,7 @@ def test_descriptions(english: str, translated: str, names: frozenset[str], expe
 def write_words(tmp_path: Path, *lines: str) -> object:
     file = tmp_path / "fix-words.txt"
     file.write_text("\n".join(lines) + "\n", encoding="utf-8")
-    return fix_translations.WordsFix(enabled=True, words=file)
+    return fix_translations.WordsFix(enabled=True, words=DataList(file=file, format=DataListFormat.TRIPLE))
 
 
 @pytest.mark.parametrize(("english", "translated", "expected"), [

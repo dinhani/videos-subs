@@ -20,10 +20,9 @@ from typing import ClassVar
 import language_tool_python
 import srt
 from rich.progress import MofNCompleteColumn, TimeElapsedColumn, TimeRemainingColumn
-from spylls.hunspell import Dictionary
 
 from shared.console import Batch, Color, log_action, progress_bar
-from shared.data_lists import CHECK_EXPRESSIONS, CHECK_WORDS, DICTIONARY_HUNSPELL
+from shared.data_lists import CHECK_EXPRESSIONS, CHECK_WORDS, DICTIONARY_HUNSPELL, DataList, load_dictionary
 from shared.files import CHECKS_FOLDER, SUBS_FOLDER, TRACES_FOLDER, find_files, parse_movie_dir, parse_srt
 from shared.languages import WORDS_PT_PT, TextLanguage, parse_words
 from shared.reports import CHECK_WORKERS, Issue, IssueKind, Report, ReportScore, log_ranking
@@ -135,10 +134,10 @@ class GrammarRule:
     kind: IssueKind
     enabled: bool
     languagetool_rules: tuple[str, ...]
-    dictionary_expressions: Path
+    expressions: DataList
 
     def find_issues(self, check: "TranslationCheck") -> Iterator[tuple[int, str]]:
-        expressions = [re.compile(rf"(?<!\w){re.escape(line.strip().lower())}(?!\w)") for line in self.dictionary_expressions.read_text(encoding="utf-8").splitlines() if line.strip()]
+        expressions = [re.compile(rf"(?<!\w){re.escape(expression.lower())}(?!\w)") for (expression,) in self.expressions.parse()]
         text = check.target_text
         entry_starts = check.target_entry_starts
         for match in check.languagetool_matches:
@@ -175,7 +174,7 @@ class UnknownWordRule:
     frequency_max: float
     length_min: int
     dictionary_hunspell: Path
-    dictionary_words: Path
+    words: DataList
 
     @property
     def kind(self) -> IssueKind:
@@ -183,7 +182,7 @@ class UnknownWordRule:
 
     def find_issues(self, check: "TranslationCheck") -> Iterator[tuple[int, str]]:
         dictionary_hunspell = load_dictionary(self.dictionary_hunspell)
-        dictionary_words = {line.strip().lower() for line in self.dictionary_words.read_text(encoding="utf-8").splitlines() if line.strip()}
+        words = {word.lower() for (word,) in self.words.parse()}
         for i, entry in enumerate(check.entries):
             source = parse_words(entry.source_text)
             source_words = {word.key for word in source} | {word.key.removesuffix("'s") for word in source if word.text[0].isupper()}
@@ -194,7 +193,7 @@ class UnknownWordRule:
                 and self.case.matches(word.text)
                 and len(word.text) >= self.length_min
                 and word.key not in source_words
-                and word.text.lower() not in dictionary_words
+                and word.text.lower() not in words
                 and TARGET_LANGUAGE.measure_frequency(word.text) < self.frequency_max
                 and not dictionary_hunspell.lookup(word.text)
                 and not dictionary_hunspell.lookup(word.text.lower())
@@ -238,12 +237,12 @@ RULES: tuple[TranslationRule, ...] = (
     AddedSymbolsRule(enabled=True),
     DuplicatedLineRule(enabled=True, length_min=8, ratio_min=1.6),
     BrokenLineRule(enabled=True),
-    GrammarRule(kind=IssueKind.GRAMMAR_VERB, enabled=True, languagetool_rules=("AUXILIARY_VERB_INFINITIVE",), dictionary_expressions=CHECK_EXPRESSIONS),
-    GrammarRule(kind=IssueKind.GRAMMAR_CONTRACTION, enabled=True, languagetool_rules=("CONTRACOES_OBRIGATORIAS",), dictionary_expressions=CHECK_EXPRESSIONS),
-    GrammarRule(kind=IssueKind.GRAMMAR_QUE, enabled=True, languagetool_rules=("QUE_QUÊ",), dictionary_expressions=CHECK_EXPRESSIONS),
-    GrammarRule(kind=IssueKind.GRAMMAR_GENDER, enabled=True, languagetool_rules=("GENERAL_GENDER_AGREEMENT_ERRORS", "ERRO_DE_CONCORDNCIA_DO_GÉNERO_MASCULINO_O"), dictionary_expressions=CHECK_EXPRESSIONS),
-    UnknownWordRule(enabled=True, case=WordCase.OTHER, frequency_max=2.0, length_min=3, dictionary_hunspell=DICTIONARY_HUNSPELL, dictionary_words=CHECK_WORDS),
-    UnknownWordRule(enabled=True, case=WordCase.CAPS, frequency_max=2.0, length_min=3, dictionary_hunspell=DICTIONARY_HUNSPELL, dictionary_words=CHECK_WORDS),
+    GrammarRule(kind=IssueKind.GRAMMAR_VERB, enabled=True, languagetool_rules=("AUXILIARY_VERB_INFINITIVE",), expressions=CHECK_EXPRESSIONS),
+    GrammarRule(kind=IssueKind.GRAMMAR_CONTRACTION, enabled=True, languagetool_rules=("CONTRACOES_OBRIGATORIAS",), expressions=CHECK_EXPRESSIONS),
+    GrammarRule(kind=IssueKind.GRAMMAR_QUE, enabled=True, languagetool_rules=("QUE_QUÊ",), expressions=CHECK_EXPRESSIONS),
+    GrammarRule(kind=IssueKind.GRAMMAR_GENDER, enabled=True, languagetool_rules=("GENERAL_GENDER_AGREEMENT_ERRORS", "ERRO_DE_CONCORDNCIA_DO_GÉNERO_MASCULINO_O"), expressions=CHECK_EXPRESSIONS),
+    UnknownWordRule(enabled=True, case=WordCase.OTHER, frequency_max=2.0, length_min=3, dictionary_hunspell=DICTIONARY_HUNSPELL, words=CHECK_WORDS),
+    UnknownWordRule(enabled=True, case=WordCase.CAPS, frequency_max=2.0, length_min=3, dictionary_hunspell=DICTIONARY_HUNSPELL, words=CHECK_WORDS),
     PortugalPortugueseRule(enabled=True),
     UnbalancedRule(enabled=True),
 )
@@ -340,11 +339,6 @@ class TranslationCheck:
 
     def to_report(self) -> Report:
         return Report(subtitle=self.subtitle, entries_count=len(self.entries), issues=self.issues, issues_ignored=self.issues_ignored)
-
-
-@functools.cache
-def load_dictionary(path: Path) -> Dictionary:
-    return Dictionary.from_files(str(path))
 
 
 @functools.cache

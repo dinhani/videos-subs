@@ -8,7 +8,7 @@ from shared.descriptions import DescriptionTable
 
 fix_translations = importlib.import_module("7-fix-translations")
 
-TABLE = DescriptionTable.from_files(FIX_SOUNDS, FIX_SUBJECTS)
+TABLE = DescriptionTable.from_lists(FIX_SOUNDS, FIX_SUBJECTS)
 
 
 @pytest.mark.parametrize(("description", "text", "name"), [

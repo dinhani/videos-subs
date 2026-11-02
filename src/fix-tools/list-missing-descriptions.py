@@ -21,7 +21,7 @@ DESCRIPTIONS_LISTED = 100
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
     sources = [file for file in find_files(argparse.ArgumentParser(description="Lists the descriptions of the English sources that fix-translations cannot translate, the most common first."), extensions_file=(".srt",), extensions_folder=(".srt",), folder=SUBS_FOLDER) if find_language_code(file) == "eng"]
-    table = DescriptionTable.from_files(FIX_SOUNDS, FIX_SUBJECTS)
+    table = DescriptionTable.from_lists(FIX_SOUNDS, FIX_SUBJECTS)
 
     # count every description with letters by its words in lowercase, keeping the first form seen to translate it
     counts: Counter[str] = Counter()

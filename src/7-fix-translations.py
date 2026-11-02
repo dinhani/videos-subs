@@ -20,7 +20,7 @@ from rich.prompt import Confirm
 from rich.text import Text
 
 from shared.console import Batch, Color, console, log_action
-from shared.data_lists import CHECK_WORDS, FIX_SOUNDS, FIX_SUBJECTS, FIX_WORDS
+from shared.data_lists import CHECK_WORDS, FIX_SOUNDS, FIX_SUBJECTS, FIX_WORDS, DataList
 from shared.descriptions import DESCRIPTION_SIMPLE, DescriptionTable, normalize_description
 from shared.files import CHECKS_FOLDER, DIR_FILMES, SUBS_FOLDER, find_files, find_language_code, parse_movie_dir, parse_srt, write_text_replacing
 from shared.languages import WORD
@@ -180,8 +180,8 @@ class DescriptionsFix:
     name: ClassVar[str] = "descriptions"
     LINE_REST: ClassVar[re.Pattern[str]] = re.compile(r"[\s\-–—]")
     enabled: bool
-    sounds: Path
-    subjects: Path
+    sounds: DataList
+    subjects: DataList
 
     def fix(self, entry: "TranslationEntry") -> tuple[str, ...]:
         if not entry.is_aligned:
@@ -226,7 +226,7 @@ class DescriptionsFix:
 class WordsFix:
     name: ClassVar[str] = "words"
     enabled: bool
-    words: Path
+    words: DataList
 
     def fix(self, entry: "TranslationEntry") -> tuple[str, ...]:
         words_right, words_wrong = load_words(self.words)
@@ -297,7 +297,7 @@ def load_movie_names(subs_folder: Path) -> frozenset[str]:
     labels = {word for text in texts for label in SPEAKER_LABEL.finditer(text) for word in normalize_description(label[1]).split()}
     documents = load_nlp().pipe((text.replace("\n", " ") for text in texts if text != text.upper()), batch_size=NLP_BATCH_SIZE)
     entities = {word for document in documents for entity in document.ents if entity.label_ in NLP_NAME_LABELS for word in normalize_description(entity.text).split()}
-    words_kept = {word for line in CHECK_WORDS.read_text(encoding="utf-8").splitlines() for word in normalize_description(line).split()}
+    words_kept = {word for (line,) in CHECK_WORDS.parse() for word in normalize_description(line).split()}
     return frozenset(labels | entities | words_kept)
 
 
@@ -307,20 +307,14 @@ def load_nlp() -> spacy.language.Language:
 
 
 @functools.cache
-def load_description_table(sounds: Path, subjects: Path) -> DescriptionTable:
-    return DescriptionTable.from_files(sounds, subjects)
+def load_description_table(sounds: DataList, subjects: DataList) -> DescriptionTable:
+    return DescriptionTable.from_lists(sounds, subjects)
 
 
 @functools.cache
-def load_words(file: Path) -> tuple[dict[str, list[tuple[str, str]]], re.Pattern[str] | None]:
+def load_words(file: DataList) -> tuple[dict[str, list[tuple[str, str]]], re.Pattern[str] | None]:
     words: dict[str, list[tuple[str, str]]] = {}
-    for line in file.read_text(encoding="utf-8").splitlines():
-        if not line.strip():
-            continue
-        parts = [part.strip() for part in line.split(" = ")]
-        if len(parts) != 3 or not all(parts):
-            raise ValueError(f"{file.name}: not an 'english = misspelled = right' line: {line!r}")
-        english, wrong, right = parts
+    for english, wrong, right in file.parse():
         words.setdefault(wrong.lower(), []).append((" ".join(english.lower().split()), right))
     if not words:
         return words, None

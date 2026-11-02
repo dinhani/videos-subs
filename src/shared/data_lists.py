@@ -1,24 +1,102 @@
 import functools
 import os
+import unicodedata
+from dataclasses import dataclass
+from enum import Enum
 from pathlib import Path
+
+from spylls.hunspell import Dictionary
+
+from shared.files import write_text_replacing
 
 DATA_FOLDER = Path(__file__).parents[2] / "data"
 DICTIONARY_HUNSPELL = Path(os.environ["LOCALAPPDATA"]) / "hunspell" / "pt_BR"
-CHECK_WORDS = DATA_FOLDER / "check-words.txt"
-CHECK_EXPRESSIONS = DATA_FOLDER / "check-expressions.txt"
-FIX_SOUNDS = DATA_FOLDER / "fix-sounds.txt"
-FIX_SUBJECTS = DATA_FOLDER / "fix-subjects.txt"
-FIX_WORDS = DATA_FOLDER / "fix-words.txt"
+
+SEPARATOR = " = "
+
+
+class DataListFormat(Enum):
+    WORD = ("word", 1)
+    EXPRESSION = ("expression of several words", 1)
+    PAIR = ("english = português", 2)
+    TRIPLE = ("english = misspelled = right", 3)
+
+    def __init__(self, shape: str, fields: int) -> None:
+        self.shape = shape
+        self.fields = fields
+
+
+@dataclass(frozen=True)
+class DataList:
+    file: Path
+    format: DataListFormat
+
+    @property
+    def name(self) -> str:
+        return self.file.stem
+
+    @functools.cache
+    def parse(self) -> tuple[tuple[str, ...], ...]:
+        items: list[tuple[str, ...]] = []
+        for line in self.file.read_text(encoding="utf-8").splitlines():
+            if not line.strip():
+                continue
+            parts = tuple(part.strip() for part in line.split(SEPARATOR))
+            if len(parts) != self.format.fields or not all(parts):
+                raise ValueError(f"{self.file.name}: not a '{self.format.shape}' line: {line!r}")
+            items.append(parts)
+        return tuple(items)
+
+    def parse_key(self, item: str) -> str:
+        return SEPARATOR.join(item.split(SEPARATOR)[:-1]) if self.format.fields > 1 else item
+
+    def ensure_valid(self, item: str) -> None:
+        if not item or item != " ".join(item.split()):
+            raise ValueError(f"not a trimmed text: {item!r}")
+        parts = item.split(SEPARATOR)
+        if len(parts) != self.format.fields or not all(parts):
+            raise ValueError(f"not a '{self.format.shape}' item: {item!r}")
+        if self.format == DataListFormat.WORD and " " in item:
+            raise ValueError(f"not a single word: {item!r}")
+        if self.format == DataListFormat.EXPRESSION and " " not in item:
+            raise ValueError(f"not an expression of several words: {item!r}")
+        if self.format != DataListFormat.TRIPLE:
+            return
+
+        misspelled = parts[1]
+        if " " in misspelled:
+            raise ValueError(f"the misspelled word is not a single word: {item!r}")
+        if load_dictionary(DICTIONARY_HUNSPELL).lookup(misspelled):
+            raise ValueError(f"the misspelled word is a Brazilian Portuguese word: {item!r}")
+
+    def add(self, items: list[str]) -> dict[str, bool]:
+        # check every item before writing; an item whose key is listed with another value is an error
+        items = list(dict.fromkeys(" ".join(item.lower().split()) for item in items))
+        for item in items:
+            self.ensure_valid(item)
+        items_listed = self.file.read_text(encoding="utf-8").splitlines()
+        values_listed = {self.parse_key(item): item for item in items_listed}
+        for item in items:
+            listed = values_listed.get(self.parse_key(item))
+            if listed is not None and listed != item:
+                raise ValueError(f"already listed with another value: {listed!r}")
+
+        # add the new items, sorted by their letters without accents
+        items_new = [item for item in items if item not in items_listed]
+        if items_new:
+            items_sorted = sorted([*items_listed, *items_new], key=lambda item: ("".join(character for character in unicodedata.normalize("NFD", self.parse_key(item)) if not unicodedata.combining(character)), item))
+            write_text_replacing(self.file, "\n".join(items_sorted) + "\n", newline="\n")
+        return {item: item in items_new for item in items}
 
 
 @functools.cache
-def parse_pairs(file: Path) -> dict[str, str]:
-    pairs: dict[str, str] = {}
-    for line in file.read_text(encoding="utf-8").splitlines():
-        if not line.strip():
-            continue
-        key, separator, value = line.partition(" = ")
-        if not separator or not key.strip() or not value.strip():
-            raise ValueError(f"{file.name}: not a 'key = value' line: {line!r}")
-        pairs[key.strip()] = value.strip()
-    return pairs
+def load_dictionary(path: Path) -> Dictionary:
+    return Dictionary.from_files(str(path))
+
+
+CHECK_WORDS = DataList(file=DATA_FOLDER / "check-words.txt", format=DataListFormat.WORD)
+CHECK_EXPRESSIONS = DataList(file=DATA_FOLDER / "check-expressions.txt", format=DataListFormat.EXPRESSION)
+FIX_SOUNDS = DataList(file=DATA_FOLDER / "fix-sounds.txt", format=DataListFormat.PAIR)
+FIX_SUBJECTS = DataList(file=DATA_FOLDER / "fix-subjects.txt", format=DataListFormat.PAIR)
+FIX_WORDS = DataList(file=DATA_FOLDER / "fix-words.txt", format=DataListFormat.TRIPLE)
+DATA_LISTS = (CHECK_WORDS, CHECK_EXPRESSIONS, FIX_SOUNDS, FIX_SUBJECTS, FIX_WORDS)

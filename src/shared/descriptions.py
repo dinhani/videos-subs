@@ -1,8 +1,7 @@
 import re
 from dataclasses import dataclass
-from pathlib import Path
 
-from shared.data_lists import parse_pairs
+from shared.data_lists import DataList
 from shared.subtitles import FORMATTING_TAGS
 
 DESCRIPTION_SIMPLE = re.compile(r"\[([^\[\]()<>{}]+)\]|\(([^\[\]()<>{}]+)\)")
@@ -48,8 +47,8 @@ class DescriptionTable:
     subjects: dict[str, str]
 
     @classmethod
-    def from_files(cls, sounds: Path, subjects: Path) -> "DescriptionTable":
-        return cls(sounds={key: tuple(form.strip() for form in value.split("|")) for key, value in parse_pairs(sounds).items()}, subjects=parse_pairs(subjects))
+    def from_lists(cls, sounds: DataList, subjects: DataList) -> "DescriptionTable":
+        return cls(sounds={key: tuple(form.strip() for form in value.split("|")) for key, value in sounds.parse()}, subjects=dict(subjects.parse()))
 
     def find_translation(self, description: str) -> DescriptionTranslation | None:
         words = description.split()
