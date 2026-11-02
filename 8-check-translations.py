@@ -226,8 +226,8 @@ class UnbalancedRule:
 
 TranslationRule = AcceptedWithProblemRule | UntranslatedRule | AddedSymbolsRule | DuplicatedLineRule | BrokenLineRule | GrammarRule | UnknownWordRule | PortugalPortugueseRule | UnbalancedRule
 
-DICTIONARY_WORDS = DATA_FOLDER / "dict-words.txt"
-DICTIONARY_EXPRESSIONS = DATA_FOLDER / "dict-expressions.txt"
+DICTIONARY_WORDS = DATA_FOLDER / "check-words.txt"
+DICTIONARY_EXPRESSIONS = DATA_FOLDER / "check-expressions.txt"
 RULES: tuple[TranslationRule, ...] = (
     AcceptedWithProblemRule(enabled=True),
     UntranslatedRule(enabled=True, votes_min=3, unchanged_votes_min=2),

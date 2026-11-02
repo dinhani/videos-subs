@@ -203,23 +203,23 @@ apply-fixes fixes:
     exit $LASTEXITCODE
 
 [group('data/fix')]
-[doc('Add words to check-translate dictionary')]
+[doc('Add right words to check-translate')]
 [env('PYTHONPATH', '.')]
 [script]
 [extension('.ps1')]
 [positional-arguments]
-add-words +words:
-    uv run fix-tools/add-to-dictionary.py words @args
+add-check-words +words:
+    uv run fix-tools/add-to-dictionary.py check-words @args
     exit $LASTEXITCODE
 
 [group('data/fix')]
-[doc('Add expressions to check-translate dictionary')]
+[doc('Add right expressions to check-translate')]
 [env('PYTHONPATH', '.')]
 [script]
 [extension('.ps1')]
 [positional-arguments]
-add-expressions +expressions:
-    uv run fix-tools/add-to-dictionary.py expressions @args
+add-check-expressions +expressions:
+    uv run fix-tools/add-to-dictionary.py check-expressions @args
     exit $LASTEXITCODE
 
 [group('data/fix')]
@@ -228,8 +228,8 @@ add-expressions +expressions:
 [script]
 [extension('.ps1')]
 [positional-arguments]
-add-sounds +pairs:
-    uv run fix-tools/add-to-dictionary.py sounds @args
+add-fix-sounds +pairs:
+    uv run fix-tools/add-to-dictionary.py fix-sounds @args
     exit $LASTEXITCODE
 
 [group('data/fix')]
@@ -238,8 +238,8 @@ add-sounds +pairs:
 [script]
 [extension('.ps1')]
 [positional-arguments]
-add-subjects +pairs:
-    uv run fix-tools/add-to-dictionary.py subjects @args
+add-fix-subjects +pairs:
+    uv run fix-tools/add-to-dictionary.py fix-subjects @args
     exit $LASTEXITCODE
 
 [group('data/fix')]

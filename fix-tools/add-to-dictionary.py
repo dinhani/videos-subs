@@ -17,10 +17,10 @@ from shared import DATA_FOLDER, DICTIONARY_HUNSPELL, FIX_SOUNDS, FIX_SUBJECTS, F
 # Types
 # ------------------------------------------------------------------------------
 class DictionaryList(Enum):
-    WORDS = DATA_FOLDER / "dict-words.txt"
-    EXPRESSIONS = DATA_FOLDER / "dict-expressions.txt"
-    SOUNDS = FIX_SOUNDS
-    SUBJECTS = FIX_SUBJECTS
+    CHECK_WORDS = DATA_FOLDER / "check-words.txt"
+    CHECK_EXPRESSIONS = DATA_FOLDER / "check-expressions.txt"
+    FIX_SOUNDS = FIX_SOUNDS
+    FIX_SUBJECTS = FIX_SUBJECTS
     FIX_WORDS = FIX_WORDS
 
     @property
@@ -29,7 +29,7 @@ class DictionaryList(Enum):
 
     @property
     def has_pairs(self) -> bool:
-        return self in (DictionaryList.SOUNDS, DictionaryList.SUBJECTS, DictionaryList.FIX_WORDS)
+        return self in (DictionaryList.FIX_SOUNDS, DictionaryList.FIX_SUBJECTS, DictionaryList.FIX_WORDS)
 
     def parse_key(self, item: str) -> str:
         return item.partition(" = ")[0] if self.has_pairs else item
@@ -37,9 +37,9 @@ class DictionaryList(Enum):
     def ensure_valid(self, item: str) -> None:
         if not item or item != " ".join(item.split()):
             raise ValueError(f"not a trimmed text: {item!r}")
-        if self == DictionaryList.WORDS and " " in item:
+        if self == DictionaryList.CHECK_WORDS and " " in item:
             raise ValueError(f"not a single word: {item!r}")
-        if self == DictionaryList.EXPRESSIONS and " " not in item:
+        if self == DictionaryList.CHECK_EXPRESSIONS and " " not in item:
             raise ValueError(f"not an expression of several words: {item!r}")
         if not self.has_pairs:
             return
@@ -58,8 +58,8 @@ class DictionaryList(Enum):
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Adds items judged right to the data lists of check-translations and fix-translations.")
-    parser.add_argument("list", choices=["words", "expressions", "sounds", "subjects", "fix-words"], help="words: data/dict-words.txt, expressions: data/dict-expressions.txt, sounds: data/fix-sounds.txt, subjects: data/fix-subjects.txt, fix-words: data/fix-words.txt")
-    parser.add_argument("items", nargs="+", help="words, expressions as they are in the entry, or pairs as 'english = português' (sounds, subjects) and 'misspelled = right' (fix-words)")
+    parser.add_argument("list", choices=[dictionary.file.stem for dictionary in DictionaryList], help="the data list, by its file name in data")
+    parser.add_argument("items", nargs="+", help="words, expressions as they are in the entry, or pairs as 'english = português' (fix-sounds, fix-subjects) and 'misspelled = right' (fix-words)")
     arguments = parser.parse_args()
     dictionary = DictionaryList[arguments.list.upper().replace("-", "_")]
 
