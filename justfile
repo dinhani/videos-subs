@@ -128,6 +128,16 @@ llama-translate:
         --device CUDA0 --n-gpu-layers all --fit off --flash-attn on --jinja --reasoning-budget 0 --no-mmproj \
         --ctx-size 16384 --parallel 1 --top-p 0.95 --top-k 64 --port 9931
 
+[group('test')]
+[doc('Run unit tests')]
+[script]
+[extension('.ps1')]
+[positional-arguments]
+test *args:
+    uv run pytest @args
+    exit $LASTEXITCODE
+alias tests := test
+
 [group('data')]
 [doc('Crosscheck subtitles, translations and reports')]
 [script]

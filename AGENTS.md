@@ -104,7 +104,7 @@ The virtual environment lives in `uv/envs/videos-subs` under the local data dire
 
 ## Code layout
 
-All code is in `src`: the pipeline scripts, `crosscheck-subs.py`, `shared` and `fix-tools`. The data lists stay in `data` at the project root.
+All code is in `src`: the pipeline scripts, `crosscheck-subs.py`, `shared` and `fix-tools`. The data lists stay in `data` at the project root, and the tests are in `tests`.
 
 - `shared/`: code used by more than one script, one module per subject: `files.py` (library folders, file names, reading and writing subtitles), `subtitles.py` (kinds, tags, `ignore:` markers), `image_subtitles.py` (PGS and VobSub decoding), `languages.py` (language detection and word frequency), `descriptions.py` (the description tables of fix-translations), `data_lists.py` (the files in `data`), `reports.py` (issues, reports and scores), `console.py` (logging and `Batch`), `llm.py` (the llama server and traces). A script imports each name from its module: `from shared.files import parse_srt`.
 - `fix-tools/`: the tools of the fix-ocr and fix-translate skills, run through `just`. `apply-fixes.py` (`just apply-fixes`) applies fixes decided by hand from a JSON file: each fix names an entry by its number, gives its exact current text, and its new text or the issue kinds to ignore; it checks every fix before writing any subtitle. `add-to-dictionary.py` (`just add-check-words`, `just add-check-expressions`, `just add-fix-sounds`, `just add-fix-subjects`, `just add-fix-words`) adds right words and expressions, and the pairs of fix-translations, to the data lists in `data`, in lowercase and in alphabetical order; it refuses a misspelling that the pt_BR dictionary knows, and a misspelling without its English word. `list-missing-descriptions.py` (`just descriptions-missing`) lists the descriptions of the English sources that fix-translations cannot translate, the most common first, for growing its tables.
@@ -125,7 +125,7 @@ All code is in `src`: the pipeline scripts, `crosscheck-subs.py`, `shared` and `
 - The media library is on a Synology NAS with HDDs. Any parallel NAS I/O is capped at 8 workers.
 - Tesseract and its models come from scoop (`tesseract`, `tesseract-languages`); `tesseract-languages` sets `TESSDATA_PREFIX`.
 - LanguageTool is run by `language_tool_python`, which downloads it to its cache on the first check-translate run (about 260 MB) and runs it on the scoop `openjdk26`. check-translate starts one server in the main process, only when a file needs checking, and the worker processes connect to it.
-- No test suite. Verify changes manually, using a scratch copy of a movie folder rather than the library.
+- `just test` runs the unit tests in `tests` with pytest. They build entries in the test itself and read the real data lists, so a data list entry that breaks a rule fails a test; they never read the library. A test case is a rule the project depends on, such as an entry fix-translations must leave unchanged; tests are not written for coverage. Verify a change to a step also on a scratch copy of a few movie folders, never on the library: run the step before and after the change and compare the outputs file by file.
 
 ## Git
 
