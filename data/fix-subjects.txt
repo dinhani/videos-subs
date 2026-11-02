@@ -1,6 +1,7 @@
 all = todos
 audience = plateia
 baby = bebê
+bird = pássaro
 birds = pássaros
 both = ambos
 boy = menino

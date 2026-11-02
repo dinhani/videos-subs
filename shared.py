@@ -587,6 +587,16 @@ class DescriptionTable:
         if key in self.sounds:
             return DescriptionTranslation(source=description, text=match_case(self.sounds[key], description), name="")
 
+        # a list such as GRUNTS, GASPS: the first part may have a subject or a name, the others are phrases
+        if "," in description:
+            first, *others = (part.strip() for part in description.split(","))
+            translation = self.find_translation(first)
+            others_keys = [" ".join(other.split()).lower() for other in others]
+            if translation is None or not all(other_key in self.sounds for other_key in others_keys):
+                return None
+            texts = [translation.text, *(match_case(self.sounds[other_key], other) for other_key, other in zip(others_keys, others))]
+            return DescriptionTranslation(source=description, text=", ".join(texts), name=translation.name)
+
         # a subject or a name, then a phrase led by a verb in -ing or -s
         for subject_size in range(1, min(DESCRIPTION_SUBJECT_WORDS_MAX, len(words) - 1) + 1):
             subject, phrase = words[:subject_size], words[subject_size:]
