@@ -1,4 +1,4 @@
-# Fixes the mistakes of the translations that have a mechanical fix, by comparing each entry with its English source, shows the changes of each translation and asks before writing it, and deletes the report of every translation it changes.
+# Fixes the mistakes of the translations that have a mechanical fix, by comparing each entry with its English source, shows the changes of each translation and asks before writing it, backs it up before writing it, and deletes the report of every translation it changes.
 
 # ------------------------------------------------------------------------------
 # Libraries
@@ -7,8 +7,10 @@ import argparse
 import functools
 import itertools
 import re
+import shutil
 from collections import Counter
 from dataclasses import dataclass, replace
+from datetime import datetime
 from pathlib import Path
 from typing import ClassVar
 
@@ -16,12 +18,15 @@ import srt
 from rich.prompt import Confirm
 from rich.text import Text
 
-from shared import CHECKS_FOLDER, DESCRIPTION_SIMPLE, FIX_SOUNDS, FIX_SUBJECTS, FIX_WORDS, FORMATTING_TAGS, IGNORE_MARKER, SUBS_FOLDER, WORD, Batch, Color, DescriptionTable, SubtitleKind, console, find_files, log_action, parse_movie_dir, parse_pairs, parse_srt, write_text_replacing
+from shared import CHECKS_FOLDER, DESCRIPTION_SIMPLE, DIR_FILMES, FIX_SOUNDS, FIX_SUBJECTS, FIX_WORDS, FORMATTING_TAGS, IGNORE_MARKER, SUBS_FOLDER, WORD, Batch, Color, DescriptionTable, SubtitleKind, console, find_files, log_action, parse_movie_dir, parse_pairs, parse_srt, write_text_replacing
 
 # ------------------------------------------------------------------------------
 # Constants
 # ------------------------------------------------------------------------------
 TRANSLATION_SUFFIXES = tuple(kind.to_translation_suffix() for kind in SubtitleKind)
+
+DIR_MIDIAS_ROOT = DIR_FILMES.parent
+BACKUPS_FOLDER = DIR_MIDIAS_ROOT / "_backups" / "fix-translations"
 
 # ------------------------------------------------------------------------------
 # Fixes
@@ -272,6 +277,7 @@ if __name__ == "__main__":
     parser.add_argument("--yes", action="store_true", help="write every translation without showing its changes or asking")
     subs = find_files(parser.description or "", extensions_file=TRANSLATION_SUFFIXES, extensions_folder=TRANSLATION_SUFFIXES, parser=parser)
     confirmed: bool = parser.parse_args().yes
+    backups_run = BACKUPS_FOLDER / datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
     batch = Batch()
 
     for sub in subs:
@@ -323,6 +329,16 @@ if __name__ == "__main__":
                 if not Confirm.ask(f"  Apply {summary}?", console=console, default=False):
                     log_action("declined", Color.YELLOW, sub.name)
                     continue
+
+            # back up the sub before writing it, into a folder of its own for this run, so no backup is ever replaced
+            sub_absolute = sub.absolute()
+            backup = backups_run / (sub_absolute.relative_to(DIR_MIDIAS_ROOT) if sub_absolute.is_relative_to(DIR_MIDIAS_ROOT) else sub_absolute.relative_to(sub_absolute.anchor))
+            if backup.exists():
+                raise FileExistsError(f"backup already exists: {backup}")
+            backup.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(sub, backup)
+            if backup.read_bytes() != sub.read_bytes():
+                raise OSError(f"backup differs from the sub: {backup}")
 
             # write the fixed sub and delete its report, which no longer matches it
             write_text_replacing(sub, srt.compose(entries, reindex=False))

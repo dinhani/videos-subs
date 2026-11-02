@@ -41,7 +41,7 @@ Run the steps in order. Each step skips files it already processed, so every ste
 8. `8-check-translations.py`: checks every `.pob.translated.srt` against its `_subs/<name>.eng.srt`, entry by entry, and writes a report to `_checks/<name>.pob.translated.txt`. Its rules are in [RULES.md](RULES.md), section 2.
 9. `9-warn-subs.py`: adds warning entries at the start of every translation: `WARNING_SDH` when it is SDH, and `WARNING_PROBLEM` (`[Legenda traduzida automaticamente...]`) when its trace records an entry accepted with a problem. Each warning is entry 0, and the file is written without renumbering, so the other entries keep the numbers of the English source. A warning already in the file is not added again.
 
-fix-translations is deterministic and changes only what the English source decides. It runs again on every translation, writes only when an entry changes, and a second run changes nothing. Before writing a translation it shows each changed entry, English, old and new, and asks; `--yes` writes without showing or asking. A changed entry loses its `ignore:` marker, so check-translate judges it again. Its fixes, in the order they run, are in `FIXES`:
+fix-translations is deterministic and changes only what the English source decides. It runs again on every translation, writes only when an entry changes, and a second run changes nothing. Before writing a translation it shows each changed entry, English, old and new, and asks; `--yes` writes without showing or asking. It backs up every translation before writing it, as the media layout says. A changed entry loses its `ignore:` marker, so check-translate judges it again. Its fixes, in the order they run, are in `FIXES`:
 
 - tags: deletes the tags the English entry does not have, restores the English `{\anN}`, and restores `<i>...</i>` on a line the English has whole in italics when the translated entry has no italics at all.
 - leftovers: deletes a JSON ending of the model reply, such as `"]},`, at the end of a line with text, when the English line does not end with `]` or `}`. A quote that ends the English line stays.
@@ -85,6 +85,7 @@ Z:/midias/filmes/<movie>/                 (series use the same layout under Z:/m
 - `_subs` holds the extracted text subtitles and image subtitles, and the text subtitles made from image subtitles. They stay out of the movie folder because the media server already reads the tracks inside the video and would show them twice.
 - `_traces` holds one trace per OCR and per translation: every request, reply, retry and accepted problem. The file is rewritten after every record, so it is valid and current during a run. Traces are never deleted.
 - `_checks` holds one report per checked OCR output and translation.
+- `Z:/midias/_backups/fix-translations/<run>/` holds a copy of every translation fix-translations writes, made before writing it, under its path from `Z:/midias`. Each run has its own folder, named by its start time, so no backup is replaced. Backups are never deleted.
 
 ## Running
 
