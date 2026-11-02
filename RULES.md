@@ -80,7 +80,7 @@ Every correction writes what the picture most likely says.
   fix  Run!
   ```
 - **Correction**: markdown emphasis becomes `<i>...</i>` around the same words; a tag with attributes becomes `<i>`; `</em>` becomes `</i>`; stray characters are deleted.
-- **Caution**: only the marked words become italic, not the whole line; inside a line already wrapped in `<i>`, the emphasis is deleted with no second tag.
+- **Caution**: only the marked words become italic, not the whole line; inside a line already wrapped in `<i>`, the emphasis is deleted with no second tag. A word written only as asterisks, as in `It was **** tight`, was censored on the disc: the entry is right; mark it.
 
 ## 1.5 glyph confusion
 
