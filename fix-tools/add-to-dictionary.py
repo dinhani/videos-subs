@@ -1,4 +1,4 @@
-# Adds items judged right to the data lists that check-translations and fix-translations read, in lowercase and in alphabetical order: words and expressions that are right, and the pairs that fix-translations writes for a description, a subject or a misspelled word. Skips the items already in the list.
+# Adds items judged right to the data lists that check-translations and fix-translations read, in lowercase and in alphabetical order: words and expressions that are right, and the pairs and triples that fix-translations writes for a description, a subject or a misspelled word. Skips the items already in the list.
 
 # ------------------------------------------------------------------------------
 # Libraries
@@ -32,7 +32,9 @@ class DictionaryList(Enum):
         return self in (DictionaryList.FIX_SOUNDS, DictionaryList.FIX_SUBJECTS, DictionaryList.FIX_WORDS)
 
     def parse_key(self, item: str) -> str:
-        return item.partition(" = ")[0] if self.has_pairs else item
+        if not self.has_pairs:
+            return item
+        return " = ".join(item.split(" = ")[:-1])
 
     def ensure_valid(self, item: str) -> None:
         if not item or item != " ".join(item.split()):
@@ -44,12 +46,18 @@ class DictionaryList(Enum):
         if not self.has_pairs:
             return
 
-        key, separator, value = item.partition(" = ")
-        if not separator or not key or not value or " = " in value:
-            raise ValueError(f"not a 'key = value' pair: {item!r}")
-        if self == DictionaryList.FIX_WORDS and " " in key:
+        parts = item.split(" = ")
+        if self != DictionaryList.FIX_WORDS and (len(parts) != 2 or not all(parts)):
+            raise ValueError(f"not an 'english = português' pair: {item!r}")
+        if self != DictionaryList.FIX_WORDS:
+            return
+
+        if len(parts) != 3 or not all(parts):
+            raise ValueError(f"not an 'english = misspelled = right' triple: {item!r}")
+        misspelled = parts[1]
+        if " " in misspelled:
             raise ValueError(f"the misspelled word is not a single word: {item!r}")
-        if self == DictionaryList.FIX_WORDS and Dictionary.from_files(str(DICTIONARY_HUNSPELL)).lookup(key):
+        if Dictionary.from_files(str(DICTIONARY_HUNSPELL)).lookup(misspelled):
             raise ValueError(f"the misspelled word is a Brazilian Portuguese word: {item!r}")
 
 
@@ -59,7 +67,7 @@ class DictionaryList(Enum):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Adds items judged right to the data lists of check-translations and fix-translations.")
     parser.add_argument("list", choices=[dictionary.file.stem for dictionary in DictionaryList], help="the data list, by its file name in data")
-    parser.add_argument("items", nargs="+", help="words, expressions as they are in the entry, or pairs as 'english = português' (fix-sounds, fix-subjects) and 'misspelled = right' (fix-words)")
+    parser.add_argument("items", nargs="+", help="words, expressions as they are in the entry, or pairs as 'english = português' (fix-sounds, fix-subjects), or triples as 'english = misspelled = right' (fix-words), where the English word must be in the English entry")
     arguments = parser.parse_args()
     dictionary = DictionaryList[arguments.list.upper().replace("-", "_")]
 

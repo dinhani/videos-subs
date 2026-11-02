@@ -18,7 +18,7 @@ import srt
 from rich.prompt import Confirm
 from rich.text import Text
 
-from shared import CHECKS_FOLDER, DESCRIPTION_SIMPLE, DIR_FILMES, FIX_SOUNDS, FIX_SUBJECTS, FIX_WORDS, FORMATTING_TAGS, IGNORE_MARKER, SUBS_FOLDER, WORD, Batch, Color, DescriptionTable, SubtitleKind, console, find_files, log_action, parse_movie_dir, parse_pairs, parse_srt, write_text_replacing
+from shared import CHECKS_FOLDER, DESCRIPTION_SIMPLE, DIR_FILMES, FIX_SOUNDS, FIX_SUBJECTS, FIX_WORDS, FORMATTING_TAGS, IGNORE_MARKER, SUBS_FOLDER, WORD, Batch, Color, DescriptionTable, SubtitleKind, console, find_files, log_action, parse_movie_dir, parse_srt, write_text_replacing
 
 # ------------------------------------------------------------------------------
 # Constants
@@ -210,13 +210,16 @@ class WordsFix:
         words_right, words_wrong = load_words(self.words)
         if words_wrong is None:
             return entry.target_lines
-        words_source = {match[0].lower() for line in entry.source_lines for match in WORD.finditer(line)}
+        words_source = [match[0].lower() for line in entry.source_lines for match in WORD.finditer(line)]
+        text_source = f" {' '.join(words_source)} "
 
+        # a misspelled word is replaced only when the English entry has its English word, and by one right word only
         def replace_word(match: re.Match[str]) -> str:
             word = match[0]
-            if word.lower() in words_source:
+            rights = {right for english, right in words_right[word.lower()] if f" {english} " in text_source}
+            if word.lower() in words_source or len(rights) != 1:
                 return word
-            right = words_right[word.lower()]
+            right = rights.pop()
             if word.isupper():
                 return right.upper()
             return right[:1].upper() + right[1:] if word[0].isupper() else right
@@ -263,8 +266,16 @@ def load_description_table(sounds: Path, subjects: Path) -> DescriptionTable:
 
 
 @functools.cache
-def load_words(file: Path) -> tuple[dict[str, str], re.Pattern[str] | None]:
-    words = {wrong.lower(): right for wrong, right in parse_pairs(file).items()}
+def load_words(file: Path) -> tuple[dict[str, list[tuple[str, str]]], re.Pattern[str] | None]:
+    words: dict[str, list[tuple[str, str]]] = {}
+    for line in file.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        parts = [part.strip() for part in line.split(" = ")]
+        if len(parts) != 3 or not all(parts):
+            raise ValueError(f"{file.name}: not an 'english = misspelled = right' line: {line!r}")
+        english, wrong, right = parts
+        words.setdefault(wrong.lower(), []).append((" ".join(english.lower().split()), right))
     if not words:
         return words, None
     return words, re.compile(rf"(?<!\w)(?:{'|'.join(re.escape(word) for word in sorted(words, key=len, reverse=True))})(?!\w)", re.IGNORECASE)

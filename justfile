@@ -243,12 +243,12 @@ add-fix-subjects +pairs:
     exit $LASTEXITCODE
 
 [group('data/fix')]
-[doc('Add misspelled words to fix-translations')]
+[doc('Add misspelled words to fix-translations, with their English word')]
 [env('PYTHONPATH', '.')]
 [script]
 [extension('.ps1')]
 [positional-arguments]
-add-fix-words +pairs:
+add-fix-words +triples:
     uv run fix-tools/add-to-dictionary.py fix-words @args
     exit $LASTEXITCODE
 

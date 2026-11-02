@@ -1,40 +1,56 @@
-ancestão = ancião
-ancestões = anciões
-arfos = arfa
-assóbio = assobio
-cazacistão = cazaquistão
-chioando = chiando
-fraquemente = fracamente
-grinha = grunhe
-grinhando = grunhindo
-grunca = grunhe
-gruncando = grunhindo
-gruncha = grunhe
-grunchando = grunhindo
-gruñe = grunhe
-grunhos = grunhidos
-grunido = grunhido
-gruñido = grunhido
-grunidos = grunhidos
-gruñidos = grunhidos
-gruñindo = grunhindo
-grunnar = grunhe
-grunnido = grunhido
-grunnidos = grunhidos
-grunnindo = grunhindo
-grunta = grunhe
-gruntando = grunhindo
-mercátário = mercenário
-oficialgando = ofegando
-pôra = porra
-quemquer = quem quer
-quitos = quites
-resmuinha = resmunga
-risindo = rindo
-rognando = rugindo
-tajikistão = tajiquistão
-talve = talvez
-temistócles = temístocles
-tocoando = tocando
-transmitores = transmissores
-ventação = ventilação
+chuckling = risindo = rindo
+elder = ancestão = ancião
+elders = ancestões = anciões
+even = quitos = quites
+fuck = pôra = porra
+gasping = oficialgando = ofegando
+gasps = arfos = arfa
+grunt = grunchando = grunhindo
+grunt = grunido = grunhido
+grunt = grunnido = grunhido
+grunt = grunnindo = grunhindo
+grunting = grinhando = grunhindo
+grunting = gruncando = grunhindo
+grunting = grunchando = grunhindo
+grunting = gruñe = grunhe
+grunting = gruñido = grunhido
+grunting = gruñidos = grunhidos
+grunting = gruñindo = grunhindo
+grunting = grunnido = grunhido
+grunting = grunnidos = grunhidos
+grunting = grunnindo = grunhindo
+grunting = gruntando = grunhindo
+grunts = grinha = grunhe
+grunts = grunca = grunhe
+grunts = gruncha = grunhe
+grunts = gruñe = grunhe
+grunts = grunhos = grunhidos
+grunts = grunido = grunhido
+grunts = gruñido = grunhido
+grunts = grunidos = grunhidos
+grunts = gruñidos = grunhidos
+grunts = grunnar = grunhe
+grunts = grunnido = grunhido
+grunts = grunnidos = grunhidos
+grunts = grunnindo = grunhindo
+grunts = grunta = grunhe
+kazakhstan = cazacistão = cazaquistão
+laughing = risindo = rindo
+maybe = talve = talvez
+merc = mercátário = mercenário
+mutters = resmuinha = resmunga
+panting = oficialgando = ofegando
+playing = tocoando = tocando
+roaring = rognando = rugindo
+squeaking = chioando = chiando
+squeaks = chioando = chiando
+tajikistan = tajikistão = tajiquistão
+themistocles = temistócles = temístocles
+themistokles = temistócles = temístocles
+transmitters = transmitores = transmissores
+venting = ventação = ventilação
+weakly = fraquemente = fracamente
+whistle = assóbio = assobio
+whistling = assóbio = assobio
+whoever = quemquer = quem quer
+whoever's = quemquer = quem quer
