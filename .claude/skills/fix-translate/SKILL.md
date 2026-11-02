@@ -17,7 +17,7 @@ Forbidden, with no exception and no matter how many entries there are:
 
 For every flagged entry: read its issue and its `en` and `pt` lines, decide what the Brazilian Portuguese subtitle should say, then make one edit to that entry only, or none when it is already right.
 
-The corrections in `RULES.md` are the usual fixes, not substitutions. When a correction gives a text that does not make sense, write the text that does. The check is a heuristic and can flag a correct entry: leave it and list it at the end.
+The corrections in `RULES.md` are the usual fixes, not substitutions. When a correction gives a text that does not make sense, write the text that does. The check is a heuristic and can flag a correct entry: leave its text as it is and mark it, as the procedure says.
 
 ## Procedure
 
@@ -33,6 +33,6 @@ The first line of a report names its translation, the `.pob.translated.srt` or `
 
 Read `RULES.md` at the project root first. Fix each entry with the rules for every correction at the start of section 2 (Translation), and the Correction and Caution of its rule in that section. The report does not name the LanguageTool rule of a grammar issue; find its rule (2.6 to 2.9) by the flagged text.
 
-After fixing a file, delete its report so the next check-translate run checks it again. Never edit a report and never run check-translate; the user does. When a flag is wrong because the text is already right, mark the entry with `ignore:` on its timing line, as `RULES.md` says, in its own edit; when you change the text of an entry with a marker, remove the marker. At the end, list the skipped entries and the entries you marked.
+After fixing a file, delete its report so the next check-translate run checks it again. Never edit a report and never run check-translate; the user does. When a flag is wrong because the text is already right, mark the entry with `ignore:` on its timing line, as `RULES.md` says, in its own edit. The report does not show the timing line: find the entry by its number with Grep, then edit its timing line. When you change the text of an entry with a marker, remove the marker. At the end, list the skipped entries and the entries you marked.
 
 When an unknown word flag is wrong because the word is right, add the word to `data/dict-words.txt`: one word per line, lowercase, with its accents, in alphabetical order, each form on its own line (`wakandano`, `wakandanos`). When a gender flag is wrong because the expression is right, add the whole expression as it is in the entry to `data/dict-expressions.txt`, in the same format (`os relés`, `luta corpo a corpo`); never add a wrong translation there. List the added words and expressions at the end too.

@@ -17,7 +17,8 @@ Forbidden, with no exception and no matter how many entries there are:
 
 For every flagged entry: read its issue and text, decide what the text on screen most likely says, then make one edit to that entry only, or none when it is already right.
 
-The corrections in `RULES.md` are the usual fixes, not substitutions. When a correction gives a text that does not make sense, write the text that does. The check is a heuristic and can flag a correct entry: leave it and list it at the end.
+The corrections in `RULES.md` are the usual fixes, not substitutions. When a correction gives a text that does not make sense, write the text that does. The check is a heuristic and can flag a correct entry: leave its text as it is and mark it, as the procedure says.
+
 ## Procedure
 
 Fix each entry flagged in the check-ocr reports directly in its text subtitle, from the report alone. Never run `just ocr` again.
@@ -32,4 +33,4 @@ The first line of a report names its text subtitle, in `_subs` next to `_checks`
 
 Read `RULES.md` at the project root first. Fix each entry with the Correction and Caution of its rule in section 1 (OCR).
 
-After fixing a file, delete its report so the next check-ocr run checks it again. Never edit a report and never run check-ocr; the user does. When a flag is wrong because the text is already right, mark the entry with `ignore:` on its timing line, as `RULES.md` says, in its own edit; when you change the text of an entry with a marker, remove the marker. At the end, list the skipped entries, the entries you marked, and the `.eng.srt` files that already had a `.pob.translated.srt`, since that translation was made from the old text.
+After fixing a file, delete its report so the next check-ocr run checks it again. Never edit a report and never run check-ocr; the user does. When a flag is wrong because the text is already right, mark the entry with `ignore:` on its timing line, as `RULES.md` says, in its own edit. The report does not show the timing line: find the entry by its number with Grep, then edit its timing line. When you change the text of an entry with a marker, remove the marker. At the end, list the skipped entries, the entries you marked, and the `.eng.srt` files that already had a `.pob.translated.srt`, since that translation was made from the old text.
