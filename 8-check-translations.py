@@ -21,7 +21,7 @@ import srt
 from rich.progress import MofNCompleteColumn, TimeElapsedColumn, TimeRemainingColumn
 from spylls.hunspell import Dictionary
 
-from shared import CHECKS_FOLDER, CHECK_WORKERS, DATA_FOLDER, DICTIONARY_HUNSPELL, FORMATTING_TAGS, SUBS_FOLDER, TRACES_FOLDER, WORDS_PT_PT, Batch, Color, Issue, IssueKind, Report, ReportScore, SubtitleKind, TextLanguage, find_files, log_action, log_ranking, parse_movie_dir, parse_plain_text, parse_srt, parse_words, progress_bar
+from shared import CHECK_EXPRESSIONS, CHECK_WORDS, CHECKS_FOLDER, CHECK_WORKERS, DICTIONARY_HUNSPELL, FORMATTING_TAGS, SUBS_FOLDER, TRACES_FOLDER, WORDS_PT_PT, Batch, Color, Issue, IssueKind, Report, ReportScore, SubtitleKind, TextLanguage, find_files, log_action, log_ranking, parse_movie_dir, parse_plain_text, parse_srt, parse_words, progress_bar
 
 # ------------------------------------------------------------------------------
 # Constants
@@ -226,20 +226,18 @@ class UnbalancedRule:
 
 TranslationRule = AcceptedWithProblemRule | UntranslatedRule | AddedSymbolsRule | DuplicatedLineRule | BrokenLineRule | GrammarRule | UnknownWordRule | PortugalPortugueseRule | UnbalancedRule
 
-DICTIONARY_WORDS = DATA_FOLDER / "check-words.txt"
-DICTIONARY_EXPRESSIONS = DATA_FOLDER / "check-expressions.txt"
 RULES: tuple[TranslationRule, ...] = (
     AcceptedWithProblemRule(enabled=True),
     UntranslatedRule(enabled=True, votes_min=3, unchanged_votes_min=2),
     AddedSymbolsRule(enabled=True),
     DuplicatedLineRule(enabled=True, length_min=8, ratio_min=1.6),
     BrokenLineRule(enabled=True),
-    GrammarRule(kind=IssueKind.GRAMMAR_VERB, enabled=True, languagetool_rules=("AUXILIARY_VERB_INFINITIVE",), dictionary_expressions=DICTIONARY_EXPRESSIONS),
-    GrammarRule(kind=IssueKind.GRAMMAR_CONTRACTION, enabled=True, languagetool_rules=("CONTRACOES_OBRIGATORIAS",), dictionary_expressions=DICTIONARY_EXPRESSIONS),
-    GrammarRule(kind=IssueKind.GRAMMAR_QUE, enabled=True, languagetool_rules=("QUE_QUÊ",), dictionary_expressions=DICTIONARY_EXPRESSIONS),
-    GrammarRule(kind=IssueKind.GRAMMAR_GENDER, enabled=True, languagetool_rules=("GENERAL_GENDER_AGREEMENT_ERRORS", "ERRO_DE_CONCORDNCIA_DO_GÉNERO_MASCULINO_O"), dictionary_expressions=DICTIONARY_EXPRESSIONS),
-    UnknownWordRule(enabled=True, case=WordCase.OTHER, frequency_max=2.0, length_min=3, dictionary_hunspell=DICTIONARY_HUNSPELL, dictionary_words=DICTIONARY_WORDS),
-    UnknownWordRule(enabled=True, case=WordCase.CAPS, frequency_max=2.0, length_min=3, dictionary_hunspell=DICTIONARY_HUNSPELL, dictionary_words=DICTIONARY_WORDS),
+    GrammarRule(kind=IssueKind.GRAMMAR_VERB, enabled=True, languagetool_rules=("AUXILIARY_VERB_INFINITIVE",), dictionary_expressions=CHECK_EXPRESSIONS),
+    GrammarRule(kind=IssueKind.GRAMMAR_CONTRACTION, enabled=True, languagetool_rules=("CONTRACOES_OBRIGATORIAS",), dictionary_expressions=CHECK_EXPRESSIONS),
+    GrammarRule(kind=IssueKind.GRAMMAR_QUE, enabled=True, languagetool_rules=("QUE_QUÊ",), dictionary_expressions=CHECK_EXPRESSIONS),
+    GrammarRule(kind=IssueKind.GRAMMAR_GENDER, enabled=True, languagetool_rules=("GENERAL_GENDER_AGREEMENT_ERRORS", "ERRO_DE_CONCORDNCIA_DO_GÉNERO_MASCULINO_O"), dictionary_expressions=CHECK_EXPRESSIONS),
+    UnknownWordRule(enabled=True, case=WordCase.OTHER, frequency_max=2.0, length_min=3, dictionary_hunspell=DICTIONARY_HUNSPELL, dictionary_words=CHECK_WORDS),
+    UnknownWordRule(enabled=True, case=WordCase.CAPS, frequency_max=2.0, length_min=3, dictionary_hunspell=DICTIONARY_HUNSPELL, dictionary_words=CHECK_WORDS),
     PortugalPortugueseRule(enabled=True),
     UnbalancedRule(enabled=True),
 )

@@ -41,6 +41,8 @@ CHECKS_FOLDER = "_checks"
 
 DATA_FOLDER = Path(__file__).parent / "data"
 DICTIONARY_HUNSPELL = Path(os.environ["LOCALAPPDATA"]) / "hunspell" / "pt_BR"
+CHECK_WORDS = DATA_FOLDER / "check-words.txt"
+CHECK_EXPRESSIONS = DATA_FOLDER / "check-expressions.txt"
 FIX_SOUNDS = DATA_FOLDER / "fix-sounds.txt"
 FIX_SUBJECTS = DATA_FOLDER / "fix-subjects.txt"
 FIX_WORDS = DATA_FOLDER / "fix-words.txt"
@@ -564,11 +566,12 @@ class DescriptionTranslation:
     text: str
     name: str
 
-    def is_confirmed_by(self, translation: str) -> bool:
+    def is_confirmed_by(self, translation: str, names: frozenset[str]) -> bool:
         if not self.name:
             return True
         words = normalize_description(translation)
-        return words != normalize_description(self.source) and f" {normalize_description(self.name)} " in f" {words} "
+        name = normalize_description(self.name)
+        return all(word in names for word in name.split()) and words != normalize_description(self.source) and f" {name} " in f" {words} "
 
 
 @dataclass(frozen=True)

@@ -14,11 +14,12 @@ from datetime import datetime
 from pathlib import Path
 from typing import ClassVar
 
+import spacy
 import srt
 from rich.prompt import Confirm
 from rich.text import Text
 
-from shared import CHECKS_FOLDER, DESCRIPTION_SIMPLE, DIR_FILMES, FIX_SOUNDS, FIX_SUBJECTS, FIX_WORDS, FORMATTING_TAGS, IGNORE_MARKER, SUBS_FOLDER, WORD, Batch, Color, DescriptionTable, SubtitleKind, console, find_files, log_action, parse_movie_dir, parse_srt, write_text_replacing
+from shared import CHECK_WORDS, CHECKS_FOLDER, DESCRIPTION_SIMPLE, DIR_FILMES, FIX_SOUNDS, FIX_SUBJECTS, FIX_WORDS, FORMATTING_TAGS, IGNORE_MARKER, SUBS_FOLDER, WORD, Batch, Color, DescriptionTable, SubtitleKind, console, find_files, find_language_code, log_action, normalize_description, parse_movie_dir, parse_plain_text, parse_srt, write_text_replacing
 
 # ------------------------------------------------------------------------------
 # Constants
@@ -27,6 +28,11 @@ TRANSLATION_SUFFIXES = tuple(kind.to_translation_suffix() for kind in SubtitleKi
 
 DIR_MIDIAS_ROOT = DIR_FILMES.parent
 BACKUPS_FOLDER = DIR_MIDIAS_ROOT / "_backups"
+
+NLP_MODEL = "en_core_web_sm"
+NLP_NAME_LABELS = frozenset({"PERSON", "ORG"})
+NLP_BATCH_SIZE = 256
+SPEAKER_LABEL = re.compile(r"^\s*-?\s*([A-Z][A-Z0-9'.\- ]*[A-Z0-9.]):", re.MULTILINE)
 
 # ------------------------------------------------------------------------------
 # Fixes
@@ -181,7 +187,7 @@ class DescriptionsFix:
             translations = [table.find_translation(description[1] or description[2]) for description in descriptions]
             models = [description[1] or description[2] for description in descriptions_target] if paired else [line] * len(descriptions)
             texts = [
-                f"{description[0][0]}{translation.text}{description[0][-1]}" if translation is not None and translation.is_confirmed_by(model) else None
+                f"{description[0][0]}{translation.text}{description[0][-1]}" if translation is not None and translation.is_confirmed_by(model, entry.names) else None
                 for description, translation, model in zip(descriptions, translations, models)
             ]
 
@@ -244,10 +250,11 @@ FIXES: tuple[TranslationFix, ...] = (
 class TranslationEntry:
     source_lines: tuple[str, ...]
     target_lines: tuple[str, ...]
+    names: frozenset[str]
 
     @classmethod
-    def from_entries(cls, source: srt.Subtitle, target: srt.Subtitle) -> "TranslationEntry":
-        return cls(source_lines=tuple(" ".join(line.split()) for line in source.content.split("\n") if line.strip()), target_lines=tuple(target.content.split("\n")))
+    def from_entries(cls, source: srt.Subtitle, target: srt.Subtitle, names: frozenset[str]) -> "TranslationEntry":
+        return cls(source_lines=tuple(" ".join(line.split()) for line in source.content.split("\n") if line.strip()), target_lines=tuple(target.content.split("\n")), names=names)
 
     @property
     def is_aligned(self) -> bool:
@@ -258,6 +265,22 @@ class TranslationEntry:
         if lines == self.target_lines or any(not line.strip() for line in lines):
             return None
         return replace(self, target_lines=lines)
+
+
+@functools.cache
+def load_movie_names(subs_folder: Path) -> frozenset[str]:
+    # the words of the names in the English subtitles of the movie: the speaker labels, and the names NER finds in the entries that are not in capitals only, since NER reads names from their case
+    texts = [parse_plain_text(entry) for file in sorted(subs_folder.glob("*.srt")) if find_language_code(file) == "eng" for entry in parse_srt(file)]
+    labels = {word for text in texts for label in SPEAKER_LABEL.finditer(text) for word in normalize_description(label[1]).split()}
+    documents = load_nlp().pipe((text.replace("\n", " ") for text in texts if text != text.upper()), batch_size=NLP_BATCH_SIZE)
+    entities = {word for document in documents for entity in document.ents if entity.label_ in NLP_NAME_LABELS for word in normalize_description(entity.text).split()}
+    words_kept = {word for line in CHECK_WORDS.read_text(encoding="utf-8").splitlines() for word in normalize_description(line).split()}
+    return frozenset(labels | entities | words_kept)
+
+
+@functools.cache
+def load_nlp() -> spacy.language.Language:
+    return spacy.load(NLP_MODEL, exclude=["tagger", "parser", "attribute_ruler", "lemmatizer"])
 
 
 @functools.cache
@@ -312,7 +335,7 @@ if __name__ == "__main__":
             for position, entry in enumerate(entries):
                 if entry.index not in sources_by_index:
                     continue
-                translation = TranslationEntry.from_entries(sources_by_index[entry.index], entry)
+                translation = TranslationEntry.from_entries(sources_by_index[entry.index], entry, load_movie_names(source.parent))
                 for fix in FIXES:
                     if not fix.enabled or (translation_fixed := translation.apply(fix)) is None:
                         continue

@@ -10,15 +10,15 @@ from pathlib import Path
 
 from spylls.hunspell import Dictionary
 
-from shared import DATA_FOLDER, DICTIONARY_HUNSPELL, FIX_SOUNDS, FIX_SUBJECTS, FIX_WORDS, Color, log_action, write_text_replacing
+from shared import CHECK_EXPRESSIONS, CHECK_WORDS, DICTIONARY_HUNSPELL, FIX_SOUNDS, FIX_SUBJECTS, FIX_WORDS, Color, log_action, write_text_replacing
 
 
 # ------------------------------------------------------------------------------
 # Types
 # ------------------------------------------------------------------------------
 class DictionaryList(Enum):
-    CHECK_WORDS = DATA_FOLDER / "check-words.txt"
-    CHECK_EXPRESSIONS = DATA_FOLDER / "check-expressions.txt"
+    CHECK_WORDS = CHECK_WORDS
+    CHECK_EXPRESSIONS = CHECK_EXPRESSIONS
     FIX_SOUNDS = FIX_SOUNDS
     FIX_SUBJECTS = FIX_SUBJECTS
     FIX_WORDS = FIX_WORDS
