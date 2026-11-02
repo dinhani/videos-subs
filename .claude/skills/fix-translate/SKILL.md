@@ -1,21 +1,17 @@
 ---
 name: fix-translate
-description: Fix by hand, one entry at a time and never with a script, the entries that check-translate flagged in the Brazilian Portuguese translations. Every fix needs a decision about that entry first. Use after `just translate` and `just check-translate`, when asked to fix translation errors or check-translate issues.
+description: Fix the entries that check-translate flagged in the Brazilian Portuguese translations, deciding each entry on its own before changing it. Use after `just translate` and `just check-translate`, when asked to fix translation errors or check-translate issues.
 ---
 
 # fix-translate
 
-## Hard rule: judge every entry, never fix in bulk
+## Hard rule: decide every entry yourself
 
-This skill exists only because the fixes need judgment. If the fixes could be mechanical, there would be a script instead of this skill. Applying the rules below mechanically defeats its purpose and breaks entries the check flagged by mistake.
+Every entry you change must be one you read in the report and decided on its own: what it says, what is wrong, and what the right text is. Similar flags do not share a fix; the same word can be right in one entry and wrong in the next.
 
-Forbidden, with no exception and no matter how many entries there are:
+Forbidden: a change decided by a pattern instead of by reading the entry, such as a regex or find-and-replace across entries, a script that chooses the fix, or a fix copied to entries you did not read.
 
-- writing or running any script (Python, PowerShell, shell) that changes a `.srt`;
-- `sed`, regex replace, find-and-replace across entries or files, `replace_all`;
-- a loop over entries or files, or several entries fixed in one edit.
-
-For every flagged entry: read its issue and its `en` and `pt` lines, decide what the Brazilian Portuguese subtitle should say, then make one edit to that entry only, or none when it is already right.
+Allowed: any tool to read, list and apply. After deciding a set of entries one by one, you may apply all of them in one script or edit, as long as each change holds the exact old and new text you wrote for that entry.
 
 The corrections in `RULES.md` are the usual fixes, not substitutions. When a correction gives a text that does not make sense, write the text that does. The check is a heuristic and can flag a correct entry: leave its text as it is and mark it, as the procedure says.
 
