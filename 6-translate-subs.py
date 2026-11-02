@@ -50,6 +50,7 @@ Translation rules:
   - a leading "- " dialogue dash on a line stays a leading "- " on the same line.
 - Keep the same number of lines inside an entry. Two-speaker entries stay two lines, one speaker per line.
 - Translate sound descriptions such as [door creaks] or (sighs), keeping the brackets.
+- Words in a language other than English stay in that language, unchanged, since the English subtitle left them untranslated: "No habla español, fellas?" is "No habla español, pessoal?".
 - Song lyrics stay in English, unchanged: lines marked with ♪ or ♫, and lines the context shows are sung. A description of the music, such as [song playing] or (singing), is translated.
 - Use the context only to resolve gender, pronouns, formality and recurring terms. Never translate or output the context.
 """
