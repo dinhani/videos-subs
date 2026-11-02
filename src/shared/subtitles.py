@@ -7,6 +7,8 @@ import srt
 
 FORMATTING_TAGS = re.compile(r"<[^>]+>|\{[^}]*\}")
 IGNORE_MARKER = re.compile(r"\s*\bignore:(\S+)")
+QUOTES = '"“”'
+BRACKETS = (("(", ")"), ("[", "]"))
 
 TRANSLATION_LANGUAGE_CODE = "pob"
 

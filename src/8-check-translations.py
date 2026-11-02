@@ -26,7 +26,7 @@ from shared.data_lists import CHECK_EXPRESSIONS, CHECK_WORDS, DICTIONARY_HUNSPEL
 from shared.files import CHECKS_FOLDER, SUBS_FOLDER, TRACES_FOLDER, find_files, parse_movie_dir, parse_srt
 from shared.languages import WORDS_PT_PT, TextLanguage, parse_words
 from shared.reports import CHECK_WORKERS, Issue, IssueKind, Report, ReportScore, log_ranking
-from shared.subtitles import FORMATTING_TAGS, SubtitleKind, parse_plain_text
+from shared.subtitles import BRACKETS, FORMATTING_TAGS, SubtitleKind, parse_plain_text
 
 # ------------------------------------------------------------------------------
 # Constants
@@ -215,7 +215,7 @@ class PortugalPortugueseRule:
 @dataclass(frozen=True)
 class UnbalancedRule:
     kind: ClassVar[IssueKind] = IssueKind.UNBALANCED_TRANSLATION
-    PAIRS: ClassVar[tuple[tuple[str, str], ...]] = (("(", ")"), ("[", "]"), ("“", "”"), ('"', '"'))
+    PAIRS: ClassVar[tuple[tuple[str, str], ...]] = (*BRACKETS, ("“", "”"), ('"', '"'))
     enabled: bool
 
     def find_issues(self, check: "TranslationCheck") -> Iterator[tuple[int, str]]:

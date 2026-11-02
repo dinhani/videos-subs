@@ -24,7 +24,7 @@ from shared.data_lists import CHECK_WORDS, FIX_SOUNDS, FIX_SUBJECTS, FIX_WORDS, 
 from shared.descriptions import DESCRIPTION_SIMPLE, DescriptionTable, normalize_description
 from shared.files import CHECKS_FOLDER, DIR_FILMES, SUBS_FOLDER, find_files, find_language_code, parse_movie_dir, parse_srt, write_text_replacing
 from shared.languages import WORD
-from shared.subtitles import FORMATTING_TAGS, IGNORE_MARKER, SubtitleKind, parse_plain_text
+from shared.subtitles import BRACKETS, FORMATTING_TAGS, IGNORE_MARKER, QUOTES, SubtitleKind, parse_plain_text
 
 # ------------------------------------------------------------------------------
 # Constants
@@ -35,7 +35,6 @@ DIR_MIDIAS_ROOT = DIR_FILMES.parent
 BACKUPS_FOLDER = DIR_MIDIAS_ROOT / "_backups"
 
 LINE_WORDS = re.compile(r"[^\W\d_]|[♪♫]")
-QUOTES = '"“”'
 NUMBER = re.compile(r"\d+")
 
 NLP_MODEL = "en_core_web_sm"
@@ -119,7 +118,6 @@ class LeftoversFix:
 @dataclass(frozen=True)
 class BracketsFix:
     name: ClassVar[str] = "brackets"
-    PAIRS: ClassVar[tuple[tuple[str, str], ...]] = (("(", ")"), ("[", "]"))
     TAGS_END: ClassVar[re.Pattern[str]] = re.compile(r"(?:\s*<[^<>]+>)*\s*$")
     TAGS_START: ClassVar[re.Pattern[str]] = re.compile(r"^(?:\{\\[^{}]*\}|<[^<>]+>|[\s\-–—])*")
     LINE_WRAPPED: ClassVar[re.Pattern[str]] = re.compile(r"^(?P<start>(?:\{\\[^{}]*\}|<[^<>]+>|[\s\-–—])*)[\[(](?P<text>[^\[\]()]+)[\])](?P<end>(?:\s*<[^<>]+>)*\s*)$")
@@ -138,7 +136,7 @@ class BracketsFix:
                 lines[n] = f"{wrapped['start']}{wrapped['text'].strip()}{wrapped['end']}"
                 continue
 
-            for (opening, closing), (opening_other, closing_other) in itertools.permutations(self.PAIRS, 2):
+            for (opening, closing), (opening_other, closing_other) in itertools.permutations(BRACKETS, 2):
                 if not source_plain.count(opening) or source_plain.count(opening) != source_plain.count(closing):
                     continue
                 plain = FORMATTING_TAGS.sub("", lines[n]).strip()
