@@ -85,7 +85,7 @@ Z:/midias/filmes/<movie>/                 (series use the same layout under Z:/m
 - `_subs` holds the extracted text subtitles and image subtitles, and the text subtitles made from image subtitles. They stay out of the movie folder because the media server already reads the tracks inside the video and would show them twice.
 - `_traces` holds one trace per OCR and per translation: every request, reply, retry and accepted problem. The file is rewritten after every record, so it is valid and current during a run. Traces are never deleted.
 - `_checks` holds one report per checked OCR output and translation.
-- `Z:/midias/_backups/fix-translations/<run>/` holds a copy of every translation fix-translations writes, made before writing it, under its path from `Z:/midias`. Each run has its own folder, named by its start time, so no backup is replaced. Backups are never deleted.
+- `Z:/midias/_backups/<run>/` holds a copy of every translation fix-translations writes, made before writing it, under its path from `Z:/midias`. Each run has its own folder, named by its start time, so no backup is replaced. Backups are never deleted.
 
 ## Running
 

@@ -26,7 +26,7 @@ from shared import CHECKS_FOLDER, DESCRIPTION_SIMPLE, DIR_FILMES, FIX_SOUNDS, FI
 TRANSLATION_SUFFIXES = tuple(kind.to_translation_suffix() for kind in SubtitleKind)
 
 DIR_MIDIAS_ROOT = DIR_FILMES.parent
-BACKUPS_FOLDER = DIR_MIDIAS_ROOT / "_backups" / "fix-translations"
+BACKUPS_FOLDER = DIR_MIDIAS_ROOT / "_backups"
 
 # ------------------------------------------------------------------------------
 # Fixes
