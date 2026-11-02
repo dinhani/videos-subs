@@ -63,21 +63,21 @@ ocr *paths:
     exit $LASTEXITCODE
 
 [group('run')]
-[doc('Translate subtitles')]
-[script]
-[extension('.ps1')]
-[positional-arguments]
-translate *paths:
-    uv run 5-translate-subs.py @args
-    exit $LASTEXITCODE
-
-[group('run')]
 [doc('Check OCR')]
 [script]
 [extension('.ps1')]
 [positional-arguments]
 check-ocr *paths:
-    uv run 6-check-ocr-subs.py @args
+    uv run 5-check-ocr-subs.py @args
+    exit $LASTEXITCODE
+
+[group('run')]
+[doc('Translate subtitles')]
+[script]
+[extension('.ps1')]
+[positional-arguments]
+translate *paths:
+    uv run 6-translate-subs.py @args
     exit $LASTEXITCODE
 
 [group('run')]
