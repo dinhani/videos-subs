@@ -56,14 +56,20 @@ class TagsFix:
     enabled: bool
 
     def fix(self, entry: "TranslationEntry") -> tuple[str, ...]:
-        # delete the tags the English entry does not have
+        # delete the tags the English entry does not have, leaving a space where a tag joined two words
         tags_source = {self.parse_tag_key(match) for line in entry.source_lines for match in self.TAG.finditer(line)}
+
+        def replace_tag(match: re.Match[str]) -> str:
+            if self.parse_tag_key(match) in tags_source:
+                return match[0]
+            line = match.string
+            if self.WORDS_JOINED.match(line[match.start() - 1:match.start()] + line[match.end():match.end() + 1]):
+                return " "
+            return ""
+
         lines: list[str] = []
         for line in entry.target_lines:
-            line_kept, removed = self.TAG.subn(
-                lambda match: match[0] if self.parse_tag_key(match) in tags_source else " " if self.WORDS_JOINED.match(line[match.start() - 1:match.start()] + line[match.end():match.end() + 1]) else "",
-                line,
-            )
+            line_kept, removed = self.TAG.subn(replace_tag, line)
             lines.append(" ".join(line_kept.split()) if removed and line_kept != line else line)
 
         # restore the position of the English entry
@@ -155,10 +161,21 @@ class BracketsFix:
                     tags_start = self.TAGS_START.match(lines[n])
                     position = tags_start.end() if tags_start else 0
                     lines[n] = lines[n][:position] + opening + lines[n][position:]
+        return tuple(lines)
 
+
+@dataclass(frozen=True)
+class QuotesFix:
+    name: ClassVar[str] = "quotes"
+    enabled: bool
+
+    def fix(self, entry: "TranslationEntry") -> tuple[str, ...]:
         # one quote more than the English entry, at the start or end of the only line where the English line has none; curly quotes count as quotes
+        if not entry.is_aligned:
+            return entry.target_lines
+        lines = list(entry.target_lines)
         if sum(line.count(quote) for line in lines for quote in QUOTES) != sum(line.count(quote) for line in entry.source_lines for quote in QUOTES) + 1:
-            return tuple(lines)
+            return entry.target_lines
         quotes_added: list[tuple[int, int]] = []
         for n, (source_line, line) in enumerate(zip(entry.source_lines, lines)):
             source_plain = FORMATTING_TAGS.sub("", source_line).strip().lstrip("-–— ")
@@ -247,12 +264,13 @@ class WordsFix:
         return tuple(words_wrong.sub(replace_word, line) for line in entry.target_lines)
 
 
-TranslationFix = TagsFix | LeftoversFix | BracketsFix | DescriptionsFix | WordsFix
+TranslationFix = TagsFix | LeftoversFix | BracketsFix | QuotesFix | DescriptionsFix | WordsFix
 
 FIXES: tuple[TranslationFix, ...] = (
     TagsFix(enabled=True),
     LeftoversFix(enabled=True),
     BracketsFix(enabled=True),
+    QuotesFix(enabled=True),
     DescriptionsFix(enabled=True, sounds=FIX_SOUNDS, subjects=FIX_SUBJECTS),
     WordsFix(enabled=True, words=FIX_WORDS),
 )
