@@ -104,8 +104,11 @@ Every correction writes what the picture most likely says.
 
   ocr  | I can do it.
   fix  I-- I can do it.
+
+  ocr  -!-- I can't.
+  fix  -I-- I can't.
   ```
-- **Correction**: write the right letter. A `|` before the same word is a stammer: `I--`.
+- **Correction**: write the right letter. A `|` before the same word is a stammer: `I--`; a `!` before `--` or a contraction is `I`.
 - **Caution**: codes with digits between letters can be right, such as `MP5s`.
 
 ## 1.6 unbalanced

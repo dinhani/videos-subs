@@ -124,7 +124,7 @@ class ArtifactRule:
 @dataclass(frozen=True)
 class GlyphConfusionRule:
     kind: ClassVar[IssueKind] = IssueKind.GLYPH_CONFUSION
-    GLYPH_CONFUSION: ClassVar[re.Pattern[str]] = re.compile(r"\||[^\W\d_][015][^\W\d_]|\bl[A-Z]|\bl'(?:ll|m|ve|d|re)\b|\b[a-z]+I[a-z]*\b")
+    GLYPH_CONFUSION: ClassVar[re.Pattern[str]] = re.compile(r"\||[^\W\d_][015][^\W\d_]|\bl[A-Z]|\bl'(?:ll|m|ve|d|re)\b|(?<![^\s-])!(?=--|'(?:ll|m|ve|d|re)\b)|\b[a-z]+I[a-z]*\b")
     enabled: bool
 
     def find_issues(self, check: "OcrCheck") -> Iterator[tuple["OcrEntry", str]]:
