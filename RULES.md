@@ -4,6 +4,16 @@ Each example shows an entry line by line: `ocr` is the OCR text, `en` the Englis
 
 A rule is a heuristic: it can flag a correct entry. Judge every flag, and leave the entry when it is right.
 
+When a flag is wrong, mark its entry so the check does not report that flag again: add `ignore:` and the issue kind, with a hyphen for each space, at the end of the entry's timing line. Several kinds are joined by commas. Viewers and the model never see the timing line, and Infuse plays a subtitle with markers.
+
+```
+00:01:59,120 --> 00:02:02,915 ignore:untranslated,unknown-word
+```
+
+- Mark only the kind that is wrong; the other kinds of the entry are still reported.
+- When the entry's text changes, remove its marker, so the entry is judged again.
+- Words and expressions that are right everywhere go to `data/dict-words.txt` and `data/dict-expressions.txt` instead (rules 2.9 to 2.11).
+
 # 1. OCR
 
 Every correction writes what the picture most likely says.

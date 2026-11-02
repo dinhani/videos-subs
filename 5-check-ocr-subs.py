@@ -247,6 +247,7 @@ class OcrCheck:
     subtitle: Path
     entries: list[OcrEntry]
     issues: list[Issue] = field(default_factory=list)
+    issues_ignored: int = 0
 
     @classmethod
     def from_file(cls, subtitle: Path) -> "OcrCheck":
@@ -267,10 +268,13 @@ class OcrCheck:
             if not rule.enabled:
                 continue
             for entry, detail in rule.find_issues(self):
+                if rule.kind.is_ignored_in(entry.subtitle):
+                    self.issues_ignored += 1
+                    continue
                 self.issues.append(Issue(entry=entry.subtitle, kind=rule.kind, detail=detail, quote=tuple(f"  {line}" for line in entry.subtitle.content.split("\n"))))
 
     def to_report(self) -> Report:
-        return Report(subtitle=self.subtitle, entries_count=len(self.entries), issues=self.issues)
+        return Report(subtitle=self.subtitle, entries_count=len(self.entries), issues=self.issues, issues_ignored=self.issues_ignored)
 
 
 def measure_em(text: str) -> float:

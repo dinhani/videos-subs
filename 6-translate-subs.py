@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 import srt
 from rich.progress import MofNCompleteColumn, TimeElapsedColumn, TimeRemainingColumn
 
-from shared import SUBS_FOLDER, TRACES_FOLDER, Batch, Color, SubtitleKind, Trace, connect_llama, find_files, log_action, parse_movie_dir, parse_srt, parse_subtitle_name, progress_bar, write_text_replacing
+from shared import IGNORE_MARKER, SUBS_FOLDER, TRACES_FOLDER, Batch, Color, SubtitleKind, Trace, connect_llama, find_files, log_action, parse_movie_dir, parse_srt, parse_subtitle_name, progress_bar, write_text_replacing
 
 # ------------------------------------------------------------------------------
 # Constants
@@ -171,7 +171,7 @@ class SubtitleTranslation:
             content = entry.content
             if i in self.translated:
                 content = "\n".join(self.translated[i])
-            entries.append(srt.Subtitle(index=entry.index, start=entry.start, end=entry.end, content=content, proprietary=entry.proprietary))
+            entries.append(srt.Subtitle(index=entry.index, start=entry.start, end=entry.end, content=content, proprietary=IGNORE_MARKER.sub("", entry.proprietary).strip()))
         return srt.compose(entries, reindex=False)
 
 # ------------------------------------------------------------------------------

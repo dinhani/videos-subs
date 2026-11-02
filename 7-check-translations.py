@@ -271,6 +271,7 @@ class TranslationCheck:
     problems_accepted: dict[int, str]
     languagetool_server: str
     issues: list[Issue] = field(default_factory=list)
+    issues_ignored: int = 0
 
     @classmethod
     def from_file(cls, subtitle: Path, languagetool_server: str) -> "TranslationCheck":
@@ -299,6 +300,9 @@ class TranslationCheck:
             if not rule.enabled:
                 continue
             for i, detail in rule.find_issues(self):
+                if rule.kind.is_ignored_in(self.entries[i].target):
+                    self.issues_ignored += 1
+                    continue
                 self.issues.append(Issue(entry=self.entries[i].target, kind=rule.kind, detail=detail, quote=self.quote(i)))
 
     def quote(self, i: int) -> tuple[str, ...]:
@@ -309,7 +313,7 @@ class TranslationCheck:
         return tuple(quote)
 
     def to_report(self) -> Report:
-        return Report(subtitle=self.subtitle, entries_count=len(self.entries), issues=self.issues)
+        return Report(subtitle=self.subtitle, entries_count=len(self.entries), issues=self.issues, issues_ignored=self.issues_ignored)
 
 
 @functools.cache

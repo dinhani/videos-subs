@@ -14,7 +14,7 @@ from rich.style import Style
 from rich.text import Text
 from wordfreq import zipf_frequency
 
-from shared import FORMATTING_TAGS, Color, console, find_language_code, log_action, write_text_replacing
+from shared import FORMATTING_TAGS, IGNORE_MARKER, Color, console, find_language_code, log_action, write_text_replacing
 
 CHECK_WORKERS = 8
 
@@ -53,6 +53,13 @@ class IssueKind(Enum):
         self.label = label
         self.weight = weight
         self.description = description
+
+    @property
+    def marker(self) -> str:
+        return self.label.replace(" ", "-")
+
+    def is_ignored_in(self, entry: srt.Subtitle) -> bool:
+        return any(self.marker in match[1].split(",") for match in IGNORE_MARKER.finditer(entry.proprietary or ""))
 
 
 class TextLanguage(Enum):
@@ -116,6 +123,7 @@ class Report:
     subtitle: Path
     entries_count: int
     issues: list[Issue]
+    issues_ignored: int
 
     @property
     def score(self) -> float:
@@ -128,6 +136,7 @@ class Report:
             f"score {self.score} (weighted issues per 100 entries) · {self.entries_count} entries · {len(self.issues)} issues",
             "",
             *(f"{count:>5}  {kind.label:<21} {kind.description}" for kind, count in sorted(kinds.items(), key=lambda item: (-item[1], list(IssueKind).index(item[0])))),
+            *([f"{self.issues_ignored:>5}  {'ignored':<21} flags on entries marked with ignore: in the subtitle, not counted"] if self.issues_ignored else []),
         ]
         for _, entry_issues in itertools.groupby(sorted(self.issues, key=lambda issue: (issue.entry.index, list(IssueKind).index(issue.kind))), key=lambda issue: issue.entry.index):
             entry_issues = list(entry_issues)

@@ -32,4 +32,4 @@ The first line of a report names its text subtitle, in `_subs` next to `_checks`
 
 Read `RULES.md` at the project root first. Fix each entry with the Correction and Caution of its rule in section 1 (OCR).
 
-After fixing a file, delete its report so the next check-ocr run checks it again. Never edit a report and never run check-ocr; the user does. At the end, list the skipped entries, the flags left alone because the text was already right, and the `.eng.srt` files that already had a `.pob.translated.srt`, since that translation was made from the old text.
+After fixing a file, delete its report so the next check-ocr run checks it again. Never edit a report and never run check-ocr; the user does. When a flag is wrong because the text is already right, mark the entry with `ignore:` on its timing line, as `RULES.md` says, in its own edit; when you change the text of an entry with a marker, remove the marker. At the end, list the skipped entries, the entries you marked, and the `.eng.srt` files that already had a `.pob.translated.srt`, since that translation was made from the old text.

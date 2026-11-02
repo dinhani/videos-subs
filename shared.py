@@ -62,6 +62,7 @@ VOBSUB_END = 0xFF
 VOBSUB_ARGUMENT_SIZES = {0x00: 0, 0x01: 0, 0x02: 0, VOBSUB_SET_COLOR: 2, VOBSUB_SET_ALPHA: 2, 0x05: 6, 0x06: 4}
 
 FORMATTING_TAGS = re.compile(r"<[^>]+>|\{[^}]*\}")
+IGNORE_MARKER = re.compile(r"\s*\bignore:(\S+)")
 
 WORDS_PT_PT = re.compile(
     r"\b(autocarro|telemóvel|ecrã|chávena|gaj[oa]|fixe|"
