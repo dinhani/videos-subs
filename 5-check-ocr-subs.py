@@ -18,8 +18,8 @@ import srt
 from PIL import ImageFont, ImageOps
 from rich.progress import MofNCompleteColumn, TimeElapsedColumn, TimeRemainingColumn
 
-from checks import CHECK_WORKERS, CHECKS_FOLDER, Issue, IssueKind, Report, ReportScore, list_folder, log_ranking, parse_plain_text
-from shared import IMAGE_EXTENSIONS, SUBS_FOLDER, Batch, Color, SubtitleEntry, find_files, log_action, parse_image_subtitle, parse_movie_dir, parse_srt, progress_bar
+from checks import CHECK_WORKERS, Issue, IssueKind, Report, ReportScore, list_folder, log_ranking, parse_plain_text
+from shared import CHECKS_FOLDER, IMAGE_EXTENSIONS, SUBS_FOLDER, Batch, Color, SubtitleEntry, SubtitleKind, find_files, log_action, parse_image_subtitle, parse_movie_dir, parse_srt, progress_bar
 
 # ------------------------------------------------------------------------------
 # Constants
@@ -288,7 +288,7 @@ def check_subtitle(subtitle: Path, report: Path) -> ReportScore:
 if __name__ == "__main__":
     subs = [
         sub
-        for sub in find_files("Checks text subtitles made by OCR against their image subtitles; only ones next to an image subtitle, folders only in the wanted languages.", extensions_file=(".srt",), extensions_folder=tuple(f".{language}.srt" for language in LANGUAGES), folder=SUBS_FOLDER)
+        for sub in find_files("Checks text subtitles made by OCR against their image subtitles; only ones next to an image subtitle, folders only in the wanted languages.", extensions_file=(".srt",), extensions_folder=tuple(f".{language}{kind}.srt" for language in LANGUAGES for kind in SubtitleKind), folder=SUBS_FOLDER)
         if any(f"{sub.stem}{extension}" in list_folder(sub.parent) for extension in IMAGE_EXTENSIONS)
     ]
     reports = {sub: parse_movie_dir(sub) / CHECKS_FOLDER / f"{sub.stem}.ocr.txt" for sub in subs}

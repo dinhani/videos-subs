@@ -89,6 +89,15 @@ check-translate *paths:
     uv run 7-check-translations.py @args
     exit $LASTEXITCODE
 
+[group('run')]
+[doc('Add warnings to translations')]
+[script]
+[extension('.ps1')]
+[positional-arguments]
+warn *paths:
+    uv run 8-add-warnings.py @args
+    exit $LASTEXITCODE
+
 [group('llm')]
 [doc('Start OCR llama server')]
 [env('GGML_CUDA_PDL', '1')]
@@ -111,11 +120,49 @@ llama-translate:
         --ctx-size 16384 --parallel 1 --top-p 0.95 --top-k 64 --port 9931
 
 [group('data')]
+[doc('Crosscheck subtitles, translations and reports')]
+[script]
+[extension('.ps1')]
+[positional-arguments]
+crosscheck *paths:
+    uv run crosscheck-subs.py @args
+    exit $LASTEXITCODE
+
+[group('data')]
 [doc('Delete check reports')]
 [confirm('Delete every _checks folder under the given paths, or under Z:/midias/filmes and Z:/midias/series without paths? (y/N)')]
 [script]
 [extension('.ps1')]
 [positional-arguments]
-delete-checks *paths:
+reset-checks *paths:
     $folders = if ($args) { $args } else { 'Z:/midias/filmes', 'Z:/midias/series' }
     Get-ChildItem -Path $folders -Directory -Recurse -Filter _checks | Remove-Item -Recurse -Force
+
+[group('data')]
+[doc('Remove English language codes from subtitles')]
+[confirm('Remove the eng and eng.sdh codes from every subtitle in _subs and every OCR trace in _traces under the given paths, or under Z:/midias/filmes and Z:/midias/series without paths? (y/N)')]
+[script]
+[extension('.ps1')]
+[positional-arguments]
+reset-en *paths:
+    $folders = if ($args) { $args } else { 'Z:/midias/filmes', 'Z:/midias/series' }
+    $patterns = @{ '_subs' = '\.eng(\.sdh)?(\.(srt|sup|mks))$'; '_traces' = '\.eng(\.sdh)?(\.ocr\.json)$' }
+    Get-ChildItem -LiteralPath $folders -File -Recurse | Where-Object { $patterns.ContainsKey($_.Directory.Name) -and $_.Name -match $patterns[$_.Directory.Name] } | ForEach-Object {
+        $name = $_.Name -replace $patterns[$_.Directory.Name], '$2'
+        Rename-Item -LiteralPath $_.FullName -NewName $name
+        Write-Output $name
+    }
+
+[group('data')]
+[doc('Remove Portuguese language codes from subtitles')]
+[confirm('Remove the por and pob language codes from every subtitle in _subs under the given paths, or under Z:/midias/filmes and Z:/midias/series without paths? (y/N)')]
+[script]
+[extension('.ps1')]
+[positional-arguments]
+reset-pt *paths:
+    $folders = if ($args) { $args } else { 'Z:/midias/filmes', 'Z:/midias/series' }
+    Get-ChildItem -LiteralPath $folders -File -Recurse | Where-Object { $_.Directory.Name -eq '_subs' -and $_.Name -match '\.(por|pob)\.(srt|sup|mks)$' } | ForEach-Object {
+        $name = $_.Name -replace '\.(por|pob)\.(srt|sup|mks)$', '.$2'
+        Rename-Item -LiteralPath $_.FullName -NewName $name
+        Write-Output $name
+    }

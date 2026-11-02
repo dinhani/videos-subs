@@ -121,7 +121,7 @@ Every correction:
 - is natural spoken Brazilian Portuguese, in the form the movie calls for (usually `você`; `o senhor`, `a senhora` or `Vossa Majestade` for formal address) and the same form the translation already uses between those characters;
 - keeps profanity as strong as in the English.
 
-The warning entry `[Legenda traduzida automaticamente...]` at the start of a translation stays.
+The warning entries at the start of a translation, `[Legenda SDH...]` and `[Legenda traduzida automaticamente...]`, stay.
 
 ## 2.1 accepted with problem
 

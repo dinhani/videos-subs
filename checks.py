@@ -16,7 +16,6 @@ from wordfreq import zipf_frequency
 
 from shared import FORMATTING_TAGS, Color, console, find_language_code, log_action, write_text_replacing
 
-CHECKS_FOLDER = "_checks"
 CHECK_WORKERS = 8
 
 REPORT_HEADER = re.compile(r"^score ([\d.]+) .* · (\d+) issues$")

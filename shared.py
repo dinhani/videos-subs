@@ -7,6 +7,7 @@ import json
 import re
 import sys
 import threading
+from collections import Counter
 from collections.abc import Buffer
 from dataclasses import dataclass, field, replace
 from datetime import timedelta
@@ -31,6 +32,7 @@ DIRS_MIDIAS = (DIR_FILMES, DIR_SERIES)
 
 SUBS_FOLDER = "_subs"
 TRACES_FOLDER = "_traces"
+CHECKS_FOLDER = "_checks"
 
 REPLACE_ATTEMPTS = 10
 REPLACE_WAIT_SECONDS = 0.5
@@ -61,13 +63,31 @@ VOBSUB_ARGUMENT_SIZES = {0x00: 0, 0x01: 0, 0x02: 0, VOBSUB_SET_COLOR: 2, VOBSUB_
 
 FORMATTING_TAGS = re.compile(r"<[^>]+>|\{[^}]*\}")
 
-WORDS_PT_PT_MIN_HITS = 3
 WORDS_PT_PT = re.compile(
     r"\b(autocarro|telemóvel|ecrã|chávena|gaj[oa]|fixe|"
     r"pequeno-almoço|casa de banho|betão|autoclismo|sandes|boleia|talho|agrafador|"
     r"est(?:ou|ás|á|amos|ão|ava|avas|ávamos|avam) a [a-záàâãéêíóôõúç]+r)\b",
     re.IGNORECASE,
 )
+MARKERS_PT_PT = re.compile(
+    r"\b(tu|teus?|tuas?|contigo|vós|voss[oa]s?|"
+    r"tens|queres|podes|sabes|vais|és|estás|fazes|dizes|vês|"
+    r"factos?|actos?|óptim[oa]s?|acç(?:ão|ões)|direcç(?:ão|ões)|connosco|registo|bebé|génio|fenómeno|económic[oa]s?)\b",
+    re.IGNORECASE,
+)
+MARKERS_PT_BR = re.compile(
+    r"\b(vocês?|conosco|registro|bebê|gênio|fenômeno|econômic[oa]s?|"
+    r"est(?:ou|ás|á|amos|ão|ava|avas|ávamos|avam|ive|eve|ivemos|iveram) [a-záàâãéêíóôõúç]+ndo)\b",
+    re.IGNORECASE,
+)
+MARKERS_PT_PT_MIN = 3
+
+TRANSLATION_LANGUAGE_CODE = "pob"
+
+SOUND_DESCRIPTION = re.compile(r"\[([^\]]+)\]|\(([^)]+)\)")
+SDH_ENTRIES_DESCRIBED_MIN = 0.05
+SDH_DESCRIPTIONS_TOP = 3
+SDH_DESCRIPTIONS_TOP_MAX = 0.60
 
 LANGUAGE_CODES = {language.iso_code_639_3.name.lower() for language in Language.all()} | {"pob", "und"}
 
@@ -85,6 +105,33 @@ class Color(StrEnum):
 class ScreenPosition(StrEnum):
     TOP = "{\\an8}"
     BOTTOM = ""
+
+
+class SubtitleKind(StrEnum):
+    BASE = ""
+    SDH = ".sdh"
+
+    @classmethod
+    def from_file(cls, file: Path) -> "SubtitleKind":
+        return cls.SDH if Path(file.stem).suffix == cls.SDH else cls.BASE
+
+    @classmethod
+    def find_in_translation(cls, file: Path) -> "SubtitleKind | None":
+        return next((kind for kind in cls if file.name.endswith(kind.to_translation_suffix())), None)
+
+    def to_translation_suffix(self) -> str:
+        return f".{TRANSLATION_LANGUAGE_CODE}{self}.translated.srt"
+
+    @classmethod
+    def from_texts(cls, texts: list[str]) -> "SubtitleKind":
+        texts = [FORMATTING_TAGS.sub("", text) for text in texts]
+        entries_described = sum(1 for text in texts if SOUND_DESCRIPTION.search(text))
+        if not texts or entries_described < SDH_ENTRIES_DESCRIBED_MIN * len(texts):
+            return cls.BASE
+
+        descriptions = Counter(" ".join((match[1] or match[2]).lower().split()) for text in texts for match in SOUND_DESCRIPTION.finditer(text))
+        descriptions_top = sum(count for _, count in descriptions.most_common(SDH_DESCRIPTIONS_TOP))
+        return cls.SDH if descriptions_top < SDH_DESCRIPTIONS_TOP_MAX * descriptions.total() else cls.BASE
 
 
 console = Console(highlight=False, markup=False)
@@ -113,8 +160,20 @@ def parse_movie_dir(file: Path) -> Path:
 
 
 def find_language_code(file: Path) -> str | None:
-    code = Path(file.stem).suffix.removeprefix(".")
+    stem = Path(file.stem)
+    if stem.suffix == SubtitleKind.SDH:
+        stem = Path(stem.stem)
+    code = stem.suffix.removeprefix(".")
     return code if code in LANGUAGE_CODES else None
+
+
+def parse_subtitle_name(file: Path) -> str:
+    stem = Path(file.stem)
+    if find_language_code(file) is None:
+        return stem.name
+    if stem.suffix == SubtitleKind.SDH:
+        stem = Path(stem.stem)
+    return stem.stem
 
 
 def parse_srt(file: Path) -> list[srt.Subtitle]:
@@ -197,11 +256,14 @@ class SubtitleLanguage:
         language = language_detector.detect_language_of(text)
         if language is None:
             return cls(code="und", name="unknown")
-        if language == Language.PORTUGUESE and len(WORDS_PT_PT.findall(text)) >= WORDS_PT_PT_MIN_HITS:
+        if language != Language.PORTUGUESE:
+            return cls(code=language.iso_code_639_3.name.lower(), name=language.name.lower())
+
+        markers_portugal = len(WORDS_PT_PT.findall(text)) + len(MARKERS_PT_PT.findall(text))
+        markers_brazil = len(MARKERS_PT_BR.findall(text))
+        if markers_portugal >= MARKERS_PT_PT_MIN and markers_portugal > markers_brazil:
             return cls(code="por", name="portuguese (portugal)")
-        if language == Language.PORTUGUESE:
-            return cls(code="pob", name="portuguese (brazil)")
-        return cls(code=language.iso_code_639_3.name.lower(), name=language.name.lower())
+        return cls(code="pob", name="portuguese (brazil)")
 
 
 @dataclass(frozen=True)

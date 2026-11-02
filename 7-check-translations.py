@@ -22,13 +22,13 @@ import srt
 from rich.progress import MofNCompleteColumn, TimeElapsedColumn, TimeRemainingColumn
 from spylls.hunspell import Dictionary
 
-from checks import CHECK_WORKERS, CHECKS_FOLDER, Issue, IssueKind, Report, ReportScore, TextLanguage, log_ranking, parse_plain_text, parse_words
-from shared import FORMATTING_TAGS, SUBS_FOLDER, TRACES_FOLDER, WORDS_PT_PT, Batch, Color, find_files, log_action, parse_movie_dir, parse_srt, progress_bar
+from checks import CHECK_WORKERS, Issue, IssueKind, Report, ReportScore, TextLanguage, log_ranking, parse_plain_text, parse_words
+from shared import CHECKS_FOLDER, FORMATTING_TAGS, SUBS_FOLDER, TRACES_FOLDER, WORDS_PT_PT, Batch, Color, SubtitleKind, find_files, log_action, parse_movie_dir, parse_srt, progress_bar
 
 # ------------------------------------------------------------------------------
 # Constants
 # ------------------------------------------------------------------------------
-TRANSLATION_SUFFIX = ".pob.translated.srt"
+TRANSLATION_SUFFIXES = tuple(kind.to_translation_suffix() for kind in SubtitleKind)
 SOURCE_LANGUAGE = TextLanguage.ENGLISH
 TARGET_LANGUAGE = TextLanguage.PORTUGUESE_BRAZIL
 
@@ -144,7 +144,6 @@ class GrammarRule:
             i = bisect.bisect_right(entry_starts, match.offset) - 1
             flagged_text = text[match.offset:match.offset + match.error_length]
 
-            # flags inside a correct expression, and flags on a name, pass
             entry_text = check.entries[i].target_text.replace("\n", " ").lower()
             flagged_start = match.offset - entry_starts[i]
             if any(found.start() <= flagged_start and flagged_start + match.error_length <= found.end() for expression in expressions for found in expression.finditer(entry_text)):
@@ -277,8 +276,10 @@ class TranslationCheck:
     def from_file(cls, subtitle: Path, languagetool_server: str) -> "TranslationCheck":
         # find the English source and the trace of the translation
         movie_dir = parse_movie_dir(subtitle)
-        name = subtitle.name.removesuffix(TRANSLATION_SUFFIX)
-        source = movie_dir / SUBS_FOLDER / f"{name}.eng.srt"
+        kind = SubtitleKind.find_in_translation(subtitle)
+        if kind is None:
+            raise ValueError(f"not a translation: {subtitle.name}")
+        source = movie_dir / SUBS_FOLDER / f"{subtitle.name.removesuffix(kind.to_translation_suffix())}.eng{kind}.srt"
         if not source.exists():
             raise FileNotFoundError(f"English source not found: {source}")
         trace = movie_dir / TRACES_FOLDER / f"{subtitle.stem}.json"
@@ -301,7 +302,6 @@ class TranslationCheck:
                 self.issues.append(Issue(entry=self.entries[i].target, kind=rule.kind, detail=detail, quote=self.quote(i)))
 
     def quote(self, i: int) -> tuple[str, ...]:
-        # the flagged entry, every line marked with ">>", between the entries around it
         quote: list[str] = []
         for j in range(max(0, i - QUOTE_CONTEXT_ENTRIES), min(len(self.entries), i + QUOTE_CONTEXT_ENTRIES + 1)):
             mark = ">>" if j == i else "  "
@@ -334,7 +334,7 @@ def check_subtitle(subtitle: Path, report: Path, languagetool_server: str) -> Re
 # Execution
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
-    subs = find_files("Checks translated subtitles against their English source for common translation mistakes.", extensions_file=(TRANSLATION_SUFFIX,), extensions_folder=(TRANSLATION_SUFFIX,))
+    subs = find_files("Checks translated subtitles against their English source for common translation mistakes.", extensions_file=TRANSLATION_SUFFIXES, extensions_folder=TRANSLATION_SUFFIXES)
     reports = {sub: parse_movie_dir(sub) / CHECKS_FOLDER / f"{sub.stem}.txt" for sub in subs}
     scores_current = {sub: ReportScore.find(reports[sub]) for sub in subs}
     batch = Batch()

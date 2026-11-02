@@ -14,7 +14,7 @@ from openai import BaseModel
 from openai.types.chat import ChatCompletionContentPartParam
 from rich.progress import MofNCompleteColumn, TimeElapsedColumn, TimeRemainingColumn
 
-from shared import IMAGE_EXTENSIONS, LLM_PROPS_URL, SUBS_FOLDER, TRACES_FOLDER, Batch, Color, SubtitleEntry, Trace, connect_llama, find_files, log_action, parse_movie_dir, parse_image_subtitle, progress_bar, write_text_replacing
+from shared import IMAGE_EXTENSIONS, LLM_PROPS_URL, SUBS_FOLDER, TRACES_FOLDER, Batch, Color, SubtitleEntry, SubtitleKind, Trace, connect_llama, find_files, log_action, parse_movie_dir, parse_image_subtitle, progress_bar, write_text_replacing
 
 # ------------------------------------------------------------------------------
 # Constants
@@ -155,7 +155,7 @@ class SubtitleTranscription:
 # ------------------------------------------------------------------------------
 # Execution
 # ------------------------------------------------------------------------------
-subs = find_files("Transcribes image subtitles to text subtitles with a vision LLM; folders only in the wanted languages.", extensions_file=IMAGE_EXTENSIONS, extensions_folder=tuple(f".{language}{extension}" for language in LANGUAGES for extension in IMAGE_EXTENSIONS), folder=SUBS_FOLDER)
+subs = find_files("Transcribes image subtitles to text subtitles with a vision LLM; folders only in the wanted languages.", extensions_file=IMAGE_EXTENSIONS, extensions_folder=tuple(f".{language}{kind}{extension}" for language in LANGUAGES for kind in SubtitleKind for extension in IMAGE_EXTENSIONS), folder=SUBS_FOLDER)
 llama = connect_llama()
 llama_slots = llama.get(LLM_PROPS_URL, cast_to=LlamaProps).total_slots
 batch = Batch()

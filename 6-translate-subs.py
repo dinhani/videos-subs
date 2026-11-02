@@ -5,13 +5,11 @@
 # ------------------------------------------------------------------------------
 import json
 from dataclasses import dataclass, field
-from datetime import timedelta
-from pathlib import Path
 
 import srt
 from rich.progress import MofNCompleteColumn, TimeElapsedColumn, TimeRemainingColumn
 
-from shared import SUBS_FOLDER, TRACES_FOLDER, Batch, Color, Trace, connect_llama, find_files, find_language_code, log_action, parse_movie_dir, parse_srt, progress_bar, write_text_replacing
+from shared import SUBS_FOLDER, TRACES_FOLDER, Batch, Color, SubtitleKind, Trace, connect_llama, find_files, log_action, parse_movie_dir, parse_srt, parse_subtitle_name, progress_bar, write_text_replacing
 
 # ------------------------------------------------------------------------------
 # Constants
@@ -19,8 +17,6 @@ from shared import SUBS_FOLDER, TRACES_FOLDER, Batch, Color, Trace, connect_llam
 CHUNK_SIZE = 50
 CHUNK_CONTEXT_BEFORE = 20
 CHUNK_CONTEXT_AFTER = 10
-
-SUBTITLE_WARNING = "[Legenda traduzida automaticamente. Alguns trechos podem estar errados ou em inglês.]"
 
 LLM_SPLITS = 2 # splits before giving up on chunk
 LLM_TEMPERATURES = (0.0, 0.5, 1.0)
@@ -67,7 +63,6 @@ class SubtitleTranslation:
     pending: list[int]
     trace: Trace
     translated: dict[int, list[str]] = field(default_factory=dict)
-    suspect: bool = False
 
     @classmethod
     def from_entries(cls, entries: list[srt.Subtitle], trace: Trace) -> "SubtitleTranslation":
@@ -156,14 +151,13 @@ class SubtitleTranslation:
             if attempt < LLM_ATTEMPTS:
                 log_action("retry", Color.YELLOW, f"{problem} (attempt {attempt}/{LLM_ATTEMPTS})")
 
-        # still failing: split in halves up to the limit, then accept the last reply as is and flag the subtitle
+        # still failing: split in halves up to the limit, then accept the last reply as is and record it in the trace
         if splits < LLM_SPLITS and len(chunk) > 1:
             log_action("split", Color.YELLOW, f"{len(chunk)} entries failed {LLM_ATTEMPTS} attempts, splitting in halves")
             middle = (start + end) // 2
             self.translate(start, middle, splits + 1)
             self.translate(middle, end, splits + 1)
             return
-        self.suspect = True
         for i in chunk:
             self.translated[i] = translated[i] if len(translated.get(i, [])) == len(self.lines[i]) else self.lines[i]
         self.trace.record({"entries": [self.entries[i].index for i in chunk], "accepted_with_problem": problem})
@@ -171,19 +165,17 @@ class SubtitleTranslation:
 
     def compose(self) -> str:
         entries = []
-        if self.suspect:
-            entries.append(srt.Subtitle(index=0, start=timedelta(0), end=timedelta(seconds=5), content=SUBTITLE_WARNING))
         for i, entry in enumerate(self.entries):
             content = entry.content
             if i in self.translated:
                 content = "\n".join(self.translated[i])
             entries.append(srt.Subtitle(index=entry.index, start=entry.start, end=entry.end, content=content, proprietary=entry.proprietary))
-        return srt.compose(entries)
+        return srt.compose(entries, reindex=False)
 
 # ------------------------------------------------------------------------------
 # Execution
 # ------------------------------------------------------------------------------
-subs_src = find_files("Translates English subtitles to Brazilian Portuguese; folders only English ones.", extensions_file=(".srt",), extensions_folder=(".eng.srt",), folder=SUBS_FOLDER)
+subs_src = find_files("Translates English subtitles to Brazilian Portuguese; folders only English ones.", extensions_file=(".srt",), extensions_folder=tuple(f".eng{kind}.srt" for kind in SubtitleKind), folder=SUBS_FOLDER)
 llama = connect_llama()
 
 batch = Batch()
@@ -193,14 +185,15 @@ for sub_src in subs_src:
     batch.log_movie(movie_dir)
 
     # prepare files
-    sub_name = Path(sub_src.stem).stem if find_language_code(sub_src) is not None else sub_src.stem
-    sub_dst = movie_dir / f"{sub_name}.pob.translated.srt"
+    sub_name = parse_subtitle_name(sub_src)
+    sub_kind = SubtitleKind.from_file(sub_src)
+    sub_dst = movie_dir / f"{sub_name}{sub_kind.to_translation_suffix()}"
     if sub_dst.exists():
         log_action("exists", Color.BLUE, sub_dst.name)
         continue
     log_action("translate", Color.GREEN, sub_dst.name)
 
-    sub_trace = movie_dir / TRACES_FOLDER / f"{sub_name}.pob.translated.json"
+    sub_trace = movie_dir / TRACES_FOLDER / f"{sub_dst.stem}.json"
     try:
         # parse entries
         sub_entries = parse_srt(sub_src)

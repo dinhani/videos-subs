@@ -26,10 +26,10 @@ Fix each entry flagged in the check-translate reports directly in its translatio
 Reports with issues, unless the user names files:
 
 ```
-grep -L "· 0 issues" Z:/midias/filmes/*/_checks/*.pob.translated.txt Z:/midias/series/*/_checks/*.pob.translated.txt Z:/midias/series/*/*/_checks/*.pob.translated.txt
+grep -L "· 0 issues" Z:/midias/filmes/*/_checks/*.translated.txt Z:/midias/series/*/_checks/*.translated.txt Z:/midias/series/*/*/_checks/*.translated.txt
 ```
 
-The first line of a report names its translation, the `.pob.translated.srt` in the movie folder, next to `_checks`. Each flagged entry quotes its exact `en` and `pt` lines from the `.srt`, with tags, marked with `>>` and its number, between the 2 entries before and after it. Those entries are context, to read only: use them for a sentence that continues across entries, gender, and the form of address between the characters. Edit only the entry marked `>>`. Do not read the rest of the file. When the `pt` text of an entry is not unique in the file, find the entry by its number with Grep and include its number and time lines in the edit.
+The first line of a report names its translation, the `.pob.translated.srt` or `.pob.sdh.translated.srt` in the movie folder, next to `_checks`. Each flagged entry quotes its exact `en` and `pt` lines from the `.srt`, with tags, marked with `>>` and its number, between the 2 entries before and after it. Those entries are context, to read only: use them for a sentence that continues across entries, gender, and the form of address between the characters. Edit only the entry marked `>>`. Do not read the rest of the file. When the `pt` text of an entry is not unique in the file, find the entry by its number with Grep and include its number and time lines in the edit.
 
 Read `RULES.md` at the project root first. Fix each entry with the rules for every correction at the start of section 2 (Translation), and the Correction and Caution of its rule in that section. The report does not name the LanguageTool rule of a grammar issue; find its rule (2.6 to 2.9) by the flagged text.
 
