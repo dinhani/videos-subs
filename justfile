@@ -95,7 +95,7 @@ check-translate *paths:
 [extension('.ps1')]
 [positional-arguments]
 warn *paths:
-    uv run 8-add-warnings.py @args
+    uv run 8-warn-subs.py @args
     exit $LASTEXITCODE
 
 [group('llm')]
