@@ -1,6 +1,6 @@
 ---
 name: fix-translate
-description: Fix the entries that check-translate flagged in the Brazilian Portuguese translations, deciding each entry on its own before changing it. Use after `just translate` and `just check-translate`, when asked to fix translation errors or check-translate issues.
+description: Fix the entries that check-translate flagged in the Brazilian Portuguese translations, deciding each entry on its own before changing it. Use after `just translate`, `just fix-translations` and `just check-translate`, when asked to fix translation errors or check-translate issues.
 ---
 
 # fix-translate
@@ -36,7 +36,7 @@ Work from the reports. Your job is the flagged entries; do not look for other er
 3. For each flagged entry, read it in the report: its `en` and `pt` lines are the exact text in the `.srt`, with the entries around it for context. Decide, then fix it with the Correction and Caution of its rule, or mark the flag when the text is right. Do not open the `.srt`; `just apply-fixes` checks every fix against it. When it stops because an entry's text is not the text of the report, the file changed after the check: leave the file.
 4. When an error shows up while you work, in a context entry or in anything else you read for a flagged entry, fix it too.
 5. Apply the fixes of the movie folder with `just apply-fixes`, then delete the report of every file you change. Never edit a report, never run check-translate or translate, and never change the English `.eng.srt`.
-6. At the end, list: the fixes outside the flagged entries, the marked entries, the skipped entries and files, the words and expressions added to `data`, and the notes added to `IMPROVEMENTS.md`. Then give the number of movie folders that still have a translation report with issues, and stop.
+6. At the end, list: the fixes outside the flagged entries, the marked entries, the skipped entries and files, the words, expressions and pairs added to `data`, and the notes added to `IMPROVEMENTS.md`. Then give the number of movie folders that still have a translation report with issues, and stop.
 
 ## Reference
 
@@ -47,3 +47,5 @@ Work from the reports. Your job is the flagged entries; do not look for other er
 **Marker.** When a flag is wrong because the text is right, put the kind of the marker the report gives for that issue in `ignore`, as in `"ignore": ["unknown-word"]`. The tool adds it to the end of the entry's timing line, joined by commas with the kinds already there, as `RULES.md` says. A fix with `new` removes the entry's marker, so the entry is judged again.
 
 **Data lists.** When an unknown word flag is wrong because the word is right, add the word with `just add-words <word>...`, with its accents and each form on its own (`wakandano wakandanos`); it goes to `data/dict-words.txt` in lowercase and in alphabetical order. When a gender flag is wrong because the expression is right, add the whole expression as it is in the entry with `just add-expressions "<expression>"...` (`"os relés" "luta corpo a corpo"`); it goes to `data/dict-expressions.txt`. Never add a wrong translation there.
+
+**Fix tables.** `just fix-translations` writes descriptions and misspellings from the tables in `data`, in every translation. When you fix a description whose right translation does not depend on the scene, add it with `just add-sounds "<english> = <português>"` (`"grunts = grunhe"`), the whole English description in lowercase, with the verb in the third person for -s and in the gerund for -ing; add a subject that comes before such a phrase with `just add-subjects "<english> = <português>"`. When you fix a misspelling the model repeats, add it with `just add-fix-words "<misspelled> = <right>"`; the tool refuses a misspelling that is a Brazilian Portuguese word. List the pairs added at the end, with the other data list changes.

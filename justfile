@@ -81,12 +81,21 @@ translate *paths:
     exit $LASTEXITCODE
 
 [group('run')]
+[doc('Fix translations mechanically')]
+[script]
+[extension('.ps1')]
+[positional-arguments]
+fix-translations *paths:
+    uv run 7-fix-translations.py @args
+    exit $LASTEXITCODE
+
+[group('run')]
 [doc('Check translations')]
 [script]
 [extension('.ps1')]
 [positional-arguments]
 check-translate *paths:
-    uv run 7-check-translations.py @args
+    uv run 8-check-translations.py @args
     exit $LASTEXITCODE
 
 [group('run')]
@@ -95,7 +104,7 @@ check-translate *paths:
 [extension('.ps1')]
 [positional-arguments]
 warn *paths:
-    uv run 8-warn-subs.py @args
+    uv run 9-warn-subs.py @args
     exit $LASTEXITCODE
 
 [group('llm')]
@@ -211,4 +220,44 @@ add-words +words:
 [positional-arguments]
 add-expressions +expressions:
     uv run fix-tools/add-to-dictionary.py expressions @args
+    exit $LASTEXITCODE
+
+[group('data/fix')]
+[doc('Add description translations to fix-translations')]
+[env('PYTHONPATH', '.')]
+[script]
+[extension('.ps1')]
+[positional-arguments]
+add-sounds +pairs:
+    uv run fix-tools/add-to-dictionary.py sounds @args
+    exit $LASTEXITCODE
+
+[group('data/fix')]
+[doc('Add description subjects to fix-translations')]
+[env('PYTHONPATH', '.')]
+[script]
+[extension('.ps1')]
+[positional-arguments]
+add-subjects +pairs:
+    uv run fix-tools/add-to-dictionary.py subjects @args
+    exit $LASTEXITCODE
+
+[group('data/fix')]
+[doc('Add misspelled words to fix-translations')]
+[env('PYTHONPATH', '.')]
+[script]
+[extension('.ps1')]
+[positional-arguments]
+add-fix-words +pairs:
+    uv run fix-tools/add-to-dictionary.py fix-words @args
+    exit $LASTEXITCODE
+
+[group('data/fix')]
+[doc('List descriptions fix-translations cannot translate')]
+[env('PYTHONPATH', '.')]
+[script]
+[extension('.ps1')]
+[positional-arguments]
+descriptions-missing *paths:
+    uv run fix-tools/list-missing-descriptions.py @args
     exit $LASTEXITCODE

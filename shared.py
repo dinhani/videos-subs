@@ -39,6 +39,12 @@ SUBS_FOLDER = "_subs"
 TRACES_FOLDER = "_traces"
 CHECKS_FOLDER = "_checks"
 
+DATA_FOLDER = Path(__file__).parent / "data"
+DICTIONARY_HUNSPELL = Path(os.environ["LOCALAPPDATA"]) / "hunspell" / "pt_BR"
+FIX_SOUNDS = DATA_FOLDER / "fix-sounds.txt"
+FIX_SUBJECTS = DATA_FOLDER / "fix-subjects.txt"
+FIX_WORDS = DATA_FOLDER / "fix-words.txt"
+
 REPLACE_ATTEMPTS = 10
 REPLACE_WAIT_SECONDS = 0.5
 
@@ -106,6 +112,9 @@ MARKERS_PT_PT_MIN = 3
 TRANSLATION_LANGUAGE_CODE = "pob"
 
 SOUND_DESCRIPTION = re.compile(r"\[([^\]]+)\]|\(([^)]+)\)")
+DESCRIPTION_SIMPLE = re.compile(r"\[([^\[\]()<>{}]+)\]|\(([^\[\]()<>{}]+)\)")
+DESCRIPTION_SUBJECT_WORDS_MAX = 2
+DESCRIPTION_PUNCTUATION = re.compile(r"[\[\]()\-–—]")
 SDH_ENTRIES_DESCRIBED_MIN = 0.05
 SDH_DESCRIPTIONS_TOP = 3
 SDH_DESCRIPTIONS_TOP_MAX = 0.60
@@ -272,6 +281,31 @@ def parse_subtitle_name(file: Path) -> str:
 
 def parse_srt(file: Path) -> list[srt.Subtitle]:
     return list(srt.parse(file.read_text(encoding="utf-8-sig", errors="replace"), ignore_errors=True))
+
+
+@functools.cache
+def parse_pairs(file: Path) -> dict[str, str]:
+    pairs: dict[str, str] = {}
+    for line in file.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        key, separator, value = line.partition(" = ")
+        if not separator or not key.strip() or not value.strip():
+            raise ValueError(f"{file.name}: not a 'key = value' line: {line!r}")
+        pairs[key.strip()] = value.strip()
+    return pairs
+
+
+def normalize_description(text: str) -> str:
+    return " ".join(DESCRIPTION_PUNCTUATION.sub(" ", FORMATTING_TAGS.sub("", text)).lower().split())
+
+
+def match_case(text: str, source: str) -> str:
+    if source.isupper():
+        return text.upper()
+    if source[:1].isupper():
+        return text[:1].upper() + text[1:]
+    return text
 
 
 def parse_plain_text(entry: srt.Subtitle) -> str:
@@ -522,6 +556,56 @@ class Word:
     @property
     def key(self) -> str:
         return "".join(character for character in unicodedata.normalize("NFKD", self.text.lower().replace("’", "'")) if not unicodedata.combining(character))
+
+
+@dataclass(frozen=True)
+class DescriptionTranslation:
+    source: str
+    text: str
+    name: str
+
+    def is_confirmed_by(self, translation: str) -> bool:
+        if not self.name:
+            return True
+        words = normalize_description(translation)
+        return words != normalize_description(self.source) and words.startswith(f"{normalize_description(self.name)} ")
+
+
+@dataclass(frozen=True)
+class DescriptionTable:
+    sounds: dict[str, str]
+    subjects: dict[str, str]
+
+    @classmethod
+    def from_files(cls, sounds: Path, subjects: Path) -> "DescriptionTable":
+        return cls(sounds=parse_pairs(sounds), subjects=parse_pairs(subjects))
+
+    def find_translation(self, description: str) -> DescriptionTranslation | None:
+        words = description.split()
+        description = " ".join(words)
+        key = " ".join(words).lower()
+        if key in self.sounds:
+            return DescriptionTranslation(source=description, text=match_case(self.sounds[key], description), name="")
+
+        # a subject or a name, then a phrase led by a verb in -ing or -s
+        for subject_size in range(1, min(DESCRIPTION_SUBJECT_WORDS_MAX, len(words) - 1) + 1):
+            subject, phrase = words[:subject_size], words[subject_size:]
+            phrase_key = " ".join(phrase).lower()
+            verb = phrase[0].lower()
+            if phrase_key not in self.sounds or not verb.endswith(("ing", "s")):
+                continue
+            subject_key = " ".join(subject).lower()
+            if subject_key in self.subjects:
+                subject_portuguese = self.subjects[subject_key]
+                if not verb.endswith("ing") and subject_portuguese.endswith("s"):
+                    continue
+                return DescriptionTranslation(source=description, text=match_case(f"{subject_portuguese} {self.sounds[phrase_key]}", description), name="")
+            if any(word.lower().endswith(("'s", "’s")) or word.lower() in self.subjects or word.lower() in self.sounds or (not description.isupper() and word[0].islower()) for word in subject):
+                continue
+            name = " ".join(subject)
+            phrase_portuguese = self.sounds[phrase_key].upper() if description.isupper() else self.sounds[phrase_key]
+            return DescriptionTranslation(source=description, text=f"{name} {phrase_portuguese}", name=name)
+        return None
 
 
 @dataclass(frozen=True)

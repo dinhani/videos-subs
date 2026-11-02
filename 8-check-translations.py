@@ -8,7 +8,6 @@ import contextlib
 import functools
 import itertools
 import json
-import os
 import re
 from collections.abc import Iterator
 from concurrent.futures import Future, ProcessPoolExecutor
@@ -22,7 +21,7 @@ import srt
 from rich.progress import MofNCompleteColumn, TimeElapsedColumn, TimeRemainingColumn
 from spylls.hunspell import Dictionary
 
-from shared import CHECKS_FOLDER, CHECK_WORKERS, FORMATTING_TAGS, SUBS_FOLDER, TRACES_FOLDER, WORDS_PT_PT, Batch, Color, Issue, IssueKind, Report, ReportScore, SubtitleKind, TextLanguage, find_files, log_action, log_ranking, parse_movie_dir, parse_plain_text, parse_srt, parse_words, progress_bar
+from shared import CHECKS_FOLDER, CHECK_WORKERS, DATA_FOLDER, DICTIONARY_HUNSPELL, FORMATTING_TAGS, SUBS_FOLDER, TRACES_FOLDER, WORDS_PT_PT, Batch, Color, Issue, IssueKind, Report, ReportScore, SubtitleKind, TextLanguage, find_files, log_action, log_ranking, parse_movie_dir, parse_plain_text, parse_srt, parse_words, progress_bar
 
 # ------------------------------------------------------------------------------
 # Constants
@@ -227,9 +226,8 @@ class UnbalancedRule:
 
 TranslationRule = AcceptedWithProblemRule | UntranslatedRule | AddedSymbolsRule | DuplicatedLineRule | BrokenLineRule | GrammarRule | UnknownWordRule | PortugalPortugueseRule | UnbalancedRule
 
-DICTIONARY_HUNSPELL = Path(os.environ["LOCALAPPDATA"]) / "hunspell" / "pt_BR"
-DICTIONARY_WORDS = Path(__file__).parent / "data" / "dict-words.txt"
-DICTIONARY_EXPRESSIONS = Path(__file__).parent / "data" / "dict-expressions.txt"
+DICTIONARY_WORDS = DATA_FOLDER / "dict-words.txt"
+DICTIONARY_EXPRESSIONS = DATA_FOLDER / "dict-expressions.txt"
 RULES: tuple[TranslationRule, ...] = (
     AcceptedWithProblemRule(enabled=True),
     UntranslatedRule(enabled=True, votes_min=3, unchanged_votes_min=2),
