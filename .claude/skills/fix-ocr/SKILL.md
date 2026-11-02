@@ -27,15 +27,15 @@ Work from the reports. Your job is the flagged entries; do not look for other er
    ```
 
    Fix every OCR report with issues in its `_checks`. An error flagged in several text subtitles gets the same fix in each.
-3. For each flagged entry, from the last to the first in its file: read it in the `.srt` at its `line`, from that line to its last text line. Decide, then fix it with the Correction and Caution of its rule, or mark the flag when the text is right. When the entry is not at its line, the file changed after the check: leave the file.
+3. For each flagged entry, read it in the report: its text is the exact text in the `.srt`, with the entries around it for context. Decide, then fix it with the Correction and Caution of its rule, or mark the flag when the text is right. Do not open the `.srt`; `just apply-fixes` checks every fix against it. When it stops because an entry's text is not the text of the report, the file changed after the check: leave the file.
 4. When an error shows up while you work, in a context entry or in anything else you read for a flagged entry, fix it too.
-5. Delete the report of every file you change. Never edit a report, and never run check-ocr or ocr.
+5. Apply the fixes of the movie folder with `just apply-fixes`, then delete the report of every file you change. Never edit a report, and never run check-ocr or ocr.
 6. At the end, list: the fixes outside the flagged entries, the marked entries, the skipped entries and files, and the `.eng.srt` files that already had a `.pob.translated.srt`, since that translation was made from the old text. Then give the number of movie folders that still have an OCR report with issues, and stop.
 
 ## Reference
 
 **Report.** The first line is the full path of the text subtitle. Each flagged entry starts with `entry <number> · line <line> · ` and its timing line exactly as it is in the `.srt`, then its issues, each with its rule in `RULES.md` and the marker that ignores it, as in `artifact · rule 1.4 · ignore:artifact · markup in the text: "*never*"`. Then comes its exact text, marked with `>>` and its number, between the entries before and after it. Those entries are context: use them for a caption that continues across entries. `line` is the line of the entry number in the `.srt`.
 
-**Edit.** Fix the entries of a file from the last to the first, so a fix that adds or removes a line does not move the entries still to fix. The entry number, the timing line and the text together are unique in the file: put them in the edit, as they are in the report.
+**Fixes file.** Write the fixes of the movie folder to one JSON file in your scratchpad and run `just apply-fixes <file>`. The file is a list with one item per subtitle: `{"subtitle": "<full path of the .srt>", "entries": [...]}`. Each entry is `{"entry": <number>, "old": [<text lines>], "new": [<text lines>], "ignore": [<kinds>]}`: `old` is the exact text of the entry as the report gives it, with tags; give `new`, `ignore` or both. The tool finds each entry by its number, context entries too, checks every `old` before writing any file, and writes nothing when one does not match. Never edit a `.srt` by hand or with another script.
 
-**Marker.** When a flag is wrong because the text is right, add the marker the report gives for that issue at the end of the entry's timing line, as `RULES.md` says; several markers of one entry are joined by commas after one `ignore:`. When you change the text of an entry with a marker, remove the marker.
+**Marker.** When a flag is wrong because the text is right, put the kind of the marker the report gives for that issue in `ignore`, as in `"ignore": ["artifact"]`. The tool adds it to the end of the entry's timing line, joined by commas with the kinds already there, as `RULES.md` says. A fix with `new` removes the entry's marker, so the entry is judged again.

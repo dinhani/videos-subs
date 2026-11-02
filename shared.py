@@ -317,10 +317,10 @@ def list_folder(folder: Path) -> frozenset[str]:
     return frozenset(os.listdir(folder))
 
 
-def write_text_replacing(file: Path, text: str) -> None:
+def write_text_replacing(file: Path, text: str, newline: str | None = None) -> None:
     file_part = file.with_name(f"{file.name}.part")
     try:
-        file_part.write_text(text, encoding="utf-8")
+        file_part.write_text(text, encoding="utf-8", newline=newline)
         for attempt in Retrying(retry=retry_if_exception_type(PermissionError), stop=stop_after_attempt(REPLACE_ATTEMPTS), wait=wait_fixed(REPLACE_WAIT_SECONDS), reraise=True):
             with attempt:
                 file_part.replace(file)
