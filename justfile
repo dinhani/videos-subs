@@ -160,7 +160,7 @@ reset-checks-translate *paths:
 [script]
 [extension('.ps1')]
 [positional-arguments]
-reset-en *paths:
+reset-identifier-en *paths:
     $folders = if ($args) { $args } else { 'Z:/midias/filmes', 'Z:/midias/series' }
     $patterns = @{ '_subs' = '\.eng(\.sdh)?(\.(srt|sup|mks))$'; '_traces' = '\.eng(\.sdh)?(\.ocr\.json)$' }
     Get-ChildItem -LiteralPath $folders -File -Recurse | Where-Object { $patterns.ContainsKey($_.Directory.Name) -and $_.Name -match $patterns[$_.Directory.Name] } | ForEach-Object {
@@ -175,7 +175,7 @@ reset-en *paths:
 [script]
 [extension('.ps1')]
 [positional-arguments]
-reset-pt *paths:
+reset-identifier-pt *paths:
     $folders = if ($args) { $args } else { 'Z:/midias/filmes', 'Z:/midias/series' }
     Get-ChildItem -LiteralPath $folders -File -Recurse | Where-Object { $_.Directory.Name -eq '_subs' -and $_.Name -match '\.(por|pob)\.(srt|sup|mks)$' } | ForEach-Object {
         $name = $_.Name -replace '\.(por|pob)\.(srt|sup|mks)$', '.$2'
