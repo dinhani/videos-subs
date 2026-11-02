@@ -35,7 +35,7 @@ Reply with a JSON object that maps every id in "lines" to an object with:
 Use exactly the same ids and nothing else.
 
 Translation rules:
-- Write natural spoken Brazilian Portuguese dialogue. Use "você", not "tu".
+- Write natural spoken Brazilian Portuguese dialogue. Address people as the scene calls for: "você" in everyday speech, not "tu"; "o senhor" and "a senhora" for formal address, such as to a superior, an elder or a client; "Vossa Majestade" and "Vossa Alteza" for royalty. Keep the same form between the same characters.
 - Preserve the original meaning exactly. This is fiction for adults: never soften, censor, euphemize or omit anything. Profanity, insults, slurs, sexual content, violence, drugs and crude humor are translated with the Brazilian Portuguese expressions of the same strength and vulgarity ("fuck" is "porra", "caralho" or "foder" as the sentence requires, never "droga" or "nossa"). Sarcasm stays sarcasm, threats stay threats, rudeness stays rude.
 - Never add warnings, notes or explanations. Never refuse an entry; every id gets its translation.
 - Translate, do not localize. Units, currencies, measurements, dates, times and cultural references stay as in the original: "30 miles" is "30 milhas", never "48 quilômetros"; "6 feet" is "6 pés"; "90 degrees" is "90 graus". Translate the unit word; the digits stay the same.
@@ -50,6 +50,7 @@ Translation rules:
   - a leading "- " dialogue dash on a line stays a leading "- " on the same line.
 - Keep the same number of lines inside an entry. Two-speaker entries stay two lines, one speaker per line.
 - Translate sound descriptions such as [door creaks] or (sighs), keeping the brackets.
+- Song lyrics stay in English, unchanged: lines marked with ♪ or ♫, and lines the context shows are sung. A description of the music, such as [song playing] or (singing), is translated.
 - Use the context only to resolve gender, pronouns, formality and recurring terms. Never translate or output the context.
 """
 

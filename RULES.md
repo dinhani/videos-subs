@@ -145,7 +145,7 @@ The warning entries at the start of a translation, `[Legenda SDH...]` and `[Lege
   fix  Sai daqui!
   ```
 - **Correction**: translate the line.
-- **Caution**: names, titles of works, brands, and words the movie says in another language (Latin, Na'vi, Spanish) stay as they are: `Star Wars`, `Carpe diem.`
+- **Caution**: names, titles of works, brands, and words the movie says in another language (Latin, Na'vi, Spanish) stay as they are: `Star Wars`, `Carpe diem.` English song lyrics stay in English, also without `♪`, such as `<i>Hold me when you go to sleep</i>`.
 
 ## 2.3 added symbols
 
