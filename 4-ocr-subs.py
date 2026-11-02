@@ -155,44 +155,45 @@ class SubtitleTranscription:
 # ------------------------------------------------------------------------------
 # Execution
 # ------------------------------------------------------------------------------
-subs = find_files("Transcribes image subtitles to text subtitles with a vision LLM; folders only in the wanted languages.", extensions_file=IMAGE_EXTENSIONS, extensions_folder=tuple(f".{language}{kind}{extension}" for language in LANGUAGES for kind in SubtitleKind for extension in IMAGE_EXTENSIONS), folder=SUBS_FOLDER)
-llama = connect_llama()
-llama_slots = llama.get(LLM_PROPS_URL, cast_to=LlamaProps).total_slots
-batch = Batch()
+if __name__ == "__main__":
+    subs = find_files("Transcribes image subtitles to text subtitles with a vision LLM; folders only in the wanted languages.", extensions_file=IMAGE_EXTENSIONS, extensions_folder=tuple(f".{language}{kind}{extension}" for language in LANGUAGES for kind in SubtitleKind for extension in IMAGE_EXTENSIONS), folder=SUBS_FOLDER)
+    llama = connect_llama()
+    llama_slots = llama.get(LLM_PROPS_URL, cast_to=LlamaProps).total_slots
+    batch = Batch()
 
-for sub in subs:
-    movie_dir = parse_movie_dir(sub)
-    batch.log_movie(movie_dir)
+    for sub in subs:
+        movie_dir = parse_movie_dir(sub)
+        batch.log_movie(movie_dir)
 
-    # skip subs already transcribed
-    sub_dst = sub.with_suffix(".srt")
-    if sub_dst.exists():
-        log_action("exists", Color.BLUE, sub_dst.name)
-        continue
-    log_action("ocr", Color.GREEN, sub_dst.name)
-
-    sub_trace = movie_dir / TRACES_FOLDER / f"{sub.stem}.ocr.json"
-    try:
-        # read entries
-        sub_entries = parse_image_subtitle(sub)
-        if not sub_entries:
-            log_action("empty", Color.YELLOW, sub.name)
+        # skip subs already transcribed
+        sub_dst = sub.with_suffix(".srt")
+        if sub_dst.exists():
+            log_action("exists", Color.BLUE, sub_dst.name)
             continue
+        log_action("ocr", Color.GREEN, sub_dst.name)
 
-        # transcribe each distinct image once, in chunks, one per llama slot at a time, tracing every reply
-        sub_trace.parent.mkdir(exist_ok=True)
-        transcription = SubtitleTranscription(entries=sub_entries, trace=Trace(file=sub_trace))
-        entries_distinct: dict[int, int] = {}
-        for i, entry in enumerate(sub_entries):
-            entries_distinct.setdefault(entry.image_key, i)
-        with progress_bar(MofNCompleteColumn(), TimeElapsedColumn(), TimeRemainingColumn()) as progress, ThreadPoolExecutor(max_workers=llama_slots) as executor:
-            chunks = list(itertools.batched(entries_distinct.values(), CHUNK_SIZE))
-            for _ in progress.track(executor.map(transcription.transcribe, chunks), total=len(chunks)):
-                pass
+        sub_trace = movie_dir / TRACES_FOLDER / f"{sub.stem}.ocr.json"
+        try:
+            # read entries
+            sub_entries = parse_image_subtitle(sub)
+            if not sub_entries:
+                log_action("empty", Color.YELLOW, sub.name)
+                continue
 
-        # write transcribed
-        write_text_replacing(sub_dst, transcription.compose())
-    except Exception as error:
-        batch.fail(sub, error)
+            # transcribe each distinct image once, in chunks, one per llama slot at a time, tracing every reply
+            sub_trace.parent.mkdir(exist_ok=True)
+            transcription = SubtitleTranscription(entries=sub_entries, trace=Trace(file=sub_trace))
+            entries_distinct: dict[int, int] = {}
+            for i, entry in enumerate(sub_entries):
+                entries_distinct.setdefault(entry.image_key, i)
+            with progress_bar(MofNCompleteColumn(), TimeElapsedColumn(), TimeRemainingColumn()) as progress, ThreadPoolExecutor(max_workers=llama_slots) as executor:
+                chunks = list(itertools.batched(entries_distinct.values(), CHUNK_SIZE))
+                for _ in progress.track(executor.map(transcription.transcribe, chunks), total=len(chunks)):
+                    pass
 
-batch.finish()
+            # write transcribed
+            write_text_replacing(sub_dst, transcription.compose())
+        except Exception as error:
+            batch.fail(sub, error)
+
+    batch.finish()

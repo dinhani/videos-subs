@@ -177,41 +177,42 @@ class SubtitleTranslation:
 # ------------------------------------------------------------------------------
 # Execution
 # ------------------------------------------------------------------------------
-subs_src = find_files("Translates English subtitles to Brazilian Portuguese; folders only English ones.", extensions_file=(".srt",), extensions_folder=tuple(f".eng{kind}.srt" for kind in SubtitleKind), folder=SUBS_FOLDER)
-llama = connect_llama()
+if __name__ == "__main__":
+    subs_src = find_files("Translates English subtitles to Brazilian Portuguese; folders only English ones.", extensions_file=(".srt",), extensions_folder=tuple(f".eng{kind}.srt" for kind in SubtitleKind), folder=SUBS_FOLDER)
+    llama = connect_llama()
 
-batch = Batch()
+    batch = Batch()
 
-for sub_src in subs_src:
-    movie_dir = parse_movie_dir(sub_src)
-    batch.log_movie(movie_dir)
+    for sub_src in subs_src:
+        movie_dir = parse_movie_dir(sub_src)
+        batch.log_movie(movie_dir)
 
-    # prepare files
-    sub_name = parse_subtitle_name(sub_src)
-    sub_kind = SubtitleKind.from_file(sub_src)
-    sub_dst = movie_dir / f"{sub_name}{sub_kind.to_translation_suffix()}"
-    if sub_dst.exists():
-        log_action("exists", Color.BLUE, sub_dst.name)
-        continue
-    log_action("translate", Color.GREEN, sub_dst.name)
+        # prepare files
+        sub_name = parse_subtitle_name(sub_src)
+        sub_kind = SubtitleKind.from_file(sub_src)
+        sub_dst = movie_dir / f"{sub_name}{sub_kind.to_translation_suffix()}"
+        if sub_dst.exists():
+            log_action("exists", Color.BLUE, sub_dst.name)
+            continue
+        log_action("translate", Color.GREEN, sub_dst.name)
 
-    sub_trace = movie_dir / TRACES_FOLDER / f"{sub_dst.stem}.json"
-    try:
-        # parse entries
-        sub_entries = parse_srt(sub_src)
+        sub_trace = movie_dir / TRACES_FOLDER / f"{sub_dst.stem}.json"
+        try:
+            # parse entries
+            sub_entries = parse_srt(sub_src)
 
-        # translate in chunks, tracing every request and reply
-        sub_trace.parent.mkdir(exist_ok=True)
-        progress = progress_bar(MofNCompleteColumn(), TimeElapsedColumn(), TimeRemainingColumn())
-        with progress:
-            translation = SubtitleTranslation.from_entries(sub_entries, Trace(file=sub_trace))
-            chunk_starts = range(0, len(translation.pending), CHUNK_SIZE)
-            for chunk_start in progress.track(chunk_starts, total=len(chunk_starts)):
-                translation.translate(chunk_start, min(chunk_start + CHUNK_SIZE, len(translation.pending)))
+            # translate in chunks, tracing every request and reply
+            sub_trace.parent.mkdir(exist_ok=True)
+            progress = progress_bar(MofNCompleteColumn(), TimeElapsedColumn(), TimeRemainingColumn())
+            with progress:
+                translation = SubtitleTranslation.from_entries(sub_entries, Trace(file=sub_trace))
+                chunk_starts = range(0, len(translation.pending), CHUNK_SIZE)
+                for chunk_start in progress.track(chunk_starts, total=len(chunk_starts)):
+                    translation.translate(chunk_start, min(chunk_start + CHUNK_SIZE, len(translation.pending)))
 
-        # write translated
-        write_text_replacing(sub_dst, translation.compose())
-    except Exception as error:
-        batch.fail(sub_src, error)
+            # write translated
+            write_text_replacing(sub_dst, translation.compose())
+        except Exception as error:
+            batch.fail(sub_src, error)
 
-batch.finish()
+    batch.finish()
