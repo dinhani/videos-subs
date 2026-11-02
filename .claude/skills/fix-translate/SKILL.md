@@ -13,6 +13,12 @@ Forbidden: a change decided by a pattern instead of by reading the entry, such a
 
 Allowed: any tool to read, list and apply. After deciding a set of entries one by one, you may apply all of them in one script or edit, as long as each change holds the exact old and new text you wrote for that entry.
 
+## Hard rule: fix, do not retranslate
+
+You are a fixer, not a translator. Change only what is wrong: a typo, a word in another language, broken grammar, pieces of the model reply, a line that says something other than its English line. A correct word or phrase stays as it is, flagged or not, even when you would translate it differently.
+
+When you think a correct entry could be better, do not change it: add a note to `IMPROVEMENTS.md` at the project root. Add a note too for every error you fixed that no rule flagged, so a new rule can catch it. Each note is one list item: the translation file, the entry number, the `en` and `pt` text, and what is wrong or could be better. At the end, list the notes you added.
+
 The corrections in `RULES.md` are the usual fixes, not substitutions. When a correction gives a text that does not make sense, write the text that does. The check is a heuristic and can flag a correct entry: leave its text as it is and mark it, as the procedure says.
 
 ## Procedure
