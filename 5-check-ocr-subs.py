@@ -267,7 +267,7 @@ class OcrCheck:
             if not rule.enabled:
                 continue
             for entry, detail in rule.find_issues(self):
-                self.issues.append(Issue(entry=entry.subtitle, kind=rule.kind, detail=detail, quote=tuple(entry.subtitle.content.split("\n"))))
+                self.issues.append(Issue(entry=entry.subtitle, kind=rule.kind, detail=detail, quote=tuple(f"  {line}" for line in entry.subtitle.content.split("\n"))))
 
     def to_report(self) -> Report:
         return Report(subtitle=self.subtitle, entries_count=len(self.entries), issues=self.issues)

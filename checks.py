@@ -136,7 +136,7 @@ class Report:
             start = int(entry.start.total_seconds())
             lines += ["", f"{start // 3600}:{start // 60 % 60:02}:{start % 60:02}  entry {entry.index}"]
             lines += [f"  {issue.kind.label}: {issue.detail}" for issue in entry_issues]
-            lines += [f"      {quote}" for quote in entry_issues[0].quote]
+            lines += [f"    {quote}" for quote in entry_issues[0].quote]
         return "\n".join(lines) + "\n"
 
     def write(self, file: Path) -> "ReportScore":

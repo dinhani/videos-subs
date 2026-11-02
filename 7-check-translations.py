@@ -32,6 +32,8 @@ TRANSLATION_SUFFIX = ".pob.translated.srt"
 SOURCE_LANGUAGE = TextLanguage.ENGLISH
 TARGET_LANGUAGE = TextLanguage.PORTUGUESE_BRAZIL
 
+QUOTE_CONTEXT_ENTRIES = 2
+
 # ------------------------------------------------------------------------------
 # Rules
 # ------------------------------------------------------------------------------
@@ -203,7 +205,6 @@ GRAMMAR = GrammarRule(
         "QUE_QUÊ": True,
         "GENERAL_GENDER_AGREEMENT_ERRORS": True,
         "ERRO_DE_CONCORDNCIA_DO_GÉNERO_MASCULINO_O": True,
-        "LINKING_VERB_PREDICATE_AGREEMENT": True,
     },
 )
 RULES: tuple[TranslationRule, ...] = (
@@ -278,7 +279,15 @@ class TranslationCheck:
             if not rule.enabled:
                 continue
             for i, detail in rule.find_issues(self):
-                self.issues.append(Issue(entry=self.entries[i].target, kind=rule.kind, detail=detail, quote=self.entries[i].quote))
+                self.issues.append(Issue(entry=self.entries[i].target, kind=rule.kind, detail=detail, quote=self.quote(i)))
+
+    def quote(self, i: int) -> tuple[str, ...]:
+        # the flagged entry, every line marked with ">>", between the entries around it
+        quote: list[str] = []
+        for j in range(max(0, i - QUOTE_CONTEXT_ENTRIES), min(len(self.entries), i + QUOTE_CONTEXT_ENTRIES + 1)):
+            mark = ">>" if j == i else "  "
+            quote += [f"{mark} {str(self.entries[j].target.index) if n == 0 else '':>4}  {line}" for n, line in enumerate(self.entries[j].quote)]
+        return tuple(quote)
 
     def to_report(self) -> Report:
         return Report(subtitle=self.subtitle, entries_count=len(self.entries), issues=self.issues)
