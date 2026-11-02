@@ -32,7 +32,7 @@ cloc:
 [extension('.ps1')]
 [positional-arguments]
 extract *paths:
-    uv run 1-extract-subs.py @args
+    uv run src/1-extract-subs.py @args
     exit $LASTEXITCODE
 
 [group('run')]
@@ -41,7 +41,7 @@ extract *paths:
 [extension('.ps1')]
 [positional-arguments]
 identify-text *paths:
-    uv run 2-identify-text-subs.py @args
+    uv run src/2-identify-text-subs.py @args
     exit $LASTEXITCODE
 
 [group('run')]
@@ -50,7 +50,7 @@ identify-text *paths:
 [extension('.ps1')]
 [positional-arguments]
 identify-ocr *paths:
-    uv run 3-identify-ocr-subs.py @args
+    uv run src/3-identify-ocr-subs.py @args
     exit $LASTEXITCODE
 
 [group('run')]
@@ -59,7 +59,7 @@ identify-ocr *paths:
 [extension('.ps1')]
 [positional-arguments]
 ocr *paths:
-    uv run 4-ocr-subs.py @args
+    uv run src/4-ocr-subs.py @args
     exit $LASTEXITCODE
 
 [group('run')]
@@ -68,7 +68,7 @@ ocr *paths:
 [extension('.ps1')]
 [positional-arguments]
 check-ocr *paths:
-    uv run 5-check-ocr-subs.py @args
+    uv run src/5-check-ocr-subs.py @args
     exit $LASTEXITCODE
 
 [group('run')]
@@ -77,7 +77,7 @@ check-ocr *paths:
 [extension('.ps1')]
 [positional-arguments]
 translate *paths:
-    uv run 6-translate-subs.py @args
+    uv run src/6-translate-subs.py @args
     exit $LASTEXITCODE
 
 [group('run')]
@@ -86,7 +86,7 @@ translate *paths:
 [extension('.ps1')]
 [positional-arguments]
 fix-translations *paths:
-    uv run 7-fix-translations.py @args
+    uv run src/7-fix-translations.py @args
     exit $LASTEXITCODE
 
 [group('run')]
@@ -95,7 +95,7 @@ fix-translations *paths:
 [extension('.ps1')]
 [positional-arguments]
 check-translate *paths:
-    uv run 8-check-translations.py @args
+    uv run src/8-check-translations.py @args
     exit $LASTEXITCODE
 
 [group('run')]
@@ -104,7 +104,7 @@ check-translate *paths:
 [extension('.ps1')]
 [positional-arguments]
 warn *paths:
-    uv run 9-warn-subs.py @args
+    uv run src/9-warn-subs.py @args
     exit $LASTEXITCODE
 
 [group('llm')]
@@ -134,7 +134,7 @@ llama-translate:
 [extension('.ps1')]
 [positional-arguments]
 crosscheck *paths:
-    uv run crosscheck-subs.py @args
+    uv run src/crosscheck-subs.py @args
     exit $LASTEXITCODE
 
 [group('data')]
@@ -194,70 +194,70 @@ reset-identifier-pt *paths:
 
 [group('data/fix')]
 [doc('Apply fixes decided by hand to subtitles')]
-[env('PYTHONPATH', '.')]
+[env('PYTHONPATH', 'src')]
 [script]
 [extension('.ps1')]
 [positional-arguments]
 apply-fixes fixes:
-    uv run fix-tools/apply-fixes.py @args
+    uv run src/fix-tools/apply-fixes.py @args
     exit $LASTEXITCODE
 
 [group('data/fix')]
 [doc('Add right words to check-translate')]
-[env('PYTHONPATH', '.')]
+[env('PYTHONPATH', 'src')]
 [script]
 [extension('.ps1')]
 [positional-arguments]
 add-check-words +words:
-    uv run fix-tools/add-to-dictionary.py check-words @args
+    uv run src/fix-tools/add-to-dictionary.py check-words @args
     exit $LASTEXITCODE
 
 [group('data/fix')]
 [doc('Add right expressions to check-translate')]
-[env('PYTHONPATH', '.')]
+[env('PYTHONPATH', 'src')]
 [script]
 [extension('.ps1')]
 [positional-arguments]
 add-check-expressions +expressions:
-    uv run fix-tools/add-to-dictionary.py check-expressions @args
+    uv run src/fix-tools/add-to-dictionary.py check-expressions @args
     exit $LASTEXITCODE
 
 [group('data/fix')]
 [doc('Add description translations to fix-translations')]
-[env('PYTHONPATH', '.')]
+[env('PYTHONPATH', 'src')]
 [script]
 [extension('.ps1')]
 [positional-arguments]
 add-fix-sounds +pairs:
-    uv run fix-tools/add-to-dictionary.py fix-sounds @args
+    uv run src/fix-tools/add-to-dictionary.py fix-sounds @args
     exit $LASTEXITCODE
 
 [group('data/fix')]
 [doc('Add description subjects to fix-translations')]
-[env('PYTHONPATH', '.')]
+[env('PYTHONPATH', 'src')]
 [script]
 [extension('.ps1')]
 [positional-arguments]
 add-fix-subjects +pairs:
-    uv run fix-tools/add-to-dictionary.py fix-subjects @args
+    uv run src/fix-tools/add-to-dictionary.py fix-subjects @args
     exit $LASTEXITCODE
 
 [group('data/fix')]
 [doc('Add misspelled words to fix-translations, with their English word')]
-[env('PYTHONPATH', '.')]
+[env('PYTHONPATH', 'src')]
 [script]
 [extension('.ps1')]
 [positional-arguments]
 add-fix-words +triples:
-    uv run fix-tools/add-to-dictionary.py fix-words @args
+    uv run src/fix-tools/add-to-dictionary.py fix-words @args
     exit $LASTEXITCODE
 
 [group('data/fix')]
 [doc('List descriptions fix-translations cannot translate')]
-[env('PYTHONPATH', '.')]
+[env('PYTHONPATH', 'src')]
 [script]
 [extension('.ps1')]
 [positional-arguments]
 descriptions-missing *paths:
-    uv run fix-tools/list-missing-descriptions.py @args
+    uv run src/fix-tools/list-missing-descriptions.py @args
     exit $LASTEXITCODE

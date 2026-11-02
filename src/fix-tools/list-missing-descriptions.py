@@ -5,7 +5,10 @@
 # ------------------------------------------------------------------------------
 from collections import Counter
 
-from shared import DESCRIPTION_SIMPLE, FIX_SOUNDS, FIX_SUBJECTS, SUBS_FOLDER, Color, DescriptionTable, console, find_files, find_language_code, log_action, parse_srt
+from shared.console import Color, console, log_action
+from shared.data_lists import FIX_SOUNDS, FIX_SUBJECTS
+from shared.descriptions import DESCRIPTION_SIMPLE, DescriptionTable
+from shared.files import SUBS_FOLDER, find_files, find_language_code, parse_srt
 
 # ------------------------------------------------------------------------------
 # Constants

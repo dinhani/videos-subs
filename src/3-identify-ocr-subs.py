@@ -13,7 +13,11 @@ from pathlib import Path
 
 from rich.progress import MofNCompleteColumn, TimeElapsedColumn, TimeRemainingColumn
 
-from shared import IMAGE_EXTENSIONS, SUBS_FOLDER, TRACES_FOLDER, Batch, Color, SubtitleKind, SubtitleLanguage, find_files, find_language_code, log_action, parse_movie_dir, parse_image_subtitle, progress_bar
+from shared.console import Batch, Color, log_action, progress_bar
+from shared.files import IMAGE_EXTENSIONS, SUBS_FOLDER, TRACES_FOLDER, find_files, find_language_code, parse_movie_dir
+from shared.image_subtitles import parse_image_subtitle
+from shared.languages import SubtitleLanguage
+from shared.subtitles import SubtitleKind
 
 # ------------------------------------------------------------------------------
 # Constants

@@ -18,7 +18,11 @@ import srt
 from PIL import ImageFont, ImageOps
 from rich.progress import MofNCompleteColumn, TimeElapsedColumn, TimeRemainingColumn
 
-from shared import CHECKS_FOLDER, CHECK_WORKERS, IMAGE_EXTENSIONS, SUBS_FOLDER, Batch, Color, Issue, IssueKind, Report, ReportScore, SubtitleEntry, SubtitleKind, find_files, list_folder, log_action, log_ranking, parse_image_subtitle, parse_movie_dir, parse_plain_text, parse_srt, progress_bar
+from shared.console import Batch, Color, log_action, progress_bar
+from shared.files import CHECKS_FOLDER, IMAGE_EXTENSIONS, SUBS_FOLDER, find_files, list_folder, parse_movie_dir, parse_srt
+from shared.image_subtitles import SubtitleEntry, parse_image_subtitle
+from shared.reports import CHECK_WORKERS, Issue, IssueKind, Report, ReportScore, log_ranking
+from shared.subtitles import SubtitleKind, parse_plain_text
 
 # ------------------------------------------------------------------------------
 # Constants

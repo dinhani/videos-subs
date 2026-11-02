@@ -10,7 +10,9 @@ from pathlib import Path
 
 from spylls.hunspell import Dictionary
 
-from shared import CHECK_EXPRESSIONS, CHECK_WORDS, DICTIONARY_HUNSPELL, FIX_SOUNDS, FIX_SUBJECTS, FIX_WORDS, Color, log_action, write_text_replacing
+from shared.console import Color, log_action
+from shared.data_lists import CHECK_EXPRESSIONS, CHECK_WORDS, DICTIONARY_HUNSPELL, FIX_SOUNDS, FIX_SUBJECTS, FIX_WORDS
+from shared.files import write_text_replacing
 
 
 # ------------------------------------------------------------------------------

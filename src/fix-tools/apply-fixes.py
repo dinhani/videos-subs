@@ -11,7 +11,10 @@ from typing import Any
 
 import srt
 
-from shared import IGNORE_MARKER, Color, IssueKind, log_action, parse_srt, write_text_replacing
+from shared.console import Color, log_action
+from shared.files import parse_srt, write_text_replacing
+from shared.reports import IssueKind
+from shared.subtitles import IGNORE_MARKER
 
 # ------------------------------------------------------------------------------
 # Constants

@@ -14,7 +14,11 @@ from openai import BaseModel
 from openai.types.chat import ChatCompletionContentPartParam
 from rich.progress import MofNCompleteColumn, TimeElapsedColumn, TimeRemainingColumn
 
-from shared import IMAGE_EXTENSIONS, LLM_PROPS_URL, SUBS_FOLDER, TRACES_FOLDER, Batch, Color, SubtitleEntry, SubtitleKind, Trace, connect_llama, find_files, log_action, parse_movie_dir, parse_image_subtitle, progress_bar, write_text_replacing
+from shared.console import Batch, Color, log_action, progress_bar
+from shared.files import IMAGE_EXTENSIONS, SUBS_FOLDER, TRACES_FOLDER, find_files, parse_movie_dir, write_text_replacing
+from shared.image_subtitles import SubtitleEntry, parse_image_subtitle
+from shared.llm import LLM_PROPS_URL, Trace, connect_llama
+from shared.subtitles import SubtitleKind
 
 # ------------------------------------------------------------------------------
 # Constants

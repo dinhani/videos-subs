@@ -7,7 +7,9 @@ import re
 from collections import defaultdict
 from pathlib import Path
 
-from shared import CHECKS_FOLDER, IMAGE_EXTENSIONS, SUBS_FOLDER, Batch, Color, SubtitleKind, console, find_files, find_language_code
+from shared.console import Batch, Color, console
+from shared.files import CHECKS_FOLDER, IMAGE_EXTENSIONS, SUBS_FOLDER, find_files, find_language_code
+from shared.subtitles import SubtitleKind
 
 # ------------------------------------------------------------------------------
 # Constants

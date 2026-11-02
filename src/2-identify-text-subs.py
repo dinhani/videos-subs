@@ -3,7 +3,10 @@
 # ------------------------------------------------------------------------------
 # Libraries
 # ------------------------------------------------------------------------------
-from shared import IMAGE_EXTENSIONS, SUBS_FOLDER, Batch, Color, SubtitleKind, SubtitleLanguage, find_files, find_language_code, log_action, parse_movie_dir, parse_srt
+from shared.console import Batch, Color, log_action
+from shared.files import IMAGE_EXTENSIONS, SUBS_FOLDER, find_files, find_language_code, parse_movie_dir, parse_srt
+from shared.languages import SubtitleLanguage
+from shared.subtitles import SubtitleKind
 
 # ------------------------------------------------------------------------------
 # Execution

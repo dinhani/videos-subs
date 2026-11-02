@@ -1,0 +1,94 @@
+import re
+from dataclasses import dataclass
+from pathlib import Path
+
+from shared.data_lists import parse_pairs
+from shared.subtitles import FORMATTING_TAGS
+
+DESCRIPTION_SIMPLE = re.compile(r"\[([^\[\]()<>{}]+)\]|\(([^\[\]()<>{}]+)\)")
+DESCRIPTION_SUBJECT_WORDS_MAX = 2
+DESCRIPTION_PUNCTUATION = re.compile(r"[\[\]()\-–—]")
+DESCRIPTION_ARTICLE = re.compile(r"^(?:o|a|os|as)\s+")
+
+
+def normalize_description(text: str) -> str:
+    return " ".join(DESCRIPTION_PUNCTUATION.sub(" ", FORMATTING_TAGS.sub("", text)).lower().split())
+
+
+def match_case(text: str, source: str) -> str:
+    if source.isupper():
+        return text.upper()
+    if source[:1].isupper():
+        return text[:1].upper() + text[1:]
+    return text
+
+
+@dataclass(frozen=True)
+class DescriptionTranslation:
+    source: str
+    text: str
+    name: str
+    forms: tuple[frozenset[str], ...]
+
+    def is_confirmed_by(self, translation: str, names: frozenset[str]) -> bool:
+        if not self.name:
+            return True
+        words = normalize_description(translation)
+        name = normalize_description(self.name)
+        return all(word in names for word in name.split()) and words != normalize_description(self.source) and f" {name} " in f" {words} "
+
+    def is_already_in(self, translation: str) -> bool:
+        parts = [DESCRIPTION_ARTICLE.sub("", part.strip()) for part in normalize_description(translation).split(",")]
+        return len(parts) == len(self.forms) and all(part in forms for part, forms in zip(parts, self.forms))
+
+
+@dataclass(frozen=True)
+class DescriptionTable:
+    sounds: dict[str, tuple[str, ...]]
+    subjects: dict[str, str]
+
+    @classmethod
+    def from_files(cls, sounds: Path, subjects: Path) -> "DescriptionTable":
+        return cls(sounds={key: tuple(form.strip() for form in value.split("|")) for key, value in parse_pairs(sounds).items()}, subjects=parse_pairs(subjects))
+
+    def find_translation(self, description: str) -> DescriptionTranslation | None:
+        words = description.split()
+        description = " ".join(words)
+        key = " ".join(words).lower()
+        if key in self.sounds:
+            return DescriptionTranslation(source=description, text=match_case(self.sounds[key][0], description), name="", forms=(self.to_forms(self.sounds[key], ""),))
+
+        # a list such as GRUNTS, GASPS: the first part may have a subject or a name, the others are phrases
+        if "," in description:
+            first, *others = (part.strip() for part in description.split(","))
+            translation = self.find_translation(first)
+            others_keys = [" ".join(other.split()).lower() for other in others]
+            if translation is None or not all(other_key in self.sounds for other_key in others_keys):
+                return None
+            texts = [translation.text, *(match_case(self.sounds[other_key][0], other) for other_key, other in zip(others_keys, others))]
+            forms = (*translation.forms, *(self.to_forms(self.sounds[other_key], "") for other_key in others_keys))
+            return DescriptionTranslation(source=description, text=", ".join(texts), name=translation.name, forms=forms)
+
+        # a subject or a name, then a phrase led by a verb in -ing or -s
+        for subject_size in range(1, min(DESCRIPTION_SUBJECT_WORDS_MAX, len(words) - 1) + 1):
+            subject, phrase = words[:subject_size], words[subject_size:]
+            phrase_key = " ".join(phrase).lower()
+            verb = phrase[0].lower()
+            if phrase_key not in self.sounds or not verb.endswith(("ing", "s")):
+                continue
+            subject_key = " ".join(subject).lower()
+            if subject_key in self.subjects:
+                subject_portuguese = self.subjects[subject_key]
+                if not verb.endswith("ing") and subject_portuguese.endswith("s"):
+                    continue
+                text = match_case(f"{subject_portuguese} {self.sounds[phrase_key][0]}", description)
+                return DescriptionTranslation(source=description, text=text, name="", forms=(self.to_forms(self.sounds[phrase_key], subject_portuguese),))
+            if any(word.lower().endswith(("'s", "’s")) or word.lower() in self.subjects or word.lower() in self.sounds or (not description.isupper() and word[0].islower()) for word in subject):
+                continue
+            name = " ".join(subject)
+            phrase_portuguese = self.sounds[phrase_key][0].upper() if description.isupper() else self.sounds[phrase_key][0]
+            return DescriptionTranslation(source=description, text=f"{name} {phrase_portuguese}", name=name, forms=(self.to_forms(self.sounds[phrase_key], name),))
+        return None
+
+    def to_forms(self, phrases: tuple[str, ...], subject: str) -> frozenset[str]:
+        return frozenset(DESCRIPTION_ARTICLE.sub("", normalize_description(f"{subject} {phrase}")) for phrase in phrases)

@@ -19,7 +19,12 @@ import srt
 from rich.prompt import Confirm
 from rich.text import Text
 
-from shared import CHECK_WORDS, CHECKS_FOLDER, DESCRIPTION_SIMPLE, DIR_FILMES, FIX_SOUNDS, FIX_SUBJECTS, FIX_WORDS, FORMATTING_TAGS, IGNORE_MARKER, SUBS_FOLDER, WORD, Batch, Color, DescriptionTable, SubtitleKind, console, find_files, find_language_code, log_action, normalize_description, parse_movie_dir, parse_plain_text, parse_srt, write_text_replacing
+from shared.console import Batch, Color, console, log_action
+from shared.data_lists import CHECK_WORDS, FIX_SOUNDS, FIX_SUBJECTS, FIX_WORDS
+from shared.descriptions import DESCRIPTION_SIMPLE, DescriptionTable, normalize_description
+from shared.files import CHECKS_FOLDER, DIR_FILMES, SUBS_FOLDER, find_files, find_language_code, parse_movie_dir, parse_srt, write_text_replacing
+from shared.languages import WORD
+from shared.subtitles import FORMATTING_TAGS, IGNORE_MARKER, SubtitleKind, parse_plain_text
 
 # ------------------------------------------------------------------------------
 # Constants

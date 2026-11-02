@@ -8,7 +8,9 @@ from datetime import timedelta
 
 import srt
 
-from shared import TRACES_FOLDER, Batch, Color, SubtitleKind, find_files, log_action, parse_movie_dir, parse_srt, write_text_replacing
+from shared.console import Batch, Color, log_action
+from shared.files import TRACES_FOLDER, find_files, parse_movie_dir, parse_srt, write_text_replacing
+from shared.subtitles import SubtitleKind
 
 # ------------------------------------------------------------------------------
 # Constants

@@ -9,7 +9,10 @@ from dataclasses import dataclass, field
 import srt
 from rich.progress import MofNCompleteColumn, TimeElapsedColumn, TimeRemainingColumn
 
-from shared import IGNORE_MARKER, SUBS_FOLDER, TRACES_FOLDER, Batch, Color, SubtitleKind, Trace, connect_llama, find_files, log_action, parse_movie_dir, parse_srt, parse_subtitle_name, progress_bar, write_text_replacing
+from shared.console import Batch, Color, log_action, progress_bar
+from shared.files import SUBS_FOLDER, TRACES_FOLDER, find_files, parse_movie_dir, parse_srt, parse_subtitle_name, write_text_replacing
+from shared.llm import Trace, connect_llama
+from shared.subtitles import IGNORE_MARKER, SubtitleKind
 
 # ------------------------------------------------------------------------------
 # Constants

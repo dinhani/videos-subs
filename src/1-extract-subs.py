@@ -11,7 +11,9 @@ from pathlib import Path
 
 from rich.progress import TaskProgressColumn, TimeElapsedColumn
 
-from shared import SUBS_FOLDER, Batch, Color, find_files, log_action, parse_movie_dir, progress_bar
+from shared.console import Batch, Color, log_action, progress_bar
+from shared.files import SUBS_FOLDER, find_files, parse_movie_dir
+
 
 # ------------------------------------------------------------------------------
 # Constants
