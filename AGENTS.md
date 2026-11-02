@@ -116,3 +116,7 @@ The justfile runs recipes in PowerShell (`pwsh -Command`). Recipes that take pat
 
 - Commit every major change on its own, as soon as it is done, with a Conventional Commits message. Push after committing.
 - The project folder is on the NAS, so git refuses it as dubious ownership until the folder is added to `safe.directory`.
+
+## Collaboration
+
+- Never tell the user that files written before a change, such as reports, traces or translations, keep the old format or the old results. The user knows.
