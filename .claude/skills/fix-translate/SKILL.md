@@ -26,7 +26,7 @@ Fix each entry flagged in the check-translate reports directly in its translatio
 Each run fixes one movie folder: every translation report with issues in its `_checks`, base and SDH, and nothing else. When the user names a movie or files, fix those. Otherwise take the movie folder of the report with the worst score, the first line of:
 
 ```
-find Z:/midias/filmes Z:/midias/series -path '*/_checks/*.translated.txt' -exec awk 'FNR == 2 && !/· 0 issues/ { print $2 "	" FILENAME }' {} + | sort -rn
+find Z:/midias/filmes Z:/midias/series -path '*/_checks/*.translated.txt' -exec awk 'FNR == 2 && !/· 0 issues/ { print $2 "\t" FILENAME }' {} + | sort -rn
 ```
 
 Fix the base and SDH translations of the movie together: an error found in both gets the same fix in both.

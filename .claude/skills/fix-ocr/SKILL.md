@@ -26,7 +26,7 @@ Fix each entry flagged in the check-ocr reports directly in its text subtitle, f
 Each run fixes one movie folder: every OCR report with issues in its `_checks`, and nothing else. When the user names a movie or files, fix those. Otherwise take the movie folder of the report with the worst score, the first line of:
 
 ```
-find Z:/midias/filmes Z:/midias/series -path '*/_checks/*.ocr.txt' -exec awk 'FNR == 2 && !/· 0 issues/ { print $2 "	" FILENAME }' {} + | sort -rn
+find Z:/midias/filmes Z:/midias/series -path '*/_checks/*.ocr.txt' -exec awk 'FNR == 2 && !/· 0 issues/ { print $2 "\t" FILENAME }' {} + | sort -rn
 ```
 
 Fix the text subtitles of the movie together: an error found in several gets the same fix in each.
