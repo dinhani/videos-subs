@@ -41,14 +41,12 @@ merc = mercátário = mercenário
 mutters = resmuinha = resmunga
 panting = oficialgando = ofegando
 playing = tocoando = tocando
-roaring = rognando = rugindo
 squeaking = chioando = chiando
 squeaks = chioando = chiando
 tajikistan = tajikistão = tajiquistão
 themistocles = temistócles = temístocles
 themistokles = temistócles = temístocles
 transmitters = transmitores = transmissores
-venting = ventação = ventilação
 weakly = fraquemente = fracamente
 whistle = assóbio = assobio
 whistling = assóbio = assobio

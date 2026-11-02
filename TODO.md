@@ -53,7 +53,6 @@ The project has no tests. Add them with pytest, run through a `just test` recipe
 
 ## Open items
 
-- **`data/fix-sounds.txt` has not been reviewed by the user.** About 100 of its phrases never matched a description in the translations the reviews used, so their Portuguese was never checked against a real entry. Review them under the Principle: a phrase whose Portuguese depends on the subject, the gender or the scene comes out.
 - **`just descriptions-missing`** lists speaker names (`lynch`, `marschall`) among the missing descriptions. Leave out descriptions that are a name of the movie, as `load_movie_names` finds them.
 - **Descriptions split across two lines** (`[WHISTLING` / `"SPIDER-MAN THEME"]`) and descriptions with a tag inside are never fixed.
 - **check-translate's broken line rule** now flags a few right lines of digits only, such as `20?` for `Twenty?` and `100.000.`. Most of its flags are debris; mark the right ones with `ignore:broken-line`, or find a test that tells them apart without hiding debris.
