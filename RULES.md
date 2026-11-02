@@ -153,7 +153,7 @@ The warning entries at the start of a translation, `[Legenda SDH...]` and `[Lege
 
 ## 2.2 untranslated
 
-- **About**: a line reads as English, or is its English line unchanged.
+- **About**: a line reads as English, or is its English line unchanged. A line whose English line has `♪` or `♫` is not flagged.
 - **Examples**:
   ```
   en   Get out of here!
@@ -161,7 +161,7 @@ The warning entries at the start of a translation, `[Legenda SDH...]` and `[Lege
   fix  Sai daqui!
   ```
 - **Correction**: translate the line.
-- **Caution**: names, titles of works, brands, and words the movie says in another language (Latin, Na'vi, Spanish) stay as they are: `Star Wars`, `Carpe diem.` English song lyrics stay in English, also without `♪`, such as `<i>Hold me when you go to sleep</i>`.
+- **Caution**: names, titles of works, brands, and words the movie says in another language (Latin, Na'vi, Spanish) stay as they are: `Star Wars`, `Carpe diem.` English song lyrics stay in English; a lyric line without `♪` is flagged, such as `<i>Hold me when you go to sleep</i>`.
 
 ## 2.3 added symbols
 

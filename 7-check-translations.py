@@ -61,8 +61,11 @@ class UntranslatedRule:
             if lines_english := [
                 n
                 for n, (source_line, target_line) in enumerate(itertools.zip_longest(entry.source_lines, entry.target_lines, fillvalue=""), start=1)
-                if (target_line == source_line and SOURCE_LANGUAGE.outweighs(TARGET_LANGUAGE, parse_words(target_line), votes_min=self.unchanged_votes_min))
-                or (not self.SONG.search(target_line) and SOURCE_LANGUAGE.outweighs(TARGET_LANGUAGE, parse_words(target_line), votes_min=self.votes_min))
+                if not self.SONG.search(source_line)
+                and (
+                    (target_line == source_line and SOURCE_LANGUAGE.outweighs(TARGET_LANGUAGE, parse_words(target_line), votes_min=self.unchanged_votes_min))
+                    or SOURCE_LANGUAGE.outweighs(TARGET_LANGUAGE, parse_words(target_line), votes_min=self.votes_min)
+                )
             ]:
                 yield i, f"line {', '.join(map(str, lines_english))} is in english"
 

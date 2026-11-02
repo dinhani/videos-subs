@@ -8,6 +8,8 @@ The only subtitle this project makes for viewers is the Brazilian Portuguese tra
 
 So an OCR output is only input for translation. Judge an OCR issue, a check-ocr rule or a fix by whether it changes the translation: wrong or missing text, lines in the wrong order, and markup that can reach the translated `.srt` matter; punctuation style that is faithful to the image, such as `....` for an ellipsis, does not.
 
+Subtitles are written by people and follow no strict format: `♪` may mark every line of a song, only some, or none; brackets and quotes may not close; speaker labels, dashes and line breaks vary between tracks. A rule judges each line by what that line shows and does not rely on paired symbols or a structure across lines or entries.
+
 ## Terms
 
 Use these terms, and only these, in code, logs, docs and conversation. Do not rotate synonyms.
