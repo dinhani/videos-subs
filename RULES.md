@@ -289,7 +289,7 @@ The warning entries at the start of a translation, `[Legenda SDH...]` and `[Lege
 
 ## 2.10 unknown word
 
-- **About**: a rare word missing from the pt_BR dictionary and from `data/dict-words.txt`: a typo, a broken word or a word of another language.
+- **About**: a rare word missing from the pt_BR dictionary and from `data/dict-words.txt`: a typo, a broken word or a word of another language. A word of the English entry is not flagged, nor a name there without its `'s` (`Helmsley's`, `Helmsley`).
 - **Examples**:
   ```
   en   A growl.

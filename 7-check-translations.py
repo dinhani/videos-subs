@@ -178,7 +178,8 @@ class UnknownWordRule:
         dictionary_hunspell = load_dictionary(self.dictionary_hunspell)
         dictionary_words = {line.strip().lower() for line in self.dictionary_words.read_text(encoding="utf-8").splitlines() if line.strip()}
         for i, entry in enumerate(check.entries):
-            source_words = {word.key for word in parse_words(entry.source_text)}
+            source = parse_words(entry.source_text)
+            source_words = {word.key for word in source} | {word.key.removesuffix("'s") for word in source if word.text[0].isupper()}
             if words_unknown := sorted({
                 word.text
                 for word in parse_words(entry.target_text)
