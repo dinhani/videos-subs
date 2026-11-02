@@ -140,17 +140,17 @@ class Report:
             str(self.subtitle.absolute()),
             f"score {self.score} (weighted issues per 100 entries) · {self.entries_count} entries · {len(self.issues)} issues",
             "",
-            *(f"{count:>5}  {kind.label:<21} {kind.description}" for kind, count in sorted(kinds.items(), key=lambda item: (-item[1], list(IssueKind).index(item[0])))),
-            *([f"{self.issues_ignored:>5}  {'ignored':<21} flags on entries marked with ignore: in the subtitle, not counted"] if self.issues_ignored else []),
+            *(f"  {count:<4} {kind.label:<21} {kind.description}" for kind, count in sorted(kinds.items(), key=lambda item: (-item[1], list(IssueKind).index(item[0])))),
+            *([f"  {self.issues_ignored:<4} {'ignored':<21} flags on entries marked with ignore: in the subtitle, not counted"] if self.issues_ignored else []),
         ]
         subtitle_lines = self.subtitle.read_text(encoding="utf-8-sig", errors="replace").splitlines()
         entry_line_numbers = {int(line): number for number, (line, next_line) in enumerate(itertools.pairwise(subtitle_lines), start=1) if line.strip().isdigit() and "-->" in next_line}
         for _, entry_issues in itertools.groupby(sorted(self.issues, key=lambda issue: (issue.entry.index, list(IssueKind).index(issue.kind))), key=lambda issue: issue.entry.index):
             entry_issues = list(entry_issues)
             entry = entry_issues[0].entry
-            lines += ["", f"entry {entry.index}, line {entry_line_numbers[entry.index]}  {entry.to_srt().splitlines()[1]}"]
-            lines += [f"  {issue.kind.label} (rule {issue.kind.rule}, ignore:{issue.kind.marker}): {issue.detail}" for issue in entry_issues]
-            lines += [f"    {quote}" for quote in entry_issues[0].quote]
+            lines += ["", f"entry {entry.index} · line {entry_line_numbers[entry.index]} · {entry.to_srt().splitlines()[1]}"]
+            lines += [f"  {issue.kind.label} · rule {issue.kind.rule} · ignore:{issue.kind.marker} · {issue.detail}" for issue in entry_issues]
+            lines += [f"  {quote}" for quote in entry_issues[0].quote]
         return "\n".join(lines) + "\n"
 
     def write(self, file: Path) -> "ReportScore":
