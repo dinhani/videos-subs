@@ -4,7 +4,7 @@ Each example shows an entry line by line: `ocr` is the OCR text, `en` the Englis
 
 A rule is a heuristic: it can flag a correct entry. Judge every flag, and leave the entry when it is right.
 
-When a flag is wrong, mark its entry so the check does not report that flag again: add `ignore:` and the issue kind, with a hyphen for each space, at the end of the entry's timing line. Several kinds are joined by commas. Viewers and the model never see the timing line, and Infuse plays a subtitle with markers.
+When a flag is wrong, mark its entry so the check does not report that flag again: add `ignore:` and the issue kind, with a hyphen for each space, at the end of the entry's timing line. The report gives the marker of each issue. Several kinds are joined by commas. Viewers and the model never see the timing line, and Infuse plays a subtitle with markers.
 
 ```
 00:01:59,120 --> 00:02:02,915 ignore:untranslated,unknown-word
@@ -223,7 +223,7 @@ The warning entries at the start of a translation, `[Legenda SDH...]` and `[Lege
 - **Correction**: replace the line with the translation of its English line.
 - **Caution**: the other line may already hold this line's text; then split it as in duplicated line.
 
-## 2.6 grammar: verb broken at a line break
+## 2.6 grammar verb: verb broken at a line break
 
 - **About**: LanguageTool `AUXILIARY_VERB_INFINITIVE`.
 - **Examples**:
@@ -238,7 +238,7 @@ The warning entries at the start of a translation, `[Legenda SDH...]` and `[Lege
 - **Correction**: fix the verb, with the LanguageTool suggestion (`maybe "..."` in the report) when it is right.
 - **Caution**: keep the line break; do not merge the lines.
 
-## 2.7 grammar: missing contraction
+## 2.7 grammar contraction: missing contraction
 
 - **About**: LanguageTool `CONTRACOES_OBRIGATORIAS`.
 - **Examples**:
@@ -253,7 +253,7 @@ The warning entries at the start of a translation, `[Legenda SDH...]` and `[Lege
 - **Correction**: contract, or rephrase as `de` and `sua esposa`, with the LanguageTool suggestion when it is right.
 - **Caution**: keep the line break; do not merge the lines.
 
-## 2.8 grammar: que and quê
+## 2.8 grammar que: que and quê
 
 - **About**: LanguageTool `QUE_QUÊ`.
 - **Examples**:
@@ -265,7 +265,7 @@ The warning entries at the start of a translation, `[Legenda SDH...]` and `[Lege
 - **Correction**: write `quê`.
 - **Caution**: only at the end of a phrase; `O que você quer?` is right.
 
-## 2.9 grammar: gender agreement
+## 2.9 grammar gender: gender agreement
 
 - **About**: LanguageTool `GENERAL_GENDER_AGREEMENT_ERRORS` and `ERRO_DE_CONCORDNCIA_DO_GÉNERO_MASCULINO_O`. A flag on a name, or inside an expression of `data/dict-expressions.txt`, is not reported.
 - **Examples**:

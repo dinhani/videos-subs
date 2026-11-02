@@ -33,25 +33,29 @@ LANGUAGE_VOTE_FREQUENCY_MIN = 3.0
 
 
 class IssueKind(Enum):
-    OCR_FAILED = ("ocr failed", 10, "the entry has no text, the model never gave a usable reply")
-    WRONG_ORDER = ("wrong order", 6, "the lines are in a different order than on the image")
-    INCONSISTENT = ("inconsistent", 4, "another entry has the exact same image but was read differently; one of them is wrong")
-    ARTIFACT = ("artifact", 3, "the model added markup, such as *word* or _word_ for italics, or a tag other than <i>")
-    GLYPH_CONFUSION = ("glyph confusion", 2, "a letter read as a similar character, such as | for I or 0 for O")
-    UNBALANCED = ("unbalanced", 2, "a bracket opened or closed without its pair, also not in the next two entries")
-    ACCEPTED_WITH_PROBLEM = ("accepted with problem", 4, "the translation failed every retry and was accepted with a problem")
-    UNTRANSLATED = ("untranslated", 6, "a line reads as English or is the English line unchanged")
-    ADDED_SYMBOLS = ("added symbols", 6, "symbols, tags or letters of another script that the English entry does not have, such as pieces of the model reply")
-    DUPLICATED_LINE = ("duplicated line", 6, "one line holds the translation of the whole entry and another line repeats part of it")
-    BROKEN_LINE = ("broken line", 4, "a line without words or starting with a comma")
-    GRAMMAR = ("grammar", 3, "LanguageTool found a grammar error, such as a verb or contraction broken at the line break, or a wrong gender")
-    UNKNOWN_WORD = ("unknown word", 3, "a rare word missing from the Brazilian Portuguese dictionary: a typo, a broken word or a word of another language")
-    UNKNOWN_WORD_CAPS = ("unknown word in caps", 3, "an unknown word in capital letters, usually a misspelled sound description such as GRUNNIDO")
-    PORTUGAL_PORTUGUESE = ("portugal portuguese", 3, "a word used in Portugal, not in Brazil")
+    OCR_FAILED = ("ocr failed", 10, "1.1", "the entry has no text, the model never gave a usable reply")
+    WRONG_ORDER = ("wrong order", 6, "1.2", "the lines are in a different order than on the image")
+    INCONSISTENT = ("inconsistent", 4, "1.3", "another entry has the exact same image but was read differently; one of them is wrong")
+    ARTIFACT = ("artifact", 3, "1.4", "the model added markup, such as *word* or _word_ for italics, or a tag other than <i>")
+    GLYPH_CONFUSION = ("glyph confusion", 2, "1.5", "a letter read as a similar character, such as | for I or 0 for O")
+    UNBALANCED = ("unbalanced", 2, "1.6", "a bracket opened or closed without its pair, also not in the next two entries")
+    ACCEPTED_WITH_PROBLEM = ("accepted with problem", 4, "2.1", "the translation failed every retry and was accepted with a problem")
+    UNTRANSLATED = ("untranslated", 6, "2.2", "a line reads as English or is the English line unchanged")
+    ADDED_SYMBOLS = ("added symbols", 6, "2.3", "symbols, tags or letters of another script that the English entry does not have, such as pieces of the model reply")
+    DUPLICATED_LINE = ("duplicated line", 6, "2.4", "one line holds the translation of the whole entry and another line repeats part of it")
+    BROKEN_LINE = ("broken line", 4, "2.5", "a line without words or starting with a comma")
+    GRAMMAR_VERB = ("grammar verb", 3, "2.6", "a verb broken at the line break, such as vão / mate-o")
+    GRAMMAR_CONTRACTION = ("grammar contraction", 3, "2.7", "a contraction broken at the line break, such as de / a esposa")
+    GRAMMAR_QUE = ("grammar que", 3, "2.8", "que at the end of a question, which must be quê")
+    GRAMMAR_GENDER = ("grammar gender", 3, "2.9", "an article or adjective of another gender than its noun, such as um trincheira")
+    UNKNOWN_WORD = ("unknown word", 3, "2.10", "a rare word missing from the Brazilian Portuguese dictionary: a typo, a broken word or a word of another language")
+    UNKNOWN_WORD_CAPS = ("unknown word in caps", 3, "2.11", "an unknown word in capital letters, usually a misspelled sound description such as GRUNNIDO")
+    PORTUGAL_PORTUGUESE = ("portugal portuguese", 3, "2.12", "a word used in Portugal, not in Brazil")
 
-    def __init__(self, label: str, weight: int, description: str) -> None:
+    def __init__(self, label: str, weight: int, rule: str, description: str) -> None:
         self.label = label
         self.weight = weight
+        self.rule = rule
         self.description = description
 
     @property
@@ -132,7 +136,7 @@ class Report:
     def compose(self) -> str:
         kinds = Counter(issue.kind for issue in self.issues)
         lines = [
-            self.subtitle.name,
+            str(self.subtitle.absolute()),
             f"score {self.score} (weighted issues per 100 entries) · {self.entries_count} entries · {len(self.issues)} issues",
             "",
             *(f"{count:>5}  {kind.label:<21} {kind.description}" for kind, count in sorted(kinds.items(), key=lambda item: (-item[1], list(IssueKind).index(item[0])))),
@@ -141,9 +145,8 @@ class Report:
         for _, entry_issues in itertools.groupby(sorted(self.issues, key=lambda issue: (issue.entry.index, list(IssueKind).index(issue.kind))), key=lambda issue: issue.entry.index):
             entry_issues = list(entry_issues)
             entry = entry_issues[0].entry
-            start = int(entry.start.total_seconds())
-            lines += ["", f"{start // 3600}:{start // 60 % 60:02}:{start % 60:02}  entry {entry.index}"]
-            lines += [f"  {issue.kind.label}: {issue.detail}" for issue in entry_issues]
+            lines += ["", f"entry {entry.index}  {entry.to_srt().splitlines()[1]}"]
+            lines += [f"  {issue.kind.label} (rule {issue.kind.rule}, ignore:{issue.kind.marker}): {issue.detail}" for issue in entry_issues]
             lines += [f"    {quote}" for quote in entry_issues[0].quote]
         return "\n".join(lines) + "\n"
 

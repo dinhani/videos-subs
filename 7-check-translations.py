@@ -124,23 +124,19 @@ class BrokenLineRule:
 
 @dataclass(frozen=True)
 class GrammarRule:
-    kind: ClassVar[IssueKind] = IssueKind.GRAMMAR
     LANGUAGE: ClassVar[str] = "pt-BR"
+    kind: IssueKind
     enabled: bool
-    languagetool_rules: dict[str, bool]
+    languagetool_rules: tuple[str, ...]
     dictionary_expressions: Path
 
-    @property
-    def languagetool_rules_enabled(self) -> set[str]:
-        return {rule for rule, enabled in self.languagetool_rules.items() if enabled} if self.enabled else set()
-
     def find_issues(self, check: "TranslationCheck") -> Iterator[tuple[int, str]]:
-        if not self.languagetool_rules_enabled:
-            return
         expressions = [re.compile(rf"(?<!\w){re.escape(line.strip().lower())}(?!\w)") for line in self.dictionary_expressions.read_text(encoding="utf-8").splitlines() if line.strip()]
-        text = "\n\n".join(entry.target_text for entry in check.entries)
-        entry_starts = list(itertools.accumulate((len(entry.target_text) + 2 for entry in check.entries[:-1]), initial=0))
-        for match in connect_languagetool(check.languagetool_server, frozenset(self.languagetool_rules_enabled)).check(text):
+        text = check.target_text
+        entry_starts = check.target_entry_starts
+        for match in check.languagetool_matches:
+            if match.rule_id not in self.languagetool_rules:
+                continue
             i = bisect.bisect_right(entry_starts, match.offset) - 1
             flagged_text = text[match.offset:match.offset + match.error_length]
 
@@ -214,28 +210,21 @@ TranslationRule = AcceptedWithProblemRule | UntranslatedRule | AddedSymbolsRule 
 DICTIONARY_HUNSPELL = Path(os.environ["LOCALAPPDATA"]) / "hunspell" / "pt_BR"
 DICTIONARY_WORDS = Path(__file__).parent / "data" / "dict-words.txt"
 DICTIONARY_EXPRESSIONS = Path(__file__).parent / "data" / "dict-expressions.txt"
-GRAMMAR = GrammarRule(
-    enabled=True,
-    languagetool_rules={
-        "AUXILIARY_VERB_INFINITIVE": True,
-        "CONTRACOES_OBRIGATORIAS": True,
-        "QUE_QUÊ": True,
-        "GENERAL_GENDER_AGREEMENT_ERRORS": True,
-        "ERRO_DE_CONCORDNCIA_DO_GÉNERO_MASCULINO_O": True,
-    },
-    dictionary_expressions=DICTIONARY_EXPRESSIONS,
-)
 RULES: tuple[TranslationRule, ...] = (
     AcceptedWithProblemRule(enabled=True),
     UntranslatedRule(enabled=True, votes_min=3, unchanged_votes_min=2),
     AddedSymbolsRule(enabled=True),
     DuplicatedLineRule(enabled=True, length_min=8, ratio_min=1.6),
     BrokenLineRule(enabled=True),
-    GRAMMAR,
+    GrammarRule(kind=IssueKind.GRAMMAR_VERB, enabled=True, languagetool_rules=("AUXILIARY_VERB_INFINITIVE",), dictionary_expressions=DICTIONARY_EXPRESSIONS),
+    GrammarRule(kind=IssueKind.GRAMMAR_CONTRACTION, enabled=True, languagetool_rules=("CONTRACOES_OBRIGATORIAS",), dictionary_expressions=DICTIONARY_EXPRESSIONS),
+    GrammarRule(kind=IssueKind.GRAMMAR_QUE, enabled=True, languagetool_rules=("QUE_QUÊ",), dictionary_expressions=DICTIONARY_EXPRESSIONS),
+    GrammarRule(kind=IssueKind.GRAMMAR_GENDER, enabled=True, languagetool_rules=("GENERAL_GENDER_AGREEMENT_ERRORS", "ERRO_DE_CONCORDNCIA_DO_GÉNERO_MASCULINO_O"), dictionary_expressions=DICTIONARY_EXPRESSIONS),
     UnknownWordRule(enabled=True, case=WordCase.OTHER, frequency_max=2.0, length_min=3, dictionary_hunspell=DICTIONARY_HUNSPELL, dictionary_words=DICTIONARY_WORDS),
     UnknownWordRule(enabled=True, case=WordCase.CAPS, frequency_max=2.0, length_min=3, dictionary_hunspell=DICTIONARY_HUNSPELL, dictionary_words=DICTIONARY_WORDS),
     PortugalPortugueseRule(enabled=True),
 )
+LANGUAGETOOL_RULES = frozenset(languagetool_rule for rule in RULES if isinstance(rule, GrammarRule) and rule.enabled for languagetool_rule in rule.languagetool_rules)
 
 # ------------------------------------------------------------------------------
 # Checks
@@ -305,6 +294,20 @@ class TranslationCheck:
                     continue
                 self.issues.append(Issue(entry=self.entries[i].target, kind=rule.kind, detail=detail, quote=self.quote(i)))
 
+    @functools.cached_property
+    def target_text(self) -> str:
+        return "\n\n".join(entry.target_text for entry in self.entries)
+
+    @functools.cached_property
+    def target_entry_starts(self) -> list[int]:
+        return list(itertools.accumulate((len(entry.target_text) + 2 for entry in self.entries[:-1]), initial=0))
+
+    @functools.cached_property
+    def languagetool_matches(self) -> list[language_tool_python.Match]:
+        if not LANGUAGETOOL_RULES:
+            return []
+        return connect_languagetool(self.languagetool_server, LANGUAGETOOL_RULES).check(self.target_text)
+
     def quote(self, i: int) -> tuple[str, ...]:
         quote: list[str] = []
         for j in range(max(0, i - QUOTE_CONTEXT_ENTRIES), min(len(self.entries), i + QUOTE_CONTEXT_ENTRIES + 1)):
@@ -346,7 +349,7 @@ if __name__ == "__main__":
     subs_pending = [sub for sub in subs if scores_current[sub] is None]
 
     # start one LanguageTool server for all workers, only when there is a sub to check and a LanguageTool rule enabled
-    with (language_tool_python.LanguageTool(GrammarRule.LANGUAGE) if subs_pending and GRAMMAR.languagetool_rules_enabled else contextlib.nullcontext()) as languagetool, ProcessPoolExecutor(max_workers=CHECK_WORKERS) as executor:
+    with (language_tool_python.LanguageTool(GrammarRule.LANGUAGE) if subs_pending and LANGUAGETOOL_RULES else contextlib.nullcontext()) as languagetool, ProcessPoolExecutor(max_workers=CHECK_WORKERS) as executor:
         # check every sub without a report, CHECK_WORKERS at a time across movies
         languagetool_server = f"http://{languagetool.host}:{languagetool.port}" if languagetool is not None else ""
         checks: dict[Path, Future[ReportScore]] = {sub: executor.submit(check_subtitle, sub, reports[sub], languagetool_server) for sub in subs_pending}

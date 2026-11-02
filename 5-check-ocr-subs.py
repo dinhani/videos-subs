@@ -33,6 +33,8 @@ FONT_SIZE = 100
 FONT = ImageFont.truetype("arial.ttf", FONT_SIZE)
 LINE_HEIGHT_MIN = 0.45
 
+QUOTE_CONTEXT_ENTRIES = 1
+
 QUOTES_PLAIN = str.maketrans("‘’‚“”„", "'''\"\"\"")
 
 # ------------------------------------------------------------------------------
@@ -271,7 +273,15 @@ class OcrCheck:
                 if rule.kind.is_ignored_in(entry.subtitle):
                     self.issues_ignored += 1
                     continue
-                self.issues.append(Issue(entry=entry.subtitle, kind=rule.kind, detail=detail, quote=tuple(f"  {line}" for line in entry.subtitle.content.split("\n"))))
+                self.issues.append(Issue(entry=entry.subtitle, kind=rule.kind, detail=detail, quote=self.quote(entry)))
+
+    def quote(self, entry: "OcrEntry") -> tuple[str, ...]:
+        i = self.entries.index(entry)
+        quote: list[str] = []
+        for j in range(max(0, i - QUOTE_CONTEXT_ENTRIES), min(len(self.entries), i + QUOTE_CONTEXT_ENTRIES + 1)):
+            mark = ">>" if j == i else "  "
+            quote += [f"{mark} {str(self.entries[j].subtitle.index) if n == 0 else '':>4}  {line}" for n, line in enumerate(self.entries[j].subtitle.content.split("\n"))]
+        return tuple(quote)
 
     def to_report(self) -> Report:
         return Report(subtitle=self.subtitle, entries_count=len(self.entries), issues=self.issues, issues_ignored=self.issues_ignored)
