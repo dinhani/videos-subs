@@ -129,14 +129,30 @@ crosscheck *paths:
     exit $LASTEXITCODE
 
 [group('data')]
-[doc('Delete check reports')]
-[confirm('Delete every _checks folder under the given paths, or under Z:/midias/filmes and Z:/midias/series without paths? (y/N)')]
+[doc('Delete OCR reports')]
+[confirm('Delete every OCR report in _checks under the given paths, or under Z:/midias/filmes and Z:/midias/series without paths? (y/N)')]
 [script]
 [extension('.ps1')]
 [positional-arguments]
-reset-checks *paths:
+reset-checks-ocr *paths:
     $folders = if ($args) { $args } else { 'Z:/midias/filmes', 'Z:/midias/series' }
-    Get-ChildItem -Path $folders -Directory -Recurse -Filter _checks | Remove-Item -Recurse -Force
+    Get-ChildItem -LiteralPath $folders -File -Recurse -Filter '*.ocr.txt' | Where-Object { $_.Directory.Name -eq '_checks' } | ForEach-Object {
+        Remove-Item -LiteralPath $_.FullName
+        Write-Output $_.Name
+    }
+
+[group('data')]
+[doc('Delete translation reports')]
+[confirm('Delete every translation report in _checks under the given paths, or under Z:/midias/filmes and Z:/midias/series without paths? (y/N)')]
+[script]
+[extension('.ps1')]
+[positional-arguments]
+reset-checks-translate *paths:
+    $folders = if ($args) { $args } else { 'Z:/midias/filmes', 'Z:/midias/series' }
+    Get-ChildItem -LiteralPath $folders -File -Recurse -Filter '*.translated.txt' | Where-Object { $_.Directory.Name -eq '_checks' } | ForEach-Object {
+        Remove-Item -LiteralPath $_.FullName
+        Write-Output $_.Name
+    }
 
 [group('data')]
 [doc('Remove English language codes from subtitles')]
