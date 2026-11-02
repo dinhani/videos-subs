@@ -17,7 +17,7 @@ Forbidden, with no exception and no matter how many entries there are:
 
 For every flagged entry: read its issue and text, decide what the text on screen most likely says, then make one edit to that entry only, or none when it is already right.
 
-The rules per issue kind below are the usual fixes, not substitutions. When a rule gives a text that does not make sense, write the text that does. The check is a heuristic and can flag a correct entry: leave it and list it at the end.
+The corrections in `RULES.md` are the usual fixes, not substitutions. When a correction gives a text that does not make sense, write the text that does. The check is a heuristic and can flag a correct entry: leave it and list it at the end.
 ## Procedure
 
 Fix each entry flagged in the check-ocr reports directly in its text subtitle, from the report alone. Never run `just ocr` again.
@@ -28,13 +28,8 @@ Reports with issues, unless the user names files:
 grep -L "· 0 issues" Z:/midias/filmes/*/_checks/*.ocr.txt Z:/midias/series/*/_checks/*.ocr.txt Z:/midias/series/*/*/_checks/*.ocr.txt
 ```
 
-The first line of a report names its text subtitle, in `_subs` next to `_checks`. Each flagged entry quotes its exact text from the `.srt`. Do not read the rest of the file. Fix every entry except the kinds marked skip below.
+The first line of a report names its text subtitle, in `_subs` next to `_checks`. Each flagged entry quotes its exact text from the `.srt`. Do not read the rest of the file.
 
-- **glyph confusion**: `|` → `I`, `0` → `O` inside a word, `l'll` → `I'll`. A repeated word is a stammer: `| I can` → `I-- I can`.
-- **artifact**: markdown emphasis becomes `<i>...</i>`, or no tag when the line is already inside `<i>`; a tag with attributes such as `<i style="...">` becomes `<i>`, and `</em>` becomes `</i>`; stray `{`, `<`, `` ` `` are deleted.
-- **inconsistent**: copy the text of the entry the report names.
-- **unbalanced**: add the missing bracket at the start or end of the caption. Skip when the brackets in the quoted text already pair up; the check is wrong there.
-- **wrong order**: swap the lines. Skip when the lines already read correctly in their current order, such as a sentence that continues from the first line to the second or a speaker label above its line; the check is wrong there.
-- **ocr failed**: skip.
+Read `RULES.md` at the project root first. Fix each entry with the Correction and Caution of its rule in section 1 (OCR).
 
 After fixing a file, delete its report so the next check-ocr run checks it again. Never edit a report and never run check-ocr; the user does. At the end, list the skipped entries, the flags left alone because the text was already right, and the `.eng.srt` files that already had a `.pob.translated.srt`, since that translation was made from the old text.
