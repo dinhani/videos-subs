@@ -510,7 +510,7 @@ RUNS = (
     Run(name="magistral-small-24b", model=MAGISTRAL_SMALL_24B, translation=PipelineTranslation()),
     Run(name="gemma-4-26b", model=GEMMA_4_26B, translation=PipelineTranslation()),
     *(Run(name=f"gemma-4-26b+{prompt.stem}", model=GEMMA_4_26B, translation=PipelineTranslation(prompt=prompt)) for prompt in sorted(PROMPTS_DIR.glob("*.txt"))),
-    Run(name="gemma-4-26b-temperature-0.7", model=GEMMA_4_26B, translation=PipelineTranslation(temperatures=(0.7, 0.7, 1.0))),
+    Run(name="gemma-4-26b-temperature-1.0", model=GEMMA_4_26B, translation=PipelineTranslation(temperatures=(1.0, 1.0, 1.0))),
     Run(name="gemma-4-26b-thinking", model=GEMMA_4_26B_THINKING, translation=PipelineTranslation(temperatures=(1.0, 1.0, 1.0))),
     Run(name="hy-mt2-30b-iq3", model=HY_MT2_30B, translation=PipelineTranslation()),
     Run(name="gemma-4-31b-iq3", model=GEMMA_4_31B, translation=PipelineTranslation()),
