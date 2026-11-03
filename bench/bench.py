@@ -509,19 +509,6 @@ SCORING_MODELS = (COMET_WMT22, XLM_ROBERTA_LARGE)
 
 RUNS = (
     *(Run(name=model.name, model=model, translation=NmtTranslation(model=model)) for model in NMT_MODELS),
-    Run(name="gemma-4-26b", model=GEMMA_4_26B, translation=PipelineTranslation()),
-    Run(name="gemma-4-26b-thinking", model=GEMMA_4_26B_THINKING, translation=PipelineTranslation()),
-    Run(name="gemma-4-12b", model=GEMMA_4_12B, translation=PipelineTranslation()),
-    Run(name="mistral-small-3.2-24b", model=MISTRAL_SMALL_3_2_24B, translation=PipelineTranslation()),
-    Run(name="ministral-3-14b", model=MINISTRAL_3_14B, translation=PipelineTranslation()),
-    Run(name="qwen-3-14b", model=QWEN_3_14B, translation=PipelineTranslation()),
-    Run(name="qwen-3.5-9b", model=QWEN_3_5_9B, translation=PipelineTranslation()),
-    Run(name="gpt-oss-20b", model=GPT_OSS_20B, translation=PipelineTranslation()),
-    Run(name="ernie-4.5-21b", model=ERNIE_4_5_21B, translation=PipelineTranslation()),
-    Run(name="command-r7b", model=COMMAND_R7B, translation=PipelineTranslation()),
-    Run(name="aya-expanse-8b", model=AYA_EXPANSE_8B, translation=PipelineTranslation()),
-    Run(name="magistral-small-24b", model=MAGISTRAL_SMALL_24B, translation=PipelineTranslation()),
-    Run(name="gemma-3-12b", model=GEMMA_3_12B, translation=PipelineTranslation()),
     Run(
         name="hy-mt2-7b",
         model=HY_MT2_7B,
@@ -530,16 +517,29 @@ RUNS = (
             sampling={"temperature": 0.7, "top_p": 0.6, "top_k": 20, "repeat_penalty": 1.05},
         ),
     ),
+    Run(name="command-r7b", model=COMMAND_R7B, translation=PipelineTranslation()),
+    Run(name="aya-expanse-8b", model=AYA_EXPANSE_8B, translation=PipelineTranslation()),
+    Run(name="qwen-3.5-9b", model=QWEN_3_5_9B, translation=PipelineTranslation()),
     Run(
         name="tower-plus-9b",
         model=TOWER_PLUS_9B,
         translation=NativeTranslation(content=lambda text: f"Translate the following English source text to Portuguese (Brazilian):\nEnglish: {text}\nPortuguese (Brazilian): "),
     ),
+    Run(name="gemma-4-12b", model=GEMMA_4_12B, translation=PipelineTranslation()),
+    Run(name="gemma-3-12b", model=GEMMA_3_12B, translation=PipelineTranslation()),
     Run(
         name="translategemma-12b",
         model=TRANSLATEGEMMA_12B,
         translation=NativeTranslation(content=lambda text: [{"type": "text", "source_lang_code": "en", "target_lang_code": "pt-BR", "text": text}]),
     ),
+    Run(name="ministral-3-14b", model=MINISTRAL_3_14B, translation=PipelineTranslation()),
+    Run(name="qwen-3-14b", model=QWEN_3_14B, translation=PipelineTranslation()),
+    Run(name="gpt-oss-20b", model=GPT_OSS_20B, translation=PipelineTranslation()),
+    Run(name="ernie-4.5-21b", model=ERNIE_4_5_21B, translation=PipelineTranslation()),
+    Run(name="mistral-small-3.2-24b", model=MISTRAL_SMALL_3_2_24B, translation=PipelineTranslation()),
+    Run(name="magistral-small-24b", model=MAGISTRAL_SMALL_24B, translation=PipelineTranslation()),
+    Run(name="gemma-4-26b", model=GEMMA_4_26B, translation=PipelineTranslation()),
+    Run(name="gemma-4-26b-thinking", model=GEMMA_4_26B_THINKING, translation=PipelineTranslation()),
 )
 
 
