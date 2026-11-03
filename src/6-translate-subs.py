@@ -116,7 +116,6 @@ class SubtitleTranslation:
             resp = llama.chat.completions.create(
                 model="local",
                 temperature=temperature,
-                max_tokens=8192,
                 response_format={"type": "json_schema", "json_schema": {"name": "translations", "strict": True, "schema": schema}},
                 messages=[
                     {"role": "system", "content": LLM_PROMPT},
