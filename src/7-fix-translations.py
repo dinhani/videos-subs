@@ -202,12 +202,14 @@ class DescriptionsFix:
             # each translation from the tables, kept only when the model kept its name, and left out when the model already wrote one of its forms
             translations = [table.find_translation(description[1] or description[2]) for description in descriptions]
             models = [description[1] or description[2] for description in descriptions_target] if paired else [line] * len(descriptions)
+            # the spaces inside the brackets come from the model's description at the same place, so the entry keeps one style, or from the English one when the model has none
+            spacings = descriptions_target if paired else descriptions
             texts: list[str | None] = []
-            for description, translation, model in zip(descriptions, translations, models):
+            for description, translation, model, spacing in zip(descriptions, translations, models, spacings):
                 if translation is None or not translation.is_confirmed_by(model, movie.names) or (paired and translation.is_already_in(model)):
                     texts.append(None)
                     continue
-                inner = description[0][1:-1]
+                inner = spacing[0][1:-1]
                 space_before, space_after = inner[:len(inner) - len(inner.lstrip())], inner[len(inner.rstrip()):]
                 texts.append(f"{description[0][0]}{space_before}{translation.text}{space_after}{description[0][-1]}")
 
