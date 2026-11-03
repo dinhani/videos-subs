@@ -61,3 +61,16 @@ def test_report_score_reads_back(tmp_path: Path) -> None:
 
     assert ReportScore.find(score.report) == score
     assert (score.score, score.issues_count) == (4.0, 1)
+
+
+def test_report_issues_by_label_read_back(tmp_path: Path) -> None:
+    entries = [srt.Subtitle(index=index, start=timedelta(seconds=index), end=timedelta(seconds=index + 1), content=f"Linha {index}.") for index in range(1, 5)]
+    subtitle = tmp_path / "movie.embed.2.pob.translated.srt"
+    subtitle.write_text(srt.compose(entries), encoding="utf-8")
+    kinds = (IssueKind.ACCEPTED_WITH_PROBLEM, IssueKind.UNKNOWN_WORD_CAPS, IssueKind.UNKNOWN_WORD, IssueKind.UNKNOWN_WORD)
+    issues = [Issue(entry=entry, kind=kind, detail="", quote=()) for entry, kind in zip(entries, kinds)]
+    report = Report(subtitle=subtitle, entries_count=len(entries), issues=issues, issues_ignored=2)
+
+    score = report.write(tmp_path / "_checks" / "movie.embed.2.pob.translated.txt")
+
+    assert score.find_issues_by_label() == {"accepted with problem": 1, "unknown word in caps": 1, "unknown word": 2}

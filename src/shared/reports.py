@@ -16,6 +16,9 @@ from shared.subtitles import IGNORE_MARKER
 CHECK_WORKERS = 8
 
 REPORT_HEADER = re.compile(r"^score ([\d.]+) .* · (\d+) issues$")
+REPORT_SUMMARY_START = 3
+KIND_LABEL_WIDTH = 21
+IGNORED_LABEL = "ignored"
 
 SCORE_ENTRIES_MIN = 100
 SCORE_REVIEW = 5.0
@@ -92,8 +95,8 @@ class Report:
             str(self.subtitle.absolute()),
             f"score {self.score} (weighted issues per 100 entries) · {self.entries_count} entries · {len(self.issues)} issues",
             "",
-            *(f"  {count:<4} {kind.label:<21} {kind.description}" for kind, count in sorted(kinds.items(), key=lambda item: (-item[1], list(IssueKind).index(item[0])))),
-            *([f"  {self.issues_ignored:<4} {'ignored':<21} flags on entries marked with ignore: in the subtitle, not counted"] if self.issues_ignored else []),
+            *(f"  {count:<4} {kind.label:<{KIND_LABEL_WIDTH}} {kind.description}" for kind, count in sorted(kinds.items(), key=lambda item: (-item[1], list(IssueKind).index(item[0])))),
+            *([f"  {self.issues_ignored:<4} {IGNORED_LABEL:<{KIND_LABEL_WIDTH}} flags on entries marked with ignore: in the subtitle, not counted"] if self.issues_ignored else []),
         ]
         subtitle_lines = self.subtitle.read_text(encoding="utf-8-sig", errors="replace").splitlines()
         entry_line_numbers = {int(line): number for number, (line, next_line) in enumerate(itertools.pairwise(subtitle_lines), start=1) if line.strip().isdigit() and "-->" in next_line}
@@ -127,6 +130,16 @@ class ReportScore:
         if header is None:
             return None
         return cls(report=file, score=float(header[1]), issues_count=int(header[2]))
+
+    def find_issues_by_label(self) -> Counter[str]:
+        issues: Counter[str] = Counter()
+        lines = self.report.read_text(encoding="utf-8").splitlines()
+        for line in itertools.takewhile(str.strip, lines[REPORT_SUMMARY_START:]):
+            count, text = line.split(maxsplit=1)
+            label = text[:KIND_LABEL_WIDTH].strip()
+            if label != IGNORED_LABEL:
+                issues[label] = int(count)
+        return issues
 
     @property
     def color(self) -> Color:
