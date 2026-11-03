@@ -50,6 +50,7 @@ ENGLISH_DIR = BENCH_DIR / "1-english"
 REFERENCES_DIR = BENCH_DIR / "2-references"
 RUNS_DIR = BENCH_DIR / "3-runs"
 COMPARE_DIR = BENCH_DIR / "4-compare"
+PROMPTS_DIR = BENCH_DIR / "prompts"
 SCORES_FOLDER = "_scores"
 TIMINGS_FILE = "timings.json"
 SCORE_JOBS_FILE = "score-jobs.json"
@@ -211,12 +212,16 @@ class ScoringModel:
 @dataclass(frozen=True)
 class PipelineTranslation:
     temperatures: tuple[float, ...] = ()
+    prompt: Path | None = None
 
     def describe(self) -> str:
         return "pipeline"
 
     def translate(self, source: Path, translation: Path) -> None:
-        options = ["--temperatures", *map(str, self.temperatures)] if self.temperatures else []
+        options = [
+            *(["--temperatures", *map(str, self.temperatures)] if self.temperatures else []),
+            *(["--prompt", str(self.prompt)] if self.prompt else []),
+        ]
         subprocess.run([sys.executable, str(SRC_DIR / "6-translate-subs.py"), str(source), *options], check=True)
 
 
@@ -502,6 +507,7 @@ RUNS = (
     Run(name="mistral-small-3.2-24b", model=MISTRAL_SMALL_3_2_24B, translation=PipelineTranslation()),
     Run(name="magistral-small-24b", model=MAGISTRAL_SMALL_24B, translation=PipelineTranslation()),
     Run(name="gemma-4-26b", model=GEMMA_4_26B, translation=PipelineTranslation()),
+    *(Run(name=f"gemma-4-26b+{prompt.stem}", model=GEMMA_4_26B, translation=PipelineTranslation(prompt=prompt)) for prompt in sorted(PROMPTS_DIR.glob("*.txt"))),
     Run(name="gemma-4-26b-thinking", model=GEMMA_4_26B_THINKING, translation=PipelineTranslation(temperatures=(1.0, 1.0, 1.0))),
     Run(name="hy-mt2-30b-iq3", model=HY_MT2_30B, translation=PipelineTranslation()),
     Run(name="gemma-4-31b-iq3", model=GEMMA_4_31B, translation=PipelineTranslation()),

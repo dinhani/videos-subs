@@ -6,6 +6,7 @@
 import argparse
 import json
 from dataclasses import dataclass, field
+from pathlib import Path
 
 import srt
 from rich.progress import MofNCompleteColumn, TimeElapsedColumn, TimeRemainingColumn
@@ -68,12 +69,13 @@ class SubtitleTranslation:
     pending: list[int]
     trace: Trace
     temperatures: tuple[float, ...]
+    prompt: str
     translated: dict[int, list[str]] = field(default_factory=dict)
 
     @classmethod
-    def from_entries(cls, entries: list[srt.Subtitle], trace: Trace, temperatures: tuple[float, ...]) -> "SubtitleTranslation":
+    def from_entries(cls, entries: list[srt.Subtitle], trace: Trace, temperatures: tuple[float, ...], prompt: str) -> "SubtitleTranslation":
         lines = [[" ".join(line.split()) for line in entry.content.split("\n") if line.strip()] for entry in entries]
-        return cls(entries=entries, lines=lines, pending=[i for i, entry_lines in enumerate(lines) if entry_lines], trace=trace, temperatures=temperatures)
+        return cls(entries=entries, lines=lines, pending=[i for i, entry_lines in enumerate(lines) if entry_lines], trace=trace, temperatures=temperatures, prompt=prompt)
 
     def translate(self, start: int, end: int, splits: int = 0) -> None:
         # build request
@@ -118,7 +120,7 @@ class SubtitleTranslation:
                 temperature=temperature,
                 response_format={"type": "json_schema", "json_schema": {"name": "translations", "strict": True, "schema": schema}},
                 messages=[
-                    {"role": "system", "content": LLM_PROMPT},
+                    {"role": "system", "content": self.prompt},
                     {"role": "user", "content": json.dumps(request, ensure_ascii=False)},
                 ],
             )
@@ -184,8 +186,11 @@ class SubtitleTranslation:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Translates English subtitles to Brazilian Portuguese; folders only English ones.")
     parser.add_argument("--temperatures", nargs="+", type=float, default=LLM_TEMPERATURES, help=f"temperature of each attempt of a chunk, in order (default: {' '.join(map(str, LLM_TEMPERATURES))})")
+    parser.add_argument("--prompt", type=Path, help="text file with the system prompt to use instead of LLM_PROMPT")
     subs_src = find_files(parser, extensions_file=(".srt",), extensions_folder=tuple(f".eng{kind}.srt" for kind in SubtitleKind), folder=SUBS_FOLDER)
-    temperatures = tuple(parser.parse_args().temperatures)
+    arguments = parser.parse_args()
+    temperatures = tuple(arguments.temperatures)
+    prompt = arguments.prompt.read_text(encoding="utf-8") if arguments.prompt else LLM_PROMPT
     llama = connect_llama()
 
     batch = Batch()
@@ -212,7 +217,7 @@ if __name__ == "__main__":
             sub_trace.parent.mkdir(exist_ok=True)
             progress = progress_bar(MofNCompleteColumn(), TimeElapsedColumn(), TimeRemainingColumn())
             with progress:
-                translation = SubtitleTranslation.from_entries(sub_entries, Trace(file=sub_trace), temperatures)
+                translation = SubtitleTranslation.from_entries(sub_entries, Trace(file=sub_trace), temperatures, prompt)
                 chunk_starts = range(0, len(translation.pending), CHUNK_SIZE)
                 for chunk_start in progress.track(chunk_starts, total=len(chunk_starts)):
                     translation.translate(chunk_start, min(chunk_start + CHUNK_SIZE, len(translation.pending)))
