@@ -12,6 +12,7 @@ import statistics
 import subprocess
 import sys
 import time
+from collections import Counter
 from collections.abc import Callable, Generator
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
@@ -24,6 +25,7 @@ import httpx
 import srt
 from rich.progress import MofNCompleteColumn, TimeElapsedColumn, TimeRemainingColumn
 from rich.table import Table
+from rich.text import Text
 
 BENCH_DIR = Path(__file__).parent
 SRC_DIR = BENCH_DIR.parent / "src"
@@ -31,7 +33,7 @@ sys.path.insert(0, str(SRC_DIR))
 
 from shared.console import Batch, Color, console, log_action, progress_bar
 from shared.files import CHECKS_FOLDER, SUBS_FOLDER, TRACES_FOLDER, parse_srt, parse_subtitle_name, write_text_replacing
-from shared.reports import REPORT_HEADER
+from shared.reports import ReportScore
 from shared.subtitles import IGNORE_MARKER, SubtitleKind, parse_plain_text
 
 # ------------------------------------------------------------------------------
@@ -53,6 +55,7 @@ TIMINGS_FILE = "timings.json"
 SCORE_JOBS_FILE = "score-jobs.json"
 NMT_REPLIES_FILE = "nmt-replies.json"
 LLAMA_LOG_FILE = "llama.log"
+BASELINE_RUN = "gemma-4-26b"
 
 ALIGNMENT_OVERLAP_MIN = timedelta(milliseconds=200)
 ALIGNMENT_OFFSET_MAX = timedelta(seconds=2)
@@ -366,6 +369,19 @@ class RunTranslation:
     def to_score(self, reference: Reference) -> Path:
         return self.translation.parent / SCORES_FOLDER / f"{self.translation.stem}.{reference.name}.json"
 
+    def find_scores(self, reference: Reference) -> dict[str, float]:
+        score_file = self.to_score(reference)
+        return json.loads(score_file.read_text(encoding="utf-8")) if score_file.exists() else {}
+
+    def find_issues_by_kind(self) -> Counter[str]:
+        report_lines = self.report.read_text(encoding="utf-8").splitlines()
+        return Counter({line[7:28].strip(): int(line[2:6]) for line in itertools.takewhile(str.strip, report_lines[3:]) if line[7:28].strip() != "ignored"})
+
+    def find_minutes(self) -> float | None:
+        timings_file = self.translation.parent.parent / TIMINGS_FILE
+        timings: dict[str, int] = json.loads(timings_file.read_text(encoding="utf-8")) if timings_file.exists() else {}
+        return timings[self.translation.name] / 60 if self.translation.name in timings else None
+
 
 @dataclass(frozen=True)
 class Run:
@@ -483,6 +499,43 @@ RUNS = (
 
 
 # ------------------------------------------------------------------------------
+# Report
+# ------------------------------------------------------------------------------
+class Better(StrEnum):
+    HIGHER = "higher"
+    LOWER = "lower"
+
+
+@dataclass(frozen=True)
+class Metric:
+    name: str
+    key: str
+    better: Better
+    decimals: int
+
+    def to_header(self, reference: Reference | None = None) -> str:
+        return f"{self.name} {reference.name}" if reference else self.name
+
+    def to_cell(self, value: float | None, baseline: float | None) -> Text:
+        if value is None:
+            return Text("-", style="dim")
+        cell = Text(f"{value:.{self.decimals}f}")
+        if baseline is None:
+            return cell
+        difference = round(value - baseline, self.decimals)
+        if difference == 0:
+            return cell.append(f" {'=':>{self.decimals + 3}}", style="dim")
+        improved = difference > 0 if self.better == Better.HIGHER else difference < 0
+        return cell.append(f" {difference:+.{self.decimals}f}", style=Color.GREEN if improved else Color.RED)
+
+
+METRIC_COMET = Metric(name="COMET", key="comet", better=Better.HIGHER, decimals=2)
+METRIC_CHRF = Metric(name="chrF++", key="chrf", better=Better.HIGHER, decimals=2)
+METRIC_CHECK = Metric(name="check", key="check", better=Better.LOWER, decimals=1)
+METRIC_MINUTES = Metric(name="minutes", key="minutes", better=Better.LOWER, decimals=1)
+
+
+# ------------------------------------------------------------------------------
 # Execution
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
@@ -542,38 +595,48 @@ if __name__ == "__main__":
                 models[name].download()
 
         case "report":
-            table_scores = Table("run", "movie", "check score", "issues", "minutes", "comet official", "chrf++ official", "comet claude", "chrf++ claude")
-            issues_by_kind: dict[str, dict[str, int]] = {}
-            for run in RUNS:
-                timings_file = run.dir / TIMINGS_FILE
-                timings: dict[str, int] = json.loads(timings_file.read_text(encoding="utf-8")) if timings_file.exists() else {}
-                for translation in run.find_translations():
-                    if not translation.report.exists():
-                        continue
-                    report_lines = translation.report.read_text(encoding="utf-8").splitlines()
-                    header = REPORT_HEADER.match(report_lines[1])
-                    if header is None:
-                        raise ValueError(f"report without a score: {translation.report}")
-                    scores = []
-                    for reference in (translation.source.reference_official, translation.source.reference_claude):
-                        score_file = translation.to_score(reference)
-                        score = json.loads(score_file.read_text(encoding="utf-8")) if score_file.exists() else {}
-                        scores += [str(score.get("comet", "-")), str(score.get("chrf", "-"))]
-                    minutes = f"{timings[translation.translation.name] / 60:.1f}" if translation.translation.name in timings else "-"
-                    table_scores.add_row(run.name, translation.source.title, header[1], header[2], minutes, *scores)
-                    for line in itertools.takewhile(str.strip, report_lines[3:]):
-                        issues_by_kind.setdefault(line[7:28].strip(), {})[run.name] = issues_by_kind.get(line[7:28].strip(), {}).get(run.name, 0) + int(line[2:6])
+            console.print("COMET and chrF++: closeness to the reference translation, 0-100, higher is better.")
+            console.print("check: check-translate score, weighted issues per 100 entries, lower is better. minutes: translation time, lower is better.")
+            console.print(f"Each value shows its difference from {BASELINE_RUN}, the model of the translate step: green is better, red is worse.")
             for source in Source.find_all():
-                if source.score_claude_official.exists():
-                    score = json.loads(source.score_claude_official.read_text(encoding="utf-8"))
-                    table_scores.add_row("claude", source.title, "-", "-", "-", str(score["comet"]), str(score["chrf"]), "-", "-")
-            console.print(table_scores)
+                references = [reference for reference in (source.reference_claude, source.reference_official) if reference.file.exists()]
+                columns = [(metric, reference) for reference in references for metric in (METRIC_COMET, METRIC_CHRF)] + [(METRIC_CHECK, None), (METRIC_MINUTES, None)]
 
-            runs_reported = [run.name for run in RUNS if any(run.name in counts for counts in issues_by_kind.values())]
-            table_kinds = Table("issue", *runs_reported)
-            for kind, counts in issues_by_kind.items():
-                table_kinds.add_row(kind, *(str(counts.get(name, 0)) for name in runs_reported))
-            console.print(table_kinds)
+                values_by_run: dict[str, list[float | None]] = {}
+                issues_by_run: dict[str, Counter[str]] = {}
+                for run in RUNS:
+                    translation = next(translation for translation in run.find_translations() if translation.source == source)
+                    check = ReportScore.find(translation.report)
+                    if check is None:
+                        continue
+                    values = {METRIC_CHECK.key: check.score, METRIC_MINUTES.key: translation.find_minutes()}
+                    values_by_run[run.name] = [translation.find_scores(reference).get(metric.key) if reference else values[metric.key] for metric, reference in columns]
+                    issues_by_run[run.name] = translation.find_issues_by_kind()
+                runs_sorted = sorted(values_by_run, key=lambda name: (values_by_run[name][0] is None, -(values_by_run[name][0] or 0)))
+                baseline = values_by_run.get(BASELINE_RUN, [None] * len(columns))
+
+                english_entries = parse_srt(source.english)
+                subtitle_kind = "SDH" if SubtitleKind.from_file(source.english) == SubtitleKind.SDH else "base"
+                table_scores = Table("run", *(metric.to_header(reference) for metric, reference in columns), title=f"{source.title}, {subtitle_kind}, {len(english_entries)} entries", title_justify="left")
+                for column in table_scores.columns[1:]:
+                    column.justify = "right"
+                for name in runs_sorted:
+                    table_scores.add_row(name, *(metric.to_cell(value, None if name == BASELINE_RUN else baseline_value) for (metric, _), value, baseline_value in zip(columns, values_by_run[name], baseline)))
+                if source.score_claude_official.exists() and source.reference_official in references:
+                    score = json.loads(source.score_claude_official.read_text(encoding="utf-8"))
+                    table_scores.add_section()
+                    table_scores.add_row("claude reference", *(metric.to_cell(score.get(metric.key) if reference == source.reference_official else None, None) for metric, reference in columns))
+                console.print()
+                console.print(table_scores)
+
+                kinds = [kind for kind, _ in sum(issues_by_run.values(), Counter()).most_common()]
+                table_kinds = Table("run", *kinds, "total", title=f"{source.title}, issues by kind", title_justify="left")
+                for column in table_kinds.columns[1:]:
+                    column.justify = "right"
+                for name in runs_sorted:
+                    issues = issues_by_run[name]
+                    table_kinds.add_row(name, *(Text(str(issues[kind]), style="" if issues[kind] else "dim") for kind in kinds), str(issues.total()))
+                console.print(table_kinds)
 
         case "compare":
             COMPARE_DIR.mkdir(exist_ok=True)
