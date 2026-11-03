@@ -81,6 +81,7 @@ FLAGS_NATIVE = ("--jinja", "--ctx-size", "8192", "--parallel", str(NATIVE_WORKER
 FLAGS_GPU_ONLY = ("--n-gpu-layers", "all", "--fit", "off")
 FLAGS_CACHE_Q8 = ("--cache-type-k", "q8_0", "--cache-type-v", "q8_0")
 FLAGS_GEMMA = ("--no-mmproj", "--top-p", "0.95", "--top-k", "64")
+FLAGS_COHERE = ("--no-jinja",)
 FLAGS_QWEN = ("--no-mmproj", "--top-p", "0.8", "--top-k", "20", "--min-p", "0")
 
 
@@ -477,8 +478,8 @@ QWEN_3_14B = Model(name="qwen-3-14b", repo="bartowski/Qwen_Qwen3-14B-GGUF", file
 QWEN_3_5_9B = Model(name="qwen-3.5-9b", repo="lmstudio-community/Qwen3.5-9B-GGUF", file="Qwen3.5-9B-Q8_0.gguf", flags=(*FLAGS_PIPELINE, *FLAGS_THINKING_OFF, *FLAGS_GPU_ONLY, *FLAGS_QWEN))
 GPT_OSS_20B = Model(name="gpt-oss-20b", repo="lmstudio-community/gpt-oss-20b-GGUF", file="gpt-oss-20b-MXFP4.gguf", flags=(*FLAGS_PIPELINE, *FLAGS_REASONING_LOW, *FLAGS_GPU_ONLY))
 ERNIE_4_5_21B = Model(name="ernie-4.5-21b", repo="lmstudio-community/ERNIE-4.5-21B-A3B-PT-GGUF", file="ERNIE-4.5-21B-A3B-PT-Q4_K_M.gguf", flags=(*FLAGS_PIPELINE, *FLAGS_GPU_ONLY, *FLAGS_CACHE_Q8))
-COMMAND_R7B = Model(name="command-r7b", repo="bartowski/c4ai-command-r7b-12-2024-GGUF", file="c4ai-command-r7b-12-2024-Q8_0.gguf", flags=(*FLAGS_PIPELINE, *FLAGS_GPU_ONLY))
-AYA_EXPANSE_8B = Model(name="aya-expanse-8b", repo="bartowski/aya-expanse-8b-GGUF", file="aya-expanse-8b-Q8_0.gguf", flags=(*FLAGS_PIPELINE, *FLAGS_GPU_ONLY))
+COMMAND_R7B = Model(name="command-r7b", repo="bartowski/c4ai-command-r7b-12-2024-GGUF", file="c4ai-command-r7b-12-2024-Q8_0.gguf", flags=(*FLAGS_PIPELINE, *FLAGS_GPU_ONLY, *FLAGS_COHERE))
+AYA_EXPANSE_8B = Model(name="aya-expanse-8b", repo="bartowski/aya-expanse-8b-GGUF", file="aya-expanse-8b-Q8_0.gguf", flags=(*FLAGS_PIPELINE, *FLAGS_GPU_ONLY, *FLAGS_COHERE))
 MAGISTRAL_SMALL_24B = Model(name="magistral-small-24b", repo="bartowski/mistralai_Magistral-Small-2509-GGUF", file="mistralai_Magistral-Small-2509-IQ4_XS.gguf", flags=(*FLAGS_PIPELINE, *FLAGS_THINKING_FULL, *FLAGS_GPU_ONLY, *FLAGS_CACHE_Q8))
 GEMMA_3_12B = Model(name="gemma-3-12b", repo="lmstudio-community/gemma-3-12b-it-GGUF", file="gemma-3-12b-it-Q4_K_M.gguf", flags=(*FLAGS_PIPELINE, *FLAGS_GPU_ONLY, *FLAGS_GEMMA))
 
