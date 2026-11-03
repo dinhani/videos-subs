@@ -8,7 +8,7 @@ default:
     @just --list --unsorted
 
 [group('run')]
-[doc('Evaluate every run not evaluated yet, each with its own llama server')]
+[doc('Translate every run not translated yet, each with its own llama server')]
 all:
     uv run bench.py all
 

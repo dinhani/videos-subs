@@ -427,21 +427,18 @@ class Run:
             translations.append(RunTranslation(source=source, english=english, translation=translation, report=translation.parent / CHECKS_FOLDER / f"{translation.stem}.txt"))
         return translations
 
-    def is_evaluated(self) -> bool:
-        return all(translation.report.exists() and all(translation.to_score(reference).exists() for reference in translation.source.find_references()) for translation in self.find_translations())
-
-    def evaluate(self) -> None:
-        if not all(translation.translation.exists() for translation in self.find_translations()):
-            match self.model:
-                case Model():
-                    with self.model.serving(log=self.dir / LLAMA_LOG_FILE):
-                        self.translate()
-                case NmtModel():
-                    self.translate()
-        self.check()
-        self.score()
+    def is_translated(self) -> bool:
+        return all(translation.translation.exists() for translation in self.find_translations())
 
     def translate(self) -> None:
+        match self.model:
+            case Model():
+                with self.model.serving(log=self.dir / LLAMA_LOG_FILE):
+                    self.translate_sources()
+            case NmtModel():
+                self.translate_sources()
+
+    def translate_sources(self) -> None:
         timings_file = self.dir / TIMINGS_FILE
         timings: dict[str, int] = json.loads(timings_file.read_text(encoding="utf-8")) if timings_file.exists() else {}
 
@@ -461,9 +458,6 @@ class Run:
 
     def check(self) -> None:
         subprocess.run([sys.executable, str(SRC_DIR / "8-check-translations.py"), str(self.dir)], check=True)
-
-    def score(self) -> None:
-        score_translations(self.find_scorings())
 
     def find_scorings(self) -> list[Scoring]:
         return [
@@ -589,7 +583,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Benchmarks translation models on the same English sources.")
     commands = parser.add_subparsers(dest="command", required=True)
-    commands.add_parser("all", help="copy the sources and evaluate every run not evaluated yet, each with its own llama server")
+    commands.add_parser("all", help="copy the sources and translate every run not translated yet, each with its own llama server; checks and scores are left to score")
     commands.add_parser("score", help="check and score every translation not checked or scored yet, without translating")
     commands.add_parser("runs", help="list the runs and what each one has done")
     command_download = commands.add_parser("download", help="download models from Hugging Face")
@@ -606,16 +600,14 @@ if __name__ == "__main__":
                     shutil.copy2(library_file, snapshot)
                     log_action("copy", Color.GREEN, snapshot.name)
 
-            score_translations([scoring for source in Source.find_all() for scoring in source.find_scorings_claude()])
-
             batch = Batch()
             for run in RUNS:
-                if run.is_evaluated():
-                    log_action("evaluated", Color.BLUE, run.name)
+                if run.is_translated():
+                    log_action("translated", Color.BLUE, run.name)
                     continue
-                log_action("evaluate", Color.GREEN, run.name)
+                log_action("translate", Color.GREEN, run.name)
                 try:
-                    run.evaluate()
+                    run.translate()
                 except Exception as error:
                     batch.fail(run.dir, error)
             batch.finish()
