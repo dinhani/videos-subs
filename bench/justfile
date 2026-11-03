@@ -8,12 +8,17 @@ default:
     @just --list --unsorted
 
 [group('run')]
+[doc('Evaluate every run not evaluated yet, each with its own llama server')]
+all: sources
+    uv run bench.py all
+
+[group('run')]
 [doc('List runs and their progress')]
 runs:
     uv run bench.py runs
 
 [group('run')]
-[doc('Translate, fix and check run')]
+[doc('Translate, fix and check run with llama server already started')]
 bench run: (translate run) (fix run) (check run)
 
 [group('run')]
@@ -24,12 +29,12 @@ translate run: sources
 [group('run')]
 [doc('Fix translations of run')]
 fix run:
-    uv run ../src/7-fix-translations.py --yes --backups _backups runs/{{run}}
+    uv run bench.py fix {{run}}
 
 [group('run')]
 [doc('Check translations of run')]
 check run:
-    uv run ../src/8-check-translations.py runs/{{run}}
+    uv run bench.py check {{run}}
 
 [group('run')]
 [doc('Show scores, issues and times of all runs')]
@@ -44,8 +49,6 @@ compare:
 
 [group('llm')]
 [doc('Start llama server for model')]
-[env('GGML_CUDA_PDL', '1')]
-[env('GGML_CUDA_GRAPH_OPT', '1')]
 llama model:
     uv run bench.py serve {{model}}
 

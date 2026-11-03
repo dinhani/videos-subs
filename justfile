@@ -4,6 +4,8 @@ set script-interpreter := ["pwsh.exe", "-NoLogo", "-NoProfile"]
 export UV_PROJECT_ENVIRONMENT := data_local_directory() / "uv" / "envs" / "videos-subs"
 dictionary_dir := data_local_directory() / "hunspell"
 
+mod bench
+
 [group('project')]
 [doc('List recipes')]
 default:

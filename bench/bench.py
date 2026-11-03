@@ -6,14 +6,17 @@
 import argparse
 import itertools
 import json
+import os
 import shutil
 import subprocess
 import sys
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Generator
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import IO
 
 import httpx
 import srt
@@ -24,7 +27,7 @@ BENCH_DIR = Path(__file__).parent
 SRC_DIR = BENCH_DIR.parent / "src"
 sys.path.insert(0, str(SRC_DIR))
 
-from shared.console import Color, console, log_action, progress_bar
+from shared.console import Batch, Color, console, log_action, progress_bar
 from shared.files import CHECKS_FOLDER, SUBS_FOLDER, TRACES_FOLDER, parse_srt, parse_subtitle_name, write_text_replacing
 from shared.reports import REPORT_HEADER
 from shared.subtitles import IGNORE_MARKER, SubtitleKind
@@ -38,12 +41,16 @@ SOURCES = (
 SOURCES_DIR = BENCH_DIR / "sources"
 RUNS_DIR = BENCH_DIR / "runs"
 COMPARE_DIR = BENCH_DIR / "compare"
+BACKUPS_DIR = BENCH_DIR / "_backups"
 TIMINGS_FILE = "timings.json"
+LLAMA_LOG_FILE = "llama.log"
 
 MODELS_DIR = Path("D:/AI-Models-LMStudio")
 LLAMA_SERVER = Path("C:/_scoop/apps/llama.cpp-cu133/current/llama-server.exe")
+LLAMA_ENV = {"GGML_CUDA_PDL": "1", "GGML_CUDA_GRAPH_OPT": "1"}
 LLAMA_PORT = 9931
 LLAMA_URL = f"http://127.0.0.1:{LLAMA_PORT}"
+LLAMA_LOAD_SECONDS_MAX = 900
 
 NATIVE_WORKERS = 8
 NATIVE_TOKENS_MAX = 256
@@ -79,19 +86,62 @@ class Model:
         log_action("download", Color.GREEN, f"{self.name}: {self.repo}/{self.file}")
         hf_hub_download(repo_id=self.repo, filename=self.file, local_dir=MODELS_DIR / self.repo)
 
-    def serve(self) -> int:
+    def start(self, log: IO[bytes] | None = None) -> subprocess.Popen[bytes]:
         if not self.path.exists():
-            log_action("failed", Color.RED, f"{self.name} not downloaded: {self.path}")
-            return 1
-        return subprocess.run([str(LLAMA_SERVER), "--model", str(self.path), "--device", "CUDA0", "--flash-attn", "on", "--port", str(LLAMA_PORT), *self.flags]).returncode
+            raise FileNotFoundError(f"{self.name} not downloaded: {self.path}")
+        return subprocess.Popen(
+            [str(LLAMA_SERVER), "--model", str(self.path), "--device", "CUDA0", "--flash-attn", "on", "--port", str(LLAMA_PORT), *self.flags],
+            env={**os.environ, **LLAMA_ENV},
+            stdout=log,
+            stderr=subprocess.STDOUT if log else None,
+        )
+
+    @contextmanager
+    def serving(self, log: Path) -> Generator[None]:
+        served = find_served_file()
+        if served == self.file:
+            yield
+            return
+        if served is not None:
+            raise RuntimeError(f"port {LLAMA_PORT} is used by a llama server running {served}; stop it first")
+
+        log.parent.mkdir(parents=True, exist_ok=True)
+        with log.open("wb") as output:
+            log_action("start", Color.GREEN, f"llama server for {self.name}, log in {log}")
+            server = self.start(log=output)
+            try:
+                started = time.monotonic()
+                while True:
+                    try:
+                        if httpx.get(f"{LLAMA_URL}/health", timeout=5).status_code == 200:
+                            break
+                    except httpx.TransportError:
+                        pass
+                    if server.poll() is not None:
+                        raise RuntimeError(f"llama server exited with code {server.returncode}, see {log}")
+                    if time.monotonic() - started > LLAMA_LOAD_SECONDS_MAX:
+                        raise TimeoutError(f"llama server did not load {self.name} in {LLAMA_LOAD_SECONDS_MAX} seconds, see {log}")
+                    time.sleep(2)
+                yield
+            finally:
+                server.terminate()
+                server.wait()
+                log_action("stop", Color.GREEN, f"llama server for {self.name}")
 
     def ensure_served(self) -> None:
-        try:
-            model_path = httpx.get(f"{LLAMA_URL}/props", timeout=10).json()["model_path"]
-        except Exception as error:
-            raise SystemExit(f"llama server unreachable at {LLAMA_URL}: {error}; start it with: just llama {self.name}")
-        if Path(model_path).name != self.file:
-            raise SystemExit(f"llama server runs {Path(model_path).name}, not {self.file}; start it with: just llama {self.name}")
+        served = find_served_file()
+        if served is None:
+            raise SystemExit(f"llama server unreachable at {LLAMA_URL}; start it with: just llama {self.name}")
+        if served != self.file:
+            raise SystemExit(f"llama server runs {served}, not {self.file}; start it with: just llama {self.name}")
+
+
+def find_served_file() -> str | None:
+    try:
+        props = httpx.get(f"{LLAMA_URL}/props", timeout=10).json()
+        return Path(props["model_path"]).name if "model_path" in props else None
+    except httpx.TransportError:
+        return None
 
 
 # ------------------------------------------------------------------------------
@@ -165,19 +215,29 @@ class Run:
     def dir(self) -> Path:
         return RUNS_DIR / self.name
 
-    def find_translations(self) -> list[tuple[Path, Path]]:
-        pairs = []
+    def find_translations(self) -> list[tuple[Path, Path, Path]]:
+        triples = []
         for snapshot in sorted(SOURCES_DIR.glob(f"*/{SUBS_FOLDER}/*.srt")):
             source = self.dir / snapshot.parent.parent.name / SUBS_FOLDER / snapshot.name
-            pairs.append((source, source.parent.parent / f"{parse_subtitle_name(source)}{SubtitleKind.from_file(source).to_translation_suffix()}"))
-        return pairs
+            translation = source.parent.parent / f"{parse_subtitle_name(source)}{SubtitleKind.from_file(source).to_translation_suffix()}"
+            triples.append((source, translation, translation.parent / CHECKS_FOLDER / f"{translation.stem}.txt"))
+        return triples
+
+    def is_evaluated(self) -> bool:
+        return all(report.exists() for _, _, report in self.find_translations())
+
+    def evaluate(self) -> None:
+        with self.model.serving(log=self.dir / LLAMA_LOG_FILE):
+            self.translate()
+        self.fix()
+        self.check()
 
     def translate(self) -> None:
         self.model.ensure_served()
         timings_file = self.dir / TIMINGS_FILE
         timings: dict[str, int] = json.loads(timings_file.read_text(encoding="utf-8")) if timings_file.exists() else {}
 
-        for source, translation in self.find_translations():
+        for source, translation, _ in self.find_translations():
             if translation.exists():
                 log_action("exists", Color.BLUE, f"{self.name}: {translation.name}")
                 continue
@@ -190,6 +250,12 @@ class Run:
             self.translation.translate(source, translation)
             timings[translation.name] = round(time.perf_counter() - started)
             write_text_replacing(timings_file, json.dumps(timings, ensure_ascii=False, indent=2))
+
+    def fix(self) -> None:
+        subprocess.run([sys.executable, str(SRC_DIR / "7-fix-translations.py"), "--yes", "--backups", str(BACKUPS_DIR), str(self.dir)], check=True)
+
+    def check(self) -> None:
+        subprocess.run([sys.executable, str(SRC_DIR / "8-check-translations.py"), str(self.dir)], check=True)
 
 
 GEMMA_4_26B = Model(name="gemma-4-26b", repo="lmstudio-community/gemma-4-26B-A4B-it-QAT-GGUF", file="gemma-4-26B-A4B-it-QAT-Q4_0.gguf", flags=(*FLAGS_PIPELINE, *FLAGS_GPU_ONLY, *FLAGS_GEMMA))
@@ -238,6 +304,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Benchmarks translation models on the same English sources.")
     commands = parser.add_subparsers(dest="command", required=True)
+    commands.add_parser("all", help="evaluate every run not evaluated yet, each with its own llama server")
     commands.add_parser("runs", help="list the runs and what each one has done")
     commands.add_parser("sources", help="copy the English sources from the library")
     command_download = commands.add_parser("download", help="download models from Hugging Face")
@@ -246,18 +313,35 @@ if __name__ == "__main__":
     command_serve.add_argument("model", choices=models)
     command_translate = commands.add_parser("translate", help="translate the sources with a run")
     command_translate.add_argument("run", choices=runs)
+    command_fix = commands.add_parser("fix", help="fix the translations of a run")
+    command_fix.add_argument("run", choices=runs)
+    command_check = commands.add_parser("check", help="check the translations of a run")
+    command_check.add_argument("run", choices=runs)
     commands.add_parser("report", help="show the score, issues and time of every run")
     commands.add_parser("compare", help="write the entries of every run side by side")
     arguments = parser.parse_args()
 
     match arguments.command:
+        case "all":
+            batch = Batch()
+            for run in RUNS:
+                if run.is_evaluated():
+                    log_action("evaluated", Color.BLUE, run.name)
+                    continue
+                log_action("evaluate", Color.GREEN, run.name)
+                try:
+                    run.evaluate()
+                except Exception as error:
+                    batch.fail(run.dir, error)
+            batch.finish()
+
         case "runs":
             table = Table("run", "model", "translation", "downloaded", "translated", "checked")
             for run in RUNS:
-                pairs = run.find_translations()
-                translated = sum(translation.exists() for _, translation in pairs)
-                checked = sum((translation.parent / CHECKS_FOLDER / f"{translation.stem}.txt").exists() for _, translation in pairs)
-                table.add_row(run.name, run.model.name, run.translation.describe(), "yes" if run.model.path.exists() else "no", f"{translated}/{len(pairs)}", f"{checked}/{len(pairs)}")
+                triples = run.find_translations()
+                translated = sum(translation.exists() for _, translation, _ in triples)
+                checked = sum(report.exists() for _, _, report in triples)
+                table.add_row(run.name, run.model.name, run.translation.describe(), "yes" if run.model.path.exists() else "no", f"{translated}/{len(triples)}", f"{checked}/{len(triples)}")
             console.print(table)
 
         case "sources":
@@ -277,10 +361,16 @@ if __name__ == "__main__":
                 models[name].download()
 
         case "serve":
-            sys.exit(models[arguments.model].serve())
+            sys.exit(models[arguments.model].start().wait())
 
         case "translate":
             runs[arguments.run].translate()
+
+        case "fix":
+            runs[arguments.run].fix()
+
+        case "check":
+            runs[arguments.run].check()
 
         case "report":
             table_scores = Table("run", "translation", "score", "issues", "minutes")
@@ -288,8 +378,7 @@ if __name__ == "__main__":
             for run in RUNS:
                 timings_file = run.dir / TIMINGS_FILE
                 timings: dict[str, int] = json.loads(timings_file.read_text(encoding="utf-8")) if timings_file.exists() else {}
-                for _, translation in run.find_translations():
-                    report = translation.parent / CHECKS_FOLDER / f"{translation.stem}.txt"
+                for _, translation, report in run.find_translations():
                     if not report.exists():
                         continue
                     report_lines = report.read_text(encoding="utf-8").splitlines()
@@ -314,7 +403,7 @@ if __name__ == "__main__":
             for snapshot in sorted(SOURCES_DIR.glob(f"*/{SUBS_FOLDER}/*.srt")):
                 translated_by_run: dict[str, dict[int, str]] = {}
                 for run in RUNS:
-                    translation = next(translation for source, translation in run.find_translations() if source.name == snapshot.name)
+                    translation = next(translation for source, translation, _ in run.find_translations() if source.name == snapshot.name)
                     if translation.exists():
                         translated_by_run[run.name] = {entry.index: " / ".join(entry.content.splitlines()) for entry in parse_srt(translation)}
                 lines = []
