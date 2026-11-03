@@ -1,4 +1,4 @@
-# Benchmarks translation models on the same English sources, through the translate step or through the translation prompt of the model card.
+# Benchmarks translation models on the same English sources, through the translate step or through a neural machine translation model.
 
 # ------------------------------------------------------------------------------
 # Libraries
@@ -13,10 +13,9 @@ import subprocess
 import sys
 import time
 from collections import Counter
-from collections.abc import Callable, Generator
-from concurrent.futures import ThreadPoolExecutor
+from collections.abc import Generator
 from contextlib import contextmanager
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import timedelta
 from enum import StrEnum
 from pathlib import Path
@@ -24,7 +23,6 @@ from pathlib import Path
 import httpx
 import questionary
 import srt
-from rich.progress import MofNCompleteColumn, TimeElapsedColumn, TimeRemainingColumn
 from rich.table import Table
 from rich.text import Text
 
@@ -32,7 +30,7 @@ BENCH_DIR = Path(__file__).parent
 SRC_DIR = BENCH_DIR.parent / "src"
 sys.path.insert(0, str(SRC_DIR))
 
-from shared.console import Batch, Color, console, log_action, progress_bar
+from shared.console import Batch, Color, console, log_action
 from shared.files import CHECKS_FOLDER, SUBS_FOLDER, TRACES_FOLDER, parse_srt, parse_subtitle_name, write_text_replacing
 from shared.reports import ReportScore
 from shared.subtitles import IGNORE_MARKER, SubtitleKind, parse_plain_text
@@ -71,21 +69,17 @@ LLAMA_PORT = 9931
 LLAMA_URL = f"http://127.0.0.1:{LLAMA_PORT}"
 LLAMA_LOAD_SECONDS_MAX = 900
 
-NATIVE_WORKERS = 8
-NATIVE_TOKENS_MAX = 256
-
 FLAGS_PIPELINE = ("--jinja", "--ctx-size", "16384", "--parallel", "1")
 FLAGS_PIPELINE_8K = ("--jinja", "--ctx-size", "8192", "--parallel", "1")
 FLAGS_THINKING_OFF = ("--reasoning-budget", "0")
 FLAGS_THINKING_FULL = ("--reasoning-budget", "-1")
 FLAGS_TEMPLATE_THINKING_OFF = ("--chat-template-kwargs", '{"enable_thinking": false}')
 FLAGS_REASONING_LOW = ("--chat-template-kwargs", '{"reasoning_effort": "low"}')
-FLAGS_NATIVE = ("--jinja", "--ctx-size", "8192", "--parallel", str(NATIVE_WORKERS))
 FLAGS_GPU_ONLY = ("--n-gpu-layers", "all", "--fit", "off")
 FLAGS_CACHE_Q8 = ("--cache-type-k", "q8_0", "--cache-type-v", "q8_0")
 FLAGS_GEMMA = ("--no-mmproj", "--top-p", "0.95", "--top-k", "64")
 FLAGS_COHERE = ("--no-jinja",)
-FLAGS_TRANSLATEGEMMA_PIPELINE = ("--no-jinja", "--chat-template", "gemma")
+FLAGS_TRANSLATEGEMMA = ("--no-jinja", "--chat-template", "gemma")
 FLAGS_QWEN = ("--no-mmproj", "--top-p", "0.8", "--top-k", "20", "--min-p", "0")
 
 
@@ -219,33 +213,6 @@ class PipelineTranslation:
 
     def translate(self, source: Path, translation: Path) -> None:
         subprocess.run([sys.executable, str(SRC_DIR / "6-translate-subs.py"), str(source)], check=True)
-
-
-@dataclass(frozen=True)
-class NativeTranslation:
-    content: Callable[[str], str | list[dict[str, str]]]
-    sampling: dict[str, float] = field(default_factory=lambda: {"temperature": 0.0})
-
-    def describe(self) -> str:
-        return "native"
-
-    def translate(self, source: Path, translation: Path) -> None:
-        entries = parse_srt(source)
-        entries_lines = [[" ".join(line.split()) for line in entry.content.split("\n") if line.strip()] for entry in entries]
-
-        # translate each entry on its own
-        with httpx.Client(base_url=LLAMA_URL, timeout=600) as client, ThreadPoolExecutor(NATIVE_WORKERS) as pool:
-            def complete(entry_lines: list[str]) -> str:
-                if not entry_lines:
-                    return ""
-                resp = client.post("/v1/chat/completions", json={"messages": [{"role": "user", "content": self.content("\n".join(entry_lines))}], "max_tokens": NATIVE_TOKENS_MAX, **self.sampling})
-                resp.raise_for_status()
-                return resp.json()["choices"][0]["message"]["content"] or ""
-
-            with progress_bar(MofNCompleteColumn(), TimeElapsedColumn(), TimeRemainingColumn()) as progress:
-                replies = list(progress.track(pool.map(complete, entries_lines), total=len(entries_lines)))
-
-        write_translation(entries=entries, replies=replies, translation=translation)
 
 
 @dataclass(frozen=True)
@@ -424,7 +391,7 @@ class RunTranslation:
 class Run:
     name: str
     model: Model | NmtModel
-    translation: PipelineTranslation | NativeTranslation | NmtTranslation
+    translation: PipelineTranslation | NmtTranslation
 
     @property
     def dir(self) -> Path:
@@ -493,16 +460,11 @@ MAGISTRAL_SMALL_24B = Model(name="magistral-small-24b", repo="bartowski/mistrala
 GEMMA_3_12B = Model(name="gemma-3-12b", repo="lmstudio-community/gemma-3-12b-it-GGUF", file="gemma-3-12b-it-Q4_K_M.gguf", flags=(*FLAGS_PIPELINE, *FLAGS_GPU_ONLY, *FLAGS_GEMMA))
 GEMMA_4_31B = Model(name="gemma-4-31b-iq3", repo="bartowski/google_gemma-4-31B-it-GGUF", file="google_gemma-4-31B-it-IQ3_XS.gguf", flags=(*FLAGS_PIPELINE_8K, *FLAGS_THINKING_OFF, *FLAGS_GPU_ONLY, *FLAGS_CACHE_Q8, *FLAGS_GEMMA))
 
-HY_MT2_7B = Model(name="hy-mt2-7b", repo="tencent/Hy-MT2-7B-GGUF", file="HY-MT2-7B-Q8_0.gguf", flags=(*FLAGS_NATIVE, *FLAGS_GPU_ONLY))
-HY_MT2_7B_PIPELINE = Model(name="hy-mt2-7b-pipeline", repo="tencent/Hy-MT2-7B-GGUF", file="HY-MT2-7B-Q8_0.gguf", flags=(*FLAGS_PIPELINE, *FLAGS_GPU_ONLY))
-TOWER_PLUS_9B = Model(name="tower-plus-9b", repo="mradermacher/Tower-Plus-9B-GGUF", file="Tower-Plus-9B.Q8_0.gguf", flags=(*FLAGS_NATIVE, *FLAGS_GPU_ONLY))
-TOWER_PLUS_9B_PIPELINE = Model(name="tower-plus-9b-pipeline", repo="mradermacher/Tower-Plus-9B-GGUF", file="Tower-Plus-9B.Q8_0.gguf", flags=(*FLAGS_PIPELINE, *FLAGS_GPU_ONLY))
-TRANSLATEGEMMA_12B = Model(name="translategemma-12b", repo="mradermacher/translategemma-12b-it-GGUF", file="translategemma-12b-it.Q6_K.gguf", flags=(*FLAGS_NATIVE, *FLAGS_GPU_ONLY))
-TRANSLATEGEMMA_12B_PIPELINE = Model(name="translategemma-12b-pipeline", repo="mradermacher/translategemma-12b-it-GGUF", file="translategemma-12b-it.Q6_K.gguf", flags=(*FLAGS_PIPELINE, *FLAGS_GPU_ONLY, *FLAGS_TRANSLATEGEMMA_PIPELINE))
-TRANSLATEGEMMA_27B = Model(name="translategemma-27b-iq3", repo="mradermacher/translategemma-27b-it-i1-GGUF", file="translategemma-27b-it.i1-IQ3_XS.gguf", flags=(*FLAGS_NATIVE, *FLAGS_GPU_ONLY))
-TRANSLATEGEMMA_27B_PIPELINE = Model(name="translategemma-27b-iq3-pipeline", repo="mradermacher/translategemma-27b-it-i1-GGUF", file="translategemma-27b-it.i1-IQ3_XS.gguf", flags=(*FLAGS_PIPELINE_8K, *FLAGS_GPU_ONLY, *FLAGS_TRANSLATEGEMMA_PIPELINE))
-HY_MT2_30B = Model(name="hy-mt2-30b-iq3", repo="mradermacher/Hy-MT2-30B-A3B-i1-GGUF", file="Hy-MT2-30B-A3B.i1-IQ3_XS.gguf", flags=(*FLAGS_NATIVE, *FLAGS_GPU_ONLY))
-HY_MT2_30B_PIPELINE = Model(name="hy-mt2-30b-iq3-pipeline", repo="mradermacher/Hy-MT2-30B-A3B-i1-GGUF", file="Hy-MT2-30B-A3B.i1-IQ3_XS.gguf", flags=(*FLAGS_PIPELINE_8K, *FLAGS_GPU_ONLY))
+HY_MT2_7B = Model(name="hy-mt2-7b", repo="tencent/Hy-MT2-7B-GGUF", file="HY-MT2-7B-Q8_0.gguf", flags=(*FLAGS_PIPELINE, *FLAGS_GPU_ONLY))
+TOWER_PLUS_9B = Model(name="tower-plus-9b", repo="mradermacher/Tower-Plus-9B-GGUF", file="Tower-Plus-9B.Q8_0.gguf", flags=(*FLAGS_PIPELINE, *FLAGS_GPU_ONLY))
+TRANSLATEGEMMA_12B = Model(name="translategemma-12b", repo="mradermacher/translategemma-12b-it-GGUF", file="translategemma-12b-it.Q6_K.gguf", flags=(*FLAGS_PIPELINE, *FLAGS_GPU_ONLY, *FLAGS_TRANSLATEGEMMA))
+TRANSLATEGEMMA_27B = Model(name="translategemma-27b-iq3", repo="mradermacher/translategemma-27b-it-i1-GGUF", file="translategemma-27b-it.i1-IQ3_XS.gguf", flags=(*FLAGS_PIPELINE_8K, *FLAGS_GPU_ONLY, *FLAGS_TRANSLATEGEMMA))
+HY_MT2_30B = Model(name="hy-mt2-30b-iq3", repo="mradermacher/Hy-MT2-30B-A3B-i1-GGUF", file="Hy-MT2-30B-A3B.i1-IQ3_XS.gguf", flags=(*FLAGS_PIPELINE_8K, *FLAGS_GPU_ONLY))
 
 MADLAD_400_10B = NmtModel(name="madlad-400-10b", repo="SoybeanMilk/madlad400-10b-mt-ct2-int8_float16", family=NmtFamily.MADLAD)
 MADLAD_400_7B = NmtModel(name="madlad-400-7b", repo="avans06/madlad400-7b-mt-bt-ct2-int8_float16", family=NmtFamily.MADLAD)
@@ -513,42 +475,22 @@ NLLB_200_600M = NmtModel(name="nllb-200-600m", repo="JustFrederik/nllb-200-disti
 OPUS_MT_EN_PT = NmtModel(name="opus-mt-en-pt", repo="ooeoeo/opus-mt-tc-big-en-pt-ct2-float16", family=NmtFamily.OPUS)
 NMT_MODELS = (MADLAD_400_10B, MADLAD_400_7B, MADLAD_400_3B, NLLB_200_3_3B, NLLB_200_1_3B, NLLB_200_600M, OPUS_MT_EN_PT)
 
-MODELS = (*NMT_MODELS, GEMMA_4_26B, GEMMA_4_26B_THINKING, GEMMA_4_12B, MISTRAL_SMALL_3_2_24B, MINISTRAL_3_14B, QWEN_3_14B, GPT_OSS_20B, ERNIE_4_5_21B, COMMAND_R7B, AYA_EXPANSE_8B, MAGISTRAL_SMALL_24B, GEMMA_3_12B, GEMMA_4_31B, HY_MT2_7B, HY_MT2_7B_PIPELINE, TOWER_PLUS_9B, TOWER_PLUS_9B_PIPELINE, TRANSLATEGEMMA_12B, TRANSLATEGEMMA_12B_PIPELINE, TRANSLATEGEMMA_27B, TRANSLATEGEMMA_27B_PIPELINE, HY_MT2_30B, HY_MT2_30B_PIPELINE)
+MODELS = (*NMT_MODELS, GEMMA_4_26B, GEMMA_4_26B_THINKING, GEMMA_4_12B, MISTRAL_SMALL_3_2_24B, MINISTRAL_3_14B, QWEN_3_14B, GPT_OSS_20B, ERNIE_4_5_21B, COMMAND_R7B, AYA_EXPANSE_8B, MAGISTRAL_SMALL_24B, GEMMA_3_12B, GEMMA_4_31B, HY_MT2_7B, TOWER_PLUS_9B, TRANSLATEGEMMA_12B, TRANSLATEGEMMA_27B, HY_MT2_30B)
 
 COMET_WMT22 = ScoringModel(name="comet-wmt22", repo="Unbabel/wmt22-comet-da", files=("checkpoints/model.ckpt", "hparams.yaml"))
 XLM_ROBERTA_LARGE = ScoringModel(name="xlm-roberta-large", repo="xlm-roberta-large", files=("config.json", "sentencepiece.bpe.model", "tokenizer.json", "tokenizer_config.json"))
 SCORING_MODELS = (COMET_WMT22, XLM_ROBERTA_LARGE)
 
-TRANSLATION_HY_MT2 = NativeTranslation(
-    content=lambda text: f"Translate the following text into Brazilian Portuguese. Note that you should only output the translated result without any additional explanation:\n\n{text}",
-    sampling={"temperature": 0.7, "top_p": 0.6, "top_k": 20, "repeat_penalty": 1.05},
-)
-TRANSLATION_TRANSLATEGEMMA = NativeTranslation(content=lambda text: [{"type": "text", "source_lang_code": "en", "target_lang_code": "pt-BR", "text": text}])
 
 RUNS = (
     *(Run(name=model.name, model=model, translation=NmtTranslation(model=model)) for model in NMT_MODELS),
-    Run(
-        name="hy-mt2-7b",
-        model=HY_MT2_7B,
-        translation=TRANSLATION_HY_MT2,
-    ),
-    Run(name="hy-mt2-7b-pipeline", model=HY_MT2_7B_PIPELINE, translation=PipelineTranslation()),
+    Run(name="hy-mt2-7b", model=HY_MT2_7B, translation=PipelineTranslation()),
     Run(name="command-r7b", model=COMMAND_R7B, translation=PipelineTranslation()),
     Run(name="aya-expanse-8b", model=AYA_EXPANSE_8B, translation=PipelineTranslation()),
-    Run(
-        name="tower-plus-9b",
-        model=TOWER_PLUS_9B,
-        translation=NativeTranslation(content=lambda text: f"Translate the following English source text to Portuguese (Brazilian):\nEnglish: {text}\nPortuguese (Brazilian): "),
-    ),
-    Run(name="tower-plus-9b-pipeline", model=TOWER_PLUS_9B_PIPELINE, translation=PipelineTranslation()),
+    Run(name="tower-plus-9b", model=TOWER_PLUS_9B, translation=PipelineTranslation()),
     Run(name="gemma-4-12b", model=GEMMA_4_12B, translation=PipelineTranslation()),
     Run(name="gemma-3-12b", model=GEMMA_3_12B, translation=PipelineTranslation()),
-    Run(
-        name="translategemma-12b",
-        model=TRANSLATEGEMMA_12B,
-        translation=TRANSLATION_TRANSLATEGEMMA,
-    ),
-    Run(name="translategemma-12b-pipeline", model=TRANSLATEGEMMA_12B_PIPELINE, translation=PipelineTranslation()),
+    Run(name="translategemma-12b", model=TRANSLATEGEMMA_12B, translation=PipelineTranslation()),
     Run(name="ministral-3-14b", model=MINISTRAL_3_14B, translation=PipelineTranslation()),
     Run(name="qwen-3-14b", model=QWEN_3_14B, translation=PipelineTranslation()),
     Run(name="gpt-oss-20b", model=GPT_OSS_20B, translation=PipelineTranslation()),
@@ -557,10 +499,8 @@ RUNS = (
     Run(name="magistral-small-24b", model=MAGISTRAL_SMALL_24B, translation=PipelineTranslation()),
     Run(name="gemma-4-26b", model=GEMMA_4_26B, translation=PipelineTranslation()),
     Run(name="gemma-4-26b-thinking", model=GEMMA_4_26B_THINKING, translation=PipelineTranslation()),
-    Run(name="translategemma-27b-iq3", model=TRANSLATEGEMMA_27B, translation=TRANSLATION_TRANSLATEGEMMA),
-    Run(name="translategemma-27b-iq3-pipeline", model=TRANSLATEGEMMA_27B_PIPELINE, translation=PipelineTranslation()),
-    Run(name="hy-mt2-30b-iq3", model=HY_MT2_30B, translation=TRANSLATION_HY_MT2),
-    Run(name="hy-mt2-30b-iq3-pipeline", model=HY_MT2_30B_PIPELINE, translation=PipelineTranslation()),
+    Run(name="translategemma-27b-iq3", model=TRANSLATEGEMMA_27B, translation=PipelineTranslation()),
+    Run(name="hy-mt2-30b-iq3", model=HY_MT2_30B, translation=PipelineTranslation()),
     Run(name="gemma-4-31b-iq3", model=GEMMA_4_31B, translation=PipelineTranslation()),
 )
 
