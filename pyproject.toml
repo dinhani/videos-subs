@@ -9,6 +9,7 @@ dependencies = [
     "lingua-language-detector",
     "openai",
     "pillow",
+    "readchar>=4.2.2",
     "rich",
     "simplemma>=2.0.0",
     "spacy>=3.8.18",

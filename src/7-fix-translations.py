@@ -12,8 +12,8 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import ClassVar
 
+import readchar
 import srt
-from rich.prompt import Confirm
 from rich.text import Text
 
 from shared.console import Batch, Color, console, log_action
@@ -397,7 +397,12 @@ if __name__ == "__main__":
                     for prefix, content, color in (("en ", change.source.content, ""), ("old", change.old.content, Color.RED), ("new", change.new.content, Color.GREEN)):
                         for n, line in enumerate(content.split("\n")):
                             console.print(Text.assemble(f"      {prefix if n == 0 else '   '}  ", (line, color)))
-                if not Confirm.ask(f"  Apply {summary}?", console=console, default=False):
+                console.print(Text(f"  Apply {summary}? (y/n) "), end="")
+                answer = ""
+                while answer not in ("y", "n"):
+                    answer = readchar.readkey().lower()
+                console.print(answer)
+                if answer == "n":
                     log_action("declined", Color.YELLOW, sub.name)
                     continue
 
