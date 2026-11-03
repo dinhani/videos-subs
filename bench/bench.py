@@ -68,9 +68,7 @@ NATIVE_TOKENS_MAX = 256
 FLAGS_PIPELINE = ("--jinja", "--reasoning-budget", "0", "--ctx-size", "16384", "--parallel", "1")
 FLAGS_NATIVE = ("--jinja", "--ctx-size", "8192", "--parallel", str(NATIVE_WORKERS))
 FLAGS_GPU_ONLY = ("--n-gpu-layers", "all", "--fit", "off")
-FLAGS_GPU_FIT = ("--fit", "on")
 FLAGS_GEMMA = ("--no-mmproj", "--top-p", "0.95", "--top-k", "64")
-FLAGS_QWEN = ("--no-mmproj", "--top-p", "0.8", "--top-k", "20", "--min-p", "0")
 
 
 # ------------------------------------------------------------------------------
@@ -364,21 +362,17 @@ class Run:
 
 
 GEMMA_4_26B = Model(name="gemma-4-26b", repo="lmstudio-community/gemma-4-26B-A4B-it-QAT-GGUF", file="gemma-4-26B-A4B-it-QAT-Q4_0.gguf", flags=(*FLAGS_PIPELINE, *FLAGS_GPU_ONLY, *FLAGS_GEMMA))
-GEMMA_4_31B = Model(name="gemma-4-31b", repo="lmstudio-community/gemma-4-31B-it-QAT-GGUF", file="gemma-4-31B-it-QAT-Q4_0.gguf", flags=(*FLAGS_PIPELINE, *FLAGS_GPU_FIT, *FLAGS_GEMMA))
 GEMMA_4_12B = Model(name="gemma-4-12b", repo="lmstudio-community/gemma-4-12B-it-QAT-GGUF", file="gemma-4-12B-it-QAT-Q4_0.gguf", flags=(*FLAGS_PIPELINE, *FLAGS_GPU_ONLY, *FLAGS_GEMMA))
-QWEN_3_6_35B = Model(name="qwen-3.6-35b", repo="lmstudio-community/Qwen3.6-35B-A3B-GGUF", file="Qwen3.6-35B-A3B-Q4_K_M.gguf", flags=(*FLAGS_PIPELINE, *FLAGS_GPU_FIT, *FLAGS_QWEN))
 
 HY_MT2_7B = Model(name="hy-mt2-7b", repo="tencent/Hy-MT2-7B-GGUF", file="HY-MT2-7B-Q8_0.gguf", flags=(*FLAGS_NATIVE, *FLAGS_GPU_ONLY))
 TOWER_PLUS_9B = Model(name="tower-plus-9b", repo="mradermacher/Tower-Plus-9B-GGUF", file="Tower-Plus-9B.Q8_0.gguf", flags=(*FLAGS_NATIVE, *FLAGS_GPU_ONLY))
 TRANSLATEGEMMA_12B = Model(name="translategemma-12b", repo="mradermacher/translategemma-12b-it-GGUF", file="translategemma-12b-it.Q6_K.gguf", flags=(*FLAGS_NATIVE, *FLAGS_GPU_ONLY))
 
-MODELS = (GEMMA_4_26B, GEMMA_4_31B, GEMMA_4_12B, QWEN_3_6_35B, HY_MT2_7B, TOWER_PLUS_9B, TRANSLATEGEMMA_12B)
+MODELS = (GEMMA_4_26B, GEMMA_4_12B, HY_MT2_7B, TOWER_PLUS_9B, TRANSLATEGEMMA_12B)
 
 RUNS = (
     Run(name="gemma-4-26b", model=GEMMA_4_26B, translation=PipelineTranslation()),
-    Run(name="gemma-4-31b", model=GEMMA_4_31B, translation=PipelineTranslation()),
     Run(name="gemma-4-12b", model=GEMMA_4_12B, translation=PipelineTranslation()),
-    Run(name="qwen-3.6-35b", model=QWEN_3_6_35B, translation=PipelineTranslation()),
     Run(
         name="hy-mt2-7b",
         model=HY_MT2_7B,
