@@ -76,6 +76,7 @@ NATIVE_TOKENS_MAX = 256
 FLAGS_PIPELINE = ("--jinja", "--ctx-size", "16384", "--parallel", "1")
 FLAGS_THINKING_OFF = ("--reasoning-budget", "0")
 FLAGS_THINKING_FULL = ("--reasoning-budget", "-1")
+FLAGS_TEMPLATE_THINKING_OFF = ("--chat-template-kwargs", '{"enable_thinking": false}')
 FLAGS_REASONING_LOW = ("--chat-template-kwargs", '{"reasoning_effort": "low"}')
 FLAGS_NATIVE = ("--jinja", "--ctx-size", "8192", "--parallel", str(NATIVE_WORKERS))
 FLAGS_GPU_ONLY = ("--n-gpu-layers", "all", "--fit", "off")
@@ -474,8 +475,7 @@ GEMMA_4_26B_THINKING = Model(name="gemma-4-26b-thinking", repo="lmstudio-communi
 GEMMA_4_12B = Model(name="gemma-4-12b", repo="lmstudio-community/gemma-4-12B-it-QAT-GGUF", file="gemma-4-12B-it-QAT-Q4_0.gguf", flags=(*FLAGS_PIPELINE, *FLAGS_THINKING_OFF, *FLAGS_GPU_ONLY, *FLAGS_GEMMA))
 MISTRAL_SMALL_3_2_24B = Model(name="mistral-small-3.2-24b", repo="bartowski/mistralai_Mistral-Small-3.2-24B-Instruct-2506-GGUF", file="mistralai_Mistral-Small-3.2-24B-Instruct-2506-IQ4_XS.gguf", flags=(*FLAGS_PIPELINE, *FLAGS_GPU_ONLY, *FLAGS_CACHE_Q8))
 MINISTRAL_3_14B = Model(name="ministral-3-14b", repo="bartowski/mistralai_Ministral-3-14B-Instruct-2512-GGUF", file="mistralai_Ministral-3-14B-Instruct-2512-Q6_K.gguf", flags=(*FLAGS_PIPELINE, *FLAGS_GPU_ONLY))
-QWEN_3_14B = Model(name="qwen-3-14b", repo="bartowski/Qwen_Qwen3-14B-GGUF", file="Qwen_Qwen3-14B-Q6_K.gguf", flags=(*FLAGS_PIPELINE, *FLAGS_THINKING_OFF, *FLAGS_GPU_ONLY, *FLAGS_CACHE_Q8, *FLAGS_QWEN))
-QWEN_3_5_9B = Model(name="qwen-3.5-9b", repo="lmstudio-community/Qwen3.5-9B-GGUF", file="Qwen3.5-9B-Q8_0.gguf", flags=(*FLAGS_PIPELINE, *FLAGS_THINKING_OFF, *FLAGS_GPU_ONLY, *FLAGS_QWEN))
+QWEN_3_14B = Model(name="qwen-3-14b", repo="bartowski/Qwen_Qwen3-14B-GGUF", file="Qwen_Qwen3-14B-Q6_K.gguf", flags=(*FLAGS_PIPELINE, *FLAGS_THINKING_OFF, *FLAGS_TEMPLATE_THINKING_OFF, *FLAGS_GPU_ONLY, *FLAGS_CACHE_Q8, *FLAGS_QWEN))
 GPT_OSS_20B = Model(name="gpt-oss-20b", repo="lmstudio-community/gpt-oss-20b-GGUF", file="gpt-oss-20b-MXFP4.gguf", flags=(*FLAGS_PIPELINE, *FLAGS_REASONING_LOW, *FLAGS_GPU_ONLY))
 ERNIE_4_5_21B = Model(name="ernie-4.5-21b", repo="lmstudio-community/ERNIE-4.5-21B-A3B-PT-GGUF", file="ERNIE-4.5-21B-A3B-PT-Q4_K_M.gguf", flags=(*FLAGS_PIPELINE, *FLAGS_GPU_ONLY, *FLAGS_CACHE_Q8))
 COMMAND_R7B = Model(name="command-r7b", repo="bartowski/c4ai-command-r7b-12-2024-GGUF", file="c4ai-command-r7b-12-2024-Q8_0.gguf", flags=(*FLAGS_PIPELINE, *FLAGS_GPU_ONLY, *FLAGS_COHERE))
@@ -496,7 +496,7 @@ NLLB_200_600M = NmtModel(name="nllb-200-600m", repo="JustFrederik/nllb-200-disti
 OPUS_MT_EN_PT = NmtModel(name="opus-mt-en-pt", repo="ooeoeo/opus-mt-tc-big-en-pt-ct2-float16", family=NmtFamily.OPUS)
 NMT_MODELS = (MADLAD_400_10B, MADLAD_400_7B, MADLAD_400_3B, NLLB_200_3_3B, NLLB_200_1_3B, NLLB_200_600M, OPUS_MT_EN_PT)
 
-MODELS = (*NMT_MODELS, GEMMA_4_26B, GEMMA_4_26B_THINKING, GEMMA_4_12B, MISTRAL_SMALL_3_2_24B, MINISTRAL_3_14B, QWEN_3_14B, QWEN_3_5_9B, GPT_OSS_20B, ERNIE_4_5_21B, COMMAND_R7B, AYA_EXPANSE_8B, MAGISTRAL_SMALL_24B, GEMMA_3_12B, HY_MT2_7B, TOWER_PLUS_9B, TRANSLATEGEMMA_12B)
+MODELS = (*NMT_MODELS, GEMMA_4_26B, GEMMA_4_26B_THINKING, GEMMA_4_12B, MISTRAL_SMALL_3_2_24B, MINISTRAL_3_14B, QWEN_3_14B, GPT_OSS_20B, ERNIE_4_5_21B, COMMAND_R7B, AYA_EXPANSE_8B, MAGISTRAL_SMALL_24B, GEMMA_3_12B, HY_MT2_7B, TOWER_PLUS_9B, TRANSLATEGEMMA_12B)
 
 COMET_WMT22 = ScoringModel(name="comet-wmt22", repo="Unbabel/wmt22-comet-da", files=("checkpoints/model.ckpt", "hparams.yaml"))
 XLM_ROBERTA_LARGE = ScoringModel(name="xlm-roberta-large", repo="xlm-roberta-large", files=("config.json", "sentencepiece.bpe.model", "tokenizer.json", "tokenizer_config.json"))
@@ -514,7 +514,6 @@ RUNS = (
     ),
     Run(name="command-r7b", model=COMMAND_R7B, translation=PipelineTranslation()),
     Run(name="aya-expanse-8b", model=AYA_EXPANSE_8B, translation=PipelineTranslation()),
-    Run(name="qwen-3.5-9b", model=QWEN_3_5_9B, translation=PipelineTranslation()),
     Run(
         name="tower-plus-9b",
         model=TOWER_PLUS_9B,

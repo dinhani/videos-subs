@@ -10,7 +10,6 @@ opus-mt-en-pt          Opus-MT tc-big en-pt     Helsinki  translation  enc-dec  
 hy-mt2-7b              Hy-MT2 7B                Tencent   translation  dense    7B                    Q8_0       8.0 GB  yes        native
 command-r7b            Command R7B              Cohere    general      dense    7B                    Q8_0       8.5 GB  yes        pipeline
 aya-expanse-8b         Aya Expanse 8B           Cohere    general      dense    8B                    Q8_0       8.5 GB  yes        pipeline
-qwen-3.5-9b            Qwen3.5 9B               Alibaba   general      dense    9B                    Q8_0       9.5 GB  yes        pipeline
 tower-plus-9b          Tower+ 9B                Unbabel   translation  dense    9B                    Q8_0       9.8 GB  yes        native
 gemma-4-12b            Gemma 4 12B              Google    general      dense    12B                   QAT Q4_0   7.0 GB  yes        pipeline
 gemma-3-12b            Gemma 3 12B              Google    general      dense    12B                   Q4_K_M     7.3 GB  yes        pipeline
@@ -30,6 +29,7 @@ TranslateGemma 27B     does not fit the 5080 with context
 Gemma 3 27B            does not fit the 5080 with context
 Gemma 4 31B            does not fit the 5080, runs partly on the CPU at 5 tokens/s
 Qwen3.6 35B A3B        does not fit the 5080, runs partly on the CPU
+Qwen3.5 9B             thinks until the token limit even with thinking off, never replies
 Hy-MT2 30B A3B         fits the 5080 only at Q3
 Granite 4.0 H-small    fits the 5080 only at Q2
 EuroLLM 9B and 22B     trained for European Portuguese
