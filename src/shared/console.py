@@ -1,3 +1,4 @@
+import os
 import sys
 from dataclasses import dataclass, field
 from enum import StrEnum
@@ -42,6 +43,10 @@ class Batch:
             return
         console.print(movie_dir.name, style=Color.CYAN)
         self.movie_dir_logged = movie_dir
+
+    def clear_screen(self) -> None:
+        os.system("cls")
+        self.movie_dir_logged = None
 
     def fail(self, path: Path, error: Exception) -> None:
         log_action("failed", Color.RED, f"{path.name}: {error}")

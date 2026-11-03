@@ -6,7 +6,6 @@
 import argparse
 import functools
 import itertools
-import os
 import re
 from collections import Counter
 from dataclasses import dataclass, replace
@@ -393,6 +392,8 @@ if __name__ == "__main__":
             fixes_applied = Counter(fix for change in changes for fix in change.fixes)
             summary = f"{sub.name} · {len(changes)} entries · {', '.join(f'{name} {count}' for name, count in fixes_applied.items())}"
             if not arguments.yes:
+                batch.clear_screen()
+                batch.log_movie(movie_dir)
                 for change in changes:
                     console.print(f"    entry {change.old.index}")
                     for prefix, content, color in (("en ", change.source.content, ""), ("old", change.old.content, Color.RED), ("new", change.new.content, Color.GREEN)):
@@ -402,7 +403,6 @@ if __name__ == "__main__":
                 answer = ""
                 while answer not in ("y", "n"):
                     answer = readchar.readkey().lower().replace(readchar.key.ENTER, "n")
-                os.system("cls")
                 if answer == "n":
                     log_action("declined", Color.YELLOW, sub.name)
                     continue
