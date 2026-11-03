@@ -242,6 +242,10 @@ class Source:
         return parse_subtitle_name(self.english)
 
     @property
+    def title(self) -> str:
+        return self.name.split(" (")[0]
+
+    @property
     def reference_official(self) -> Reference:
         return Reference(name="official", file=SOURCES_DIR / self.movie / REFERENCES_FOLDER / f"{self.name}.official.srt")
 
@@ -526,14 +530,14 @@ if __name__ == "__main__":
                         score = json.loads(score_file.read_text(encoding="utf-8")) if score_file.exists() else {}
                         scores += [str(score.get("comet", "-")), str(score.get("chrf", "-"))]
                     minutes = f"{timings[translation.translation.name] / 60:.1f}" if translation.translation.name in timings else "-"
-                    table_scores.add_row(run.name, translation.source.movie, header[1], header[2], minutes, *scores)
+                    table_scores.add_row(run.name, translation.source.title, header[1], header[2], minutes, *scores)
                     for line in itertools.takewhile(str.strip, report_lines[3:]):
                         issues_by_kind.setdefault(line[7:28].strip(), {})[run.name] = issues_by_kind.get(line[7:28].strip(), {}).get(run.name, 0) + int(line[2:6])
             for source in Source.find_all():
                 score_file = RUNS_DIR / CLAUDE_RUN / source.movie / SCORES_FOLDER / f"{source.name}.claude.official.json"
                 if score_file.exists():
                     score = json.loads(score_file.read_text(encoding="utf-8"))
-                    table_scores.add_row(CLAUDE_RUN, source.movie, "-", "-", "-", str(score["comet"]), str(score["chrf"]), "-", "-")
+                    table_scores.add_row(CLAUDE_RUN, source.title, "-", "-", "-", str(score["comet"]), str(score["chrf"]), "-", "-")
             console.print(table_scores)
 
             runs_reported = [run.name for run in RUNS if any(run.name in counts for counts in issues_by_kind.values())]
