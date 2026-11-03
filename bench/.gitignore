@@ -1,5 +1,6 @@
-runs/
-sources/
-compare/
-_backups/
-references/_work/
+1-english/
+2-references/*/*.official.srt
+2-references/*/_scores/
+2-references/_work/
+3-runs/
+4-compare/

@@ -44,17 +44,15 @@ SOURCES = (
 OFFICIAL_REFERENCES = {
     SOURCES[1]: Path("Z:/midias/filmes/Hannibal Lecter - 1 - Silence of the Lambs, The (1991)/_subs/The Silence of the Lambs (1991, Web-DL, 2160p, SDR, h265, 5.1, AAC).embed.21.pob.srt"),
 }
-SOURCES_DIR = BENCH_DIR / "sources"
-REFERENCES_DIR = BENCH_DIR / "references"
-RUNS_DIR = BENCH_DIR / "runs"
-COMPARE_DIR = BENCH_DIR / "compare"
-BACKUPS_DIR = BENCH_DIR / "_backups"
-REFERENCES_FOLDER = "references"
+ENGLISH_DIR = BENCH_DIR / "1-english"
+REFERENCES_DIR = BENCH_DIR / "2-references"
+RUNS_DIR = BENCH_DIR / "3-runs"
+COMPARE_DIR = BENCH_DIR / "4-compare"
+BACKUPS_FOLDER = "_backups"
 SCORES_FOLDER = "_scores"
 TIMINGS_FILE = "timings.json"
 SCORE_JOBS_FILE = "score-jobs.json"
 LLAMA_LOG_FILE = "llama.log"
-CLAUDE_RUN = "claude"
 
 ALIGNMENT_OVERLAP_MIN = timedelta(milliseconds=200)
 ALIGNMENT_OFFSET_MAX = timedelta(seconds=2)
@@ -231,11 +229,11 @@ class Source:
 
     @classmethod
     def find_all(cls) -> list["Source"]:
-        return [cls(english=english) for english in sorted(SOURCES_DIR.glob(f"*/{SUBS_FOLDER}/*.srt"))]
+        return [cls(english=english) for english in sorted(ENGLISH_DIR.glob("*/*.srt"))]
 
     @property
     def movie(self) -> str:
-        return self.english.parent.parent.name
+        return self.english.parent.name
 
     @property
     def name(self) -> str:
@@ -247,11 +245,15 @@ class Source:
 
     @property
     def reference_official(self) -> Reference:
-        return Reference(name="official", file=SOURCES_DIR / self.movie / REFERENCES_FOLDER / f"{self.name}.official.srt")
+        return Reference(name="official", file=REFERENCES_DIR / self.movie / f"{self.name}.official.srt")
 
     @property
     def reference_claude(self) -> Reference:
         return Reference(name="claude", file=REFERENCES_DIR / self.movie / f"{self.name}.claude.srt")
+
+    @property
+    def score_claude_official(self) -> Path:
+        return REFERENCES_DIR / self.movie / SCORES_FOLDER / f"{self.name}.claude.official.json"
 
     def find_references(self) -> list[Reference]:
         return [reference for reference in (self.reference_official, self.reference_claude) if reference.file.exists()]
@@ -373,7 +375,7 @@ class Run:
             write_text_replacing(timings_file, json.dumps(timings, ensure_ascii=False, indent=2))
 
     def fix(self) -> None:
-        subprocess.run([sys.executable, str(SRC_DIR / "7-fix-translations.py"), "--yes", "--backups", str(BACKUPS_DIR), str(self.dir)], check=True)
+        subprocess.run([sys.executable, str(SRC_DIR / "7-fix-translations.py"), "--yes", "--backups", str(self.dir / BACKUPS_FOLDER), str(self.dir)], check=True)
 
     def check(self) -> None:
         subprocess.run([sys.executable, str(SRC_DIR / "8-check-translations.py"), str(self.dir)], check=True)
@@ -435,7 +437,7 @@ if __name__ == "__main__":
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("all", help="evaluate every run not evaluated yet, each with its own llama server")
     commands.add_parser("runs", help="list the runs and what each one has done")
-    commands.add_parser("sources", help="copy the English sources from the library")
+    commands.add_parser("sources", help="copy the English sources and the official references from the library")
     command_download = commands.add_parser("download", help="download models from Hugging Face")
     command_download.add_argument("models", nargs="*", help=f"models to download: {', '.join(models)} (default: all)")
     command_serve = commands.add_parser("serve", help="start the llama server of a model")
@@ -476,7 +478,7 @@ if __name__ == "__main__":
             console.print(table)
 
         case "sources":
-            for library_file, snapshot in [(english, SOURCES_DIR / english.parent.parent.name / SUBS_FOLDER / english.name) for english in SOURCES] + [(official, Source(english=SOURCES_DIR / english.parent.parent.name / SUBS_FOLDER / english.name).reference_official.file) for english, official in OFFICIAL_REFERENCES.items()]:
+            for library_file, snapshot in [(english, ENGLISH_DIR / english.parent.parent.name / english.name) for english in SOURCES] + [(official, Source(english=ENGLISH_DIR / english.parent.parent.name / english.name).reference_official.file) for english, official in OFFICIAL_REFERENCES.items()]:
                 if snapshot.exists():
                     log_action("exists", Color.BLUE, snapshot.name)
                     continue
@@ -506,7 +508,7 @@ if __name__ == "__main__":
             for run in RUNS:
                 run.score()
             score_translations([
-                Scoring(english=source.english, hypothesis=source.reference_claude.file, reference=source.reference_official, output=RUNS_DIR / CLAUDE_RUN / source.movie / SCORES_FOLDER / f"{source.name}.claude.official.json")
+                Scoring(english=source.english, hypothesis=source.reference_claude.file, reference=source.reference_official, output=source.score_claude_official)
                 for source in Source.find_all()
                 if source.reference_claude.file.exists() and source.reference_official.file.exists()
             ])
@@ -534,10 +536,9 @@ if __name__ == "__main__":
                     for line in itertools.takewhile(str.strip, report_lines[3:]):
                         issues_by_kind.setdefault(line[7:28].strip(), {})[run.name] = issues_by_kind.get(line[7:28].strip(), {}).get(run.name, 0) + int(line[2:6])
             for source in Source.find_all():
-                score_file = RUNS_DIR / CLAUDE_RUN / source.movie / SCORES_FOLDER / f"{source.name}.claude.official.json"
-                if score_file.exists():
-                    score = json.loads(score_file.read_text(encoding="utf-8"))
-                    table_scores.add_row(CLAUDE_RUN, source.title, "-", "-", "-", str(score["comet"]), str(score["chrf"]), "-", "-")
+                if source.score_claude_official.exists():
+                    score = json.loads(source.score_claude_official.read_text(encoding="utf-8"))
+                    table_scores.add_row("claude", source.title, "-", "-", "-", str(score["comet"]), str(score["chrf"]), "-", "-")
             console.print(table_scores)
 
             runs_reported = [run.name for run in RUNS if any(run.name in counts for counts in issues_by_kind.values())]
