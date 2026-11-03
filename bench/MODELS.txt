@@ -1,19 +1,19 @@
-run                 model                    maker    kind         arch   parameters            quant     size     fits 5080  mode
-------------------  -----------------------  -------  -----------  -----  --------------------  --------  -------  ---------  --------
-gemma-4-26b         Gemma 4 26B A4B          Google   general      MoE    26B total, 4B active  QAT Q4_0  14.4 GB  yes        pipeline
-gemma-4-26b-thinking Gemma 4 26B A4B, think Google   general      MoE    26B total, 4B active  QAT Q4_0  14.4 GB  yes        pipeline
-gemma-4-12b         Gemma 4 12B              Google   general      dense  12B                   QAT Q4_0   7.0 GB  yes        pipeline
-qwen-3.5-9b         Qwen3.5 9B               Alibaba  general      dense  9B                    Q8_0       9.5 GB  yes        pipeline
-hy-mt2-7b           Hy-MT2 7B                Tencent  translation  dense  7B                    Q8_0       8.0 GB  yes        native
-tower-plus-9b       Tower+ 9B                Unbabel  translation  dense  9B                    Q8_0       9.8 GB  yes        native
-translategemma-12b  TranslateGemma 12B       Google   translation  dense  12B                   Q6_K       9.7 GB  yes        native
+run                   model                    maker    kind         arch   parameters            quant     size     fits 5080  mode
+--------------------  -----------------------  -------  -----------  -----  --------------------  --------  -------  ---------  --------
+gemma-4-26b           Gemma 4 26B A4B          Google   general      MoE    26B total, 4B active  QAT Q4_0  14.4 GB  yes        pipeline
+gemma-4-26b-thinking  Gemma 4 26B A4B, thinks  Google   general      MoE    26B total, 4B active  QAT Q4_0  14.4 GB  yes        pipeline
+gemma-4-12b           Gemma 4 12B              Google   general      dense  12B                   QAT Q4_0   7.0 GB  yes        pipeline
+qwen-3.5-9b           Qwen3.5 9B               Alibaba  general      dense  9B                    Q8_0       9.5 GB  yes        pipeline
+hy-mt2-7b             Hy-MT2 7B                Tencent  translation  dense  7B                    Q8_0       8.0 GB  yes        native
+tower-plus-9b         Tower+ 9B                Unbabel  translation  dense  9B                    Q8_0       9.8 GB  yes        native
+translategemma-12b    TranslateGemma 12B       Google   translation  dense  12B                   Q6_K       9.7 GB  yes        native
 
-discarded           reason
-------------------  ------------------------------------------------
-TranslateGemma 27B  does not fit the 5080 with context
-Gemma 4 31B         does not fit the 5080, runs partly on the CPU at 5 tokens/s
-Qwen3.6 35B A3B     does not fit the 5080, runs partly on the CPU
-Hunyuan-MT-7B       replaced by Hy-MT2 7B
-Hunyuan-MT-Chimera  merges candidate translations, does not translate
-Seed-X 7B           needs beam search, not in llama-server
-Sabia               API only
+discarded             reason
+--------------------  ------------------------------------------------------------
+TranslateGemma 27B    does not fit the 5080 with context
+Gemma 4 31B           does not fit the 5080, runs partly on the CPU at 5 tokens/s
+Qwen3.6 35B A3B       does not fit the 5080, runs partly on the CPU
+Hunyuan-MT-7B         replaced by Hy-MT2 7B
+Hunyuan-MT-Chimera    merges candidate translations, does not translate
+Seed-X 7B             needs beam search, not in llama-server
+Sabia                 API only
