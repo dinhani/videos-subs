@@ -110,10 +110,10 @@ class Movie:
     @classmethod
     @functools.cache
     def from_subs_folder(cls, subs_folder: Path) -> "Movie":
-        # the words of the names in the English subtitles of the movie: the speaker labels, and the names NER finds in the entries that are not in capitals only, since NER reads names from their case
+        # the words of the names in the English subtitles of the movie: the speaker labels, and the names NER finds in the dialogue of the entries that are not in capitals only, since NER reads names from their case and reads the words of a description as names
         texts = [parse_plain_text(entry) for file in sorted(subs_folder.glob("*.srt")) if find_language_code(file) == "eng" for entry in parse_srt(file)]
         labels = {word for text in texts for label in SPEAKER_LABEL.finditer(text) for word in normalize_description(label[1]).split()}
-        documents = load_nlp().pipe((text.replace("\n", " ") for text in texts if text != text.upper()), batch_size=NLP_BATCH_SIZE)
+        documents = load_nlp().pipe((DESCRIPTION_SIMPLE.sub(" ", text).replace("\n", " ") for text in texts if text != text.upper()), batch_size=NLP_BATCH_SIZE)
         entities = {word for document in documents for entity in document.ents if entity.label_ in NLP_NAME_LABELS for word in normalize_description(entity.text).split()}
         words_kept = {word for (line,) in CHECK_WORDS.parse() for word in normalize_description(line).split()}
         return cls(names=frozenset(labels | entities | words_kept))

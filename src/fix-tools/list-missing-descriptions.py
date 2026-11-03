@@ -8,7 +8,7 @@ from collections import Counter
 
 from shared.console import Color, console, log_action
 from shared.data_lists import FIX_SOUNDS, FIX_SUBJECTS
-from shared.descriptions import DESCRIPTION_SIMPLE, DescriptionTable
+from shared.descriptions import DESCRIPTION_SIMPLE, DescriptionTable, Movie
 from shared.files import SUBS_FOLDER, find_files, find_language_code, parse_srt
 
 # ------------------------------------------------------------------------------
@@ -23,14 +23,15 @@ if __name__ == "__main__":
     sources = [file for file in find_files(argparse.ArgumentParser(description="Lists the descriptions of the English sources that fix-translations cannot translate, the most common first."), extensions_file=(".srt",), extensions_folder=(".srt",), folder=SUBS_FOLDER) if find_language_code(file) == "eng"]
     table = DescriptionTable.from_lists(FIX_SOUNDS, FIX_SUBJECTS)
 
-    # count every description with letters by its words in lowercase, keeping the first form seen to translate it
+    # count every description with letters by its words in lowercase, keeping the first form seen to translate it; a description that is only names of the movie, such as a speaker, is left out
     counts: Counter[str] = Counter()
     forms: dict[str, str] = {}
     for source in sources:
+        movie = Movie.from_subs_folder(source.parent)
         for entry in parse_srt(source):
             for match in DESCRIPTION_SIMPLE.finditer(entry.content):
                 description = " ".join((match[1] or match[2]).split())
-                if not any(character.isalpha() for character in description):
+                if not any(character.isalpha() for character in description) or movie.has_names_only(description):
                     continue
                 key = description.lower()
                 counts[key] += 1
