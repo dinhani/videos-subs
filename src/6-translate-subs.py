@@ -42,8 +42,18 @@ Use exactly the same ids and nothing else.
 
 Translation rules:
 - Write natural spoken Brazilian Portuguese dialogue. Address people as the scene calls for: "você" in everyday speech, not "tu"; "o senhor" and "a senhora" for formal address, such as to a superior, an elder or a client; "Vossa Majestade" and "Vossa Alteza" for royalty. Keep the same form between the same characters.
+- Write Brazilian Portuguese as people speak it in Brazil today, not as it is written in books. Match the register of the English line: casual stays casual, formal stays formal.
+  - Drop the subject pronoun when the verb shows the subject: "Acho que errei o caminho", not "Eu acho que eu errei o caminho".
+  - In casual speech, use "a gente" for "we", "pra" for "para", "tá" for "está", "cadê" for "where is" and the spoken imperative: "A gente precisa de um barco", "Espera", "Olha", "Vem", not "Nós precisamos de um barco", "Espere", "Olhe", "Venha".
+  - Use "vai" with the infinitive for the future, not the written future tense: "ela vai adorar", not "ela adorará".
+  - Use the words people say, not formal ones: "Consegui os ingressos", not "Obtive os ingressos"; "Tá" or "Tá bom" for a casual "Okay".
+  - Keep each line short and direct, since a subtitle is read in a few seconds: "Give me that." is "Me dá isso.", not "Você poderia me dar isso?".
+  - A character who speaks formally in English, or a formal situation, keeps the written forms: "O senhor deseja mais alguma coisa?".
 - Preserve the original meaning exactly. This is fiction for adults: never soften, censor, euphemize or omit anything. Profanity, insults, slurs, sexual content, violence, drugs and crude humor are translated with the Brazilian Portuguese expressions of the same strength and vulgarity ("fuck" is "porra", "caralho" or "foder" as the sentence requires, never "droga" or "nossa"). Sarcasm stays sarcasm, threats stay threats, rudeness stays rude.
 - Never add warnings, notes or explanations. Never refuse an entry; every id gets its translation.
+- Never mask a word with symbols: "caralho", not "c*ralho"; "merda", not "m*rda".
+- Adjectives and participles agree with the gender of the person they describe. Work out the gender from the context: names, earlier lines, how others address them, the descriptions. A woman says "Estou atrasada"; a female lawyer is "a advogada".
+- Translate what each word means in the scene, not its first dictionary sense: "You got me." after a joke is "Essa me pegou."; "Break a leg." before a show is "Boa sorte.".
 - Translate, do not localize. Units, currencies, measurements, dates, times and cultural references stay as in the original: "30 miles" is "30 milhas", never "48 quilômetros"; "6 feet" is "6 pés"; "90 degrees" is "90 graus". Translate the unit word; the digits stay the same.
 - One translation per id. Never merge, split, move or skip entries. When a sentence continues into the next id, translate each part in its own id, split at the same point.
 - Keep unchanged, in the same position relative to the text:
@@ -55,10 +65,19 @@ Translation rules:
   - any other <...>, </...> or {\\...} tag not listed above, where it is;
   - a leading "- " dialogue dash on a line stays a leading "- " on the same line.
 - Keep the same number of lines inside an entry. Two-speaker entries stay two lines, one speaker per line.
-- Translate sound descriptions such as [door creaks] or (sighs), keeping the brackets.
+- Translate sound descriptions such as [door creaks] or (sighs), keeping the brackets and the letter case of the English. Name the sound the English describes, with the Portuguese word for that exact sound. Keep the grammatical form of the English:
+  - a verb ending in -s becomes the verb in the third person of the present: "[FAUCET DRIPS]" is "[TORNEIRA PINGA]";
+  - a verb ending in -ing becomes the gerund: "[TYPEWRITER CLACKING]" is "[MÁQUINA DE ESCREVER BATENDO]";
+  - a noun stays a noun: "[FIREWORKS]" is "[FOGOS DE ARTIFÍCIO]", "[APPLAUSE]" is "[APLAUSOS]".
+  Use only words that exist in Portuguese: when no Portuguese verb names the sound, use a noun for it. Never invent a word or use a Spanish one.
 - Words in a language other than English stay in that language, unchanged, since the English subtitle left them untranslated: "Carpe diem." stays "Carpe diem."; in "No habla español, fellas?" only "fellas" is translated: "No habla español, pessoal?".
 - Song lyrics stay in English, unchanged: lines marked with ♪ or ♫, and lines the context shows are sung. A description of the music, such as [song playing] or (singing), is translated.
 - Use the context only to resolve gender, pronouns, formality and recurring terms. Never translate or output the context.
+
+Example. For this input:
+{"context_before": [{"en": ["Where's Victor?"], "pt": ["Cadê o Victor?"]}], "lines": {"1": ["[FAUCET DRIPS]"], "2": ["- We need a boat.", "- Okay."], "3": ["I think he took", "the old highway north,"], "4": ["but he's gonna run out of gas."], "5": ["[TYPEWRITER CLACKING]"], "6": ["<i>Fuck, we're out of gas.</i>"], "7": ["Good afternoon, sir.", "May I see your boarding pass?"], "8": ["♪ Fly me to the moon ♪"]}, "context_after": [["[SIREN WAILING]"]]}
+the reply is:
+{"1": {"en": ["[FAUCET DRIPS]"], "pt": ["[TORNEIRA PINGA]"]}, "2": {"en": ["- We need a boat.", "- Okay."], "pt": ["- A gente precisa de um barco.", "- Tá."]}, "3": {"en": ["I think he took", "the old highway north,"], "pt": ["Acho que ele pegou", "a rodovia velha pro norte,"]}, "4": {"en": ["but he's gonna run out of gas."], "pt": ["mas vai ficar sem gasolina."]}, "5": {"en": ["[TYPEWRITER CLACKING]"], "pt": ["[MÁQUINA DE ESCREVER BATENDO]"]}, "6": {"en": ["<i>Fuck, we're out of gas.</i>"], "pt": ["<i>Porra, a gasolina acabou.</i>"]}, "7": {"en": ["Good afternoon, sir.", "May I see your boarding pass?"], "pt": ["Boa tarde, senhor.", "Posso ver seu cartão de embarque?"]}, "8": {"en": ["♪ Fly me to the moon ♪"], "pt": ["♪ Fly me to the moon ♪"]}}
 """
 
 # ------------------------------------------------------------------------------
