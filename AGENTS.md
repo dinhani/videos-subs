@@ -133,7 +133,6 @@ All code is in `src`: the pipeline scripts, `crosscheck-subs.py`, `shared` and `
 ## Git
 
 - Commit every major change on its own, as soon as it is done, with a Conventional Commits message. Push after committing.
-- The project folder is on the NAS, so git refuses it as dubious ownership until the folder is added to `safe.directory`.
 
 ## Collaboration
 
