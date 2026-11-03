@@ -23,7 +23,8 @@ from pathlib import Path
 import httpx
 import questionary
 import srt
-from rich.table import Table
+from rich.columns import Columns
+from rich.table import Column, Table
 from rich.text import Text
 
 BENCH_DIR = Path(__file__).parent
@@ -32,7 +33,7 @@ sys.path.insert(0, str(SRC_DIR))
 
 from shared.console import Batch, Color, console, log_action
 from shared.files import CHECKS_FOLDER, SUBS_FOLDER, TRACES_FOLDER, parse_srt, parse_subtitle_name, write_text_replacing
-from shared.reports import ReportScore
+from shared.reports import IssueKind, ReportScore
 from shared.subtitles import IGNORE_MARKER, SubtitleKind, parse_plain_text
 
 # ------------------------------------------------------------------------------
@@ -528,7 +529,7 @@ class Metric:
     decimals: int
 
     def to_header(self, reference: Reference | None = None) -> str:
-        return f"{self.name} {reference.name}" if reference else self.name
+        return f"{self.name}\n{reference.name}" if reference else self.name
 
     def to_text(self, value: float) -> str:
         match self.unit:
@@ -537,17 +538,23 @@ class Metric:
             case Unit.SECONDS:
                 return f"{int(value) // 60}:{int(value) % 60:02}"
 
-    def to_cell(self, value: float | None, baseline: float | None) -> Text:
-        if value is None:
-            return Text("-", style="dim")
-        cell = Text(self.to_text(value))
-        if baseline is None:
-            return cell
+    def to_difference(self, value: float | None, baseline: float | None) -> Text:
+        if value is None or baseline is None:
+            return Text()
         difference = round(value - baseline, self.decimals)
         if difference == 0:
-            return cell.append(" =", style="dim")
+            return Text("=", style="dim")
         improved = difference > 0 if self.better == Better.HIGHER else difference < 0
-        return cell.append(f" {'+' if difference > 0 else '-'}{self.to_text(abs(difference))}", style=Color.GREEN if improved else Color.RED)
+        return Text(f"{'+' if difference > 0 else '-'}{self.to_text(abs(difference))}", style=Color.GREEN if improved else Color.RED)
+
+    def to_cell(self, value: float | None, value_width: int, difference: Text, difference_width: int) -> Text:
+        cell = Text(self.to_text(value)) if value is not None else Text("-", style="dim")
+        if not difference_width:
+            return cell
+        cell.pad_left(value_width - len(cell))
+        cell.append(" " * (difference_width + 1 - len(difference))).append_text(difference)
+        cell.justify = "left"
+        return cell
 
 
 METRIC_COMET = Metric(name="COMET", key="comet", better=Better.HIGHER, unit=Unit.POINTS, decimals=2)
@@ -662,29 +669,42 @@ if __name__ == "__main__":
                     issues_by_run[run.name] = translation.find_issues_by_kind()
                 runs_sorted = sorted(values_by_run, key=lambda name: (values_by_run[name][0] is None, -(values_by_run[name][0] or 0)))
                 baseline = values_by_run.get(BASELINE_RUN, [None] * len(columns))
+                differences_by_run = {name: [metric.to_difference(value, None if name == BASELINE_RUN else baseline_value) for (metric, _), value, baseline_value in zip(columns, values, baseline)] for name, values in values_by_run.items()}
+                value_widths = [max(len(metric.to_text(values[i])) if values[i] is not None else 1 for values in values_by_run.values()) for i, (metric, _) in enumerate(columns)]
+                difference_widths = [max(len(differences[i]) for differences in differences_by_run.values()) for i in range(len(columns))]
 
                 english_entries = parse_srt(source.english)
                 subtitle_kind = "SDH" if SubtitleKind.from_file(source.english) == SubtitleKind.SDH else "base"
-                table_scores = Table("run", *(metric.to_header(reference) for metric, reference in columns), title=f"{source.title}, {subtitle_kind}, {len(english_entries)} entries", title_justify="left")
-                for column in table_scores.columns[1:]:
-                    column.justify = "right"
+                table_scores = Table(
+                    Column("run", no_wrap=True),
+                    *(Column(metric.to_header(reference), justify="right", no_wrap=True) for metric, reference in columns),
+                    title=f"{source.title}, {subtitle_kind}, {len(english_entries)} entries",
+                    title_justify="left",
+                )
                 for name in runs_sorted:
-                    table_scores.add_row(name, *(metric.to_cell(value, None if name == BASELINE_RUN else baseline_value) for (metric, _), value, baseline_value in zip(columns, values_by_run[name], baseline)))
+                    table_scores.add_row(name, *(metric.to_cell(value, value_width, difference, difference_width) for (metric, _), value, value_width, difference, difference_width in zip(columns, values_by_run[name], value_widths, differences_by_run[name], difference_widths)))
                 if source.score_claude_official.exists() and source.reference_official in references:
                     score = json.loads(source.score_claude_official.read_text(encoding="utf-8"))
                     table_scores.add_section()
-                    table_scores.add_row("claude reference", *(metric.to_cell(score.get(metric.key) if reference == source.reference_official else None, None) for metric, reference in columns))
+                    table_scores.add_row("claude reference", *(metric.to_cell(score.get(metric.key) if reference == source.reference_official else None, value_width, Text(), difference_width) for (metric, reference), value_width, difference_width in zip(columns, value_widths, difference_widths)))
                 console.print()
                 console.print(table_scores)
 
-                kinds = [kind for kind, _ in sum(issues_by_run.values(), Counter()).most_common()]
-                table_kinds = Table("run", *kinds, "total", title=f"{source.title}, issues by kind", title_justify="left")
-                for column in table_kinds.columns[1:]:
-                    column.justify = "right"
+                rules = {kind.label: kind.rule for kind in IssueKind if kind.rule.startswith("2.")}
+                kinds = sorted(sum(issues_by_run.values(), Counter()), key=lambda kind: list(rules).index(kind) if kind in rules else len(rules))
+                table_kinds = Table(
+                    Column("run", no_wrap=True),
+                    *(Column(rules.get(kind, kind), justify="right", no_wrap=True) for kind in kinds),
+                    Column("total", justify="right", no_wrap=True),
+                    title=f"{source.title}, issues by rule",
+                    title_justify="left",
+                )
                 for name in runs_sorted:
                     issues = issues_by_run[name]
                     table_kinds.add_row(name, *(Text(str(issues[kind]), style="" if issues[kind] else "dim") for kind in kinds), str(issues.total()))
+                console.print()
                 console.print(table_kinds)
+                console.print(Columns([Text(f"{rules.get(kind, kind)} {kind}", style="dim") for kind in kinds], padding=(0, 3)))
 
         case "compare":
             COMPARE_DIR.mkdir(exist_ok=True)
