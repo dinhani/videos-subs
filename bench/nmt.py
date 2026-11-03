@@ -2,6 +2,7 @@
 # requires-python = "==3.12.*"
 # dependencies = [
 #     "ctranslate2>=4.6",
+#     "nvidia-cublas-cu12>=12.8",
 #     "sentencepiece>=0.2",
 #     "srt>=3.5",
 #     "transformers>=4.46",
@@ -15,10 +16,12 @@
 # ------------------------------------------------------------------------------
 import argparse
 import json
+import os
 import re
 from pathlib import Path
 
 import ctranslate2
+import nvidia.cublas
 import srt
 from sentencepiece import SentencePieceProcessor
 from transformers import AutoTokenizer
@@ -44,6 +47,7 @@ if __name__ == "__main__":
 
     if ctranslate2.get_cuda_device_count() == 0:
         raise SystemExit("no CUDA device for CTranslate2")
+    os.environ["PATH"] = str(Path(nvidia.cublas.__path__[0]) / "bin") + os.pathsep + os.environ["PATH"]
 
     # each family has its own tokenizer and its own way to ask for Portuguese
     match arguments.family:

@@ -21,12 +21,11 @@ Goal: choose the best raw model for EN → pt-BR subtitle translation on the RTX
 - gemma-4-12b: Fall translated, Silence not finished when the bench was stopped.
 - check-translate on the Claude Fall reference: score 1.8, all 6 flags false positives. That is the floor of check-translate.
 
-## Open problem: CTranslate2 is very slow on the 5080
+## CTranslate2 on the 5080 (solved)
 
-- MADLAD 10B and NLLB 600M both leave the GPU at 0-25% use and 40-80 W; 200 entries with NLLB 600M took more than 5 minutes (should be seconds). No VRAM spill to shared memory, no CPU fallback.
-- Suspect: the CTranslate2 Windows wheel has no kernels for Blackwell (`sm_120`), so it runs a slow path.
-- Next: time model load and repeated single translations with `float16` and `int8_float16` (scratch script idea: load, translate one sentence 4 times, print times). If the first call is slow and later calls are fast, it is a one-time kernel compile; otherwise CTranslate2 is unusable here and the NMT models should run on PyTorch (transformers, `torch` cu128) in `nmt.py` instead, or be dropped.
-- Until fixed, `just bench all` gets stuck on the NMT runs, which run first. Either fix `nmt.py` or move the NMT runs to the end of `RUNS` in `bench.py`.
+- The slow NMT runs came from a cuBLAS without Blackwell (`sm_120`) kernels. There is no CUDA toolkit on the machine; `nmt.py` now depends on `nvidia-cublas-cu12>=12.8` and puts its `bin` folder on `PATH`. With it, NLLB 1.3B takes 15 s on the first call (one-time PTX compile by the driver), then 0.2 s per sentence and 0.5 s for a batch of 64, in both `float16` and `int8_float16`.
+- The transformers warning about an incorrect regex pattern in the tokenizer of `JustFrederik/nllb-200-distilled-600M-ct2-int8` is a false alarm: it tokenizes the same as the OpenNMT NLLB repos.
+- NLLB has only `por_Latn`, and its output is European Portuguese ("Disse-te para não escalares aquela torre, mas nunca me ouves."). Expect it to lose to the LLMs on that alone.
 
 ## Other open points
 
