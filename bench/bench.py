@@ -210,11 +210,14 @@ class ScoringModel:
 # ------------------------------------------------------------------------------
 @dataclass(frozen=True)
 class PipelineTranslation:
+    temperatures: tuple[float, ...] = ()
+
     def describe(self) -> str:
         return "pipeline"
 
     def translate(self, source: Path, translation: Path) -> None:
-        subprocess.run([sys.executable, str(SRC_DIR / "6-translate-subs.py"), str(source)], check=True)
+        options = ["--temperatures", *map(str, self.temperatures)] if self.temperatures else []
+        subprocess.run([sys.executable, str(SRC_DIR / "6-translate-subs.py"), str(source), *options], check=True)
 
 
 @dataclass(frozen=True)
@@ -500,7 +503,7 @@ RUNS = (
     Run(name="mistral-small-3.2-24b", model=MISTRAL_SMALL_3_2_24B, translation=PipelineTranslation()),
     Run(name="magistral-small-24b", model=MAGISTRAL_SMALL_24B, translation=PipelineTranslation()),
     Run(name="gemma-4-26b", model=GEMMA_4_26B, translation=PipelineTranslation()),
-    Run(name="gemma-4-26b-thinking", model=GEMMA_4_26B_THINKING, translation=PipelineTranslation()),
+    Run(name="gemma-4-26b-thinking", model=GEMMA_4_26B_THINKING, translation=PipelineTranslation(temperatures=(1.0, 1.0, 1.0))),
     Run(name="translategemma-27b-iq3", model=TRANSLATEGEMMA_27B, translation=PipelineTranslation()),
     Run(name="hy-mt2-30b-iq3", model=HY_MT2_30B, translation=PipelineTranslation()),
     Run(name="gemma-4-31b-iq3", model=GEMMA_4_31B, translation=PipelineTranslation()),

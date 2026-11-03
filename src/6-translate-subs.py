@@ -24,7 +24,6 @@ CHUNK_CONTEXT_AFTER = 10
 
 LLM_SPLITS = 2 # splits before giving up on chunk
 LLM_TEMPERATURES = (0.0, 0.5, 1.0)
-LLM_ATTEMPTS = len(LLM_TEMPERATURES)
 LLM_PROMPT = """\
 You translate movie and TV subtitles from English to Brazilian Portuguese.
 
@@ -68,12 +67,13 @@ class SubtitleTranslation:
     lines: list[list[str]]
     pending: list[int]
     trace: Trace
+    temperatures: tuple[float, ...]
     translated: dict[int, list[str]] = field(default_factory=dict)
 
     @classmethod
-    def from_entries(cls, entries: list[srt.Subtitle], trace: Trace) -> "SubtitleTranslation":
+    def from_entries(cls, entries: list[srt.Subtitle], trace: Trace, temperatures: tuple[float, ...]) -> "SubtitleTranslation":
         lines = [[" ".join(line.split()) for line in entry.content.split("\n") if line.strip()] for entry in entries]
-        return cls(entries=entries, lines=lines, pending=[i for i, entry_lines in enumerate(lines) if entry_lines], trace=trace)
+        return cls(entries=entries, lines=lines, pending=[i for i, entry_lines in enumerate(lines) if entry_lines], trace=trace, temperatures=temperatures)
 
     def translate(self, start: int, end: int, splits: int = 0) -> None:
         # build request
@@ -110,7 +110,7 @@ class SubtitleTranslation:
         # request and validate, retrying immediately on any problem
         problem = ""
         translated: dict[int, list[str]] = {}
-        for attempt, temperature in enumerate(LLM_TEMPERATURES, start=1):
+        for attempt, temperature in enumerate(self.temperatures, start=1):
             problem = ""
             translated = {}
             resp = llama.chat.completions.create(
@@ -147,18 +147,19 @@ class SubtitleTranslation:
                 "temperature": temperature,
                 "request": request,
                 "reply": reply if reply is not None else choice.message.content,
+                **({"reasoning": reasoning} if (reasoning := getattr(choice.message, "reasoning_content", None)) else {}),
                 "finish_reason": choice.finish_reason,
                 "problem": problem,
             })
             if not problem:
                 self.translated.update(translated)
                 return
-            if attempt < LLM_ATTEMPTS:
-                log_action("retry", Color.YELLOW, f"{problem} (attempt {attempt}/{LLM_ATTEMPTS})")
+            if attempt < len(self.temperatures):
+                log_action("retry", Color.YELLOW, f"{problem} (attempt {attempt}/{len(self.temperatures)})")
 
         # still failing: split in halves up to the limit, then accept the last reply as is and record it in the trace
         if splits < LLM_SPLITS and len(chunk) > 1:
-            log_action("split", Color.YELLOW, f"{len(chunk)} entries failed {LLM_ATTEMPTS} attempts, splitting in halves")
+            log_action("split", Color.YELLOW, f"{len(chunk)} entries failed {len(self.temperatures)} attempts, splitting in halves")
             middle = (start + end) // 2
             self.translate(start, middle, splits + 1)
             self.translate(middle, end, splits + 1)
@@ -181,7 +182,10 @@ class SubtitleTranslation:
 # Execution
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
-    subs_src = find_files(argparse.ArgumentParser(description="Translates English subtitles to Brazilian Portuguese; folders only English ones."), extensions_file=(".srt",), extensions_folder=tuple(f".eng{kind}.srt" for kind in SubtitleKind), folder=SUBS_FOLDER)
+    parser = argparse.ArgumentParser(description="Translates English subtitles to Brazilian Portuguese; folders only English ones.")
+    parser.add_argument("--temperatures", nargs="+", type=float, default=LLM_TEMPERATURES, help=f"temperature of each attempt of a chunk, in order (default: {' '.join(map(str, LLM_TEMPERATURES))})")
+    subs_src = find_files(parser, extensions_file=(".srt",), extensions_folder=tuple(f".eng{kind}.srt" for kind in SubtitleKind), folder=SUBS_FOLDER)
+    temperatures = tuple(parser.parse_args().temperatures)
     llama = connect_llama()
 
     batch = Batch()
@@ -208,7 +212,7 @@ if __name__ == "__main__":
             sub_trace.parent.mkdir(exist_ok=True)
             progress = progress_bar(MofNCompleteColumn(), TimeElapsedColumn(), TimeRemainingColumn())
             with progress:
-                translation = SubtitleTranslation.from_entries(sub_entries, Trace(file=sub_trace))
+                translation = SubtitleTranslation.from_entries(sub_entries, Trace(file=sub_trace), temperatures)
                 chunk_starts = range(0, len(translation.pending), CHUNK_SIZE)
                 for chunk_start in progress.track(chunk_starts, total=len(chunk_starts)):
                     translation.translate(chunk_start, min(chunk_start + CHUNK_SIZE, len(translation.pending)))
