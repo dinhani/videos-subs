@@ -9,32 +9,8 @@ default:
 
 [group('run')]
 [doc('Evaluate every run not evaluated yet, each with its own llama server')]
-all: sources
+all:
     uv run bench.py all
-
-[group('run')]
-[doc('List runs and their progress')]
-runs:
-    uv run bench.py runs
-
-[group('run')]
-[doc('Translate, check and score run with llama server already started')]
-bench run: (translate run) (check run) score
-
-[group('run')]
-[doc('Translate sources with run')]
-translate run: sources
-    uv run bench.py translate {{run}}
-
-[group('run')]
-[doc('Check translations of run')]
-check run:
-    uv run bench.py check {{run}}
-
-[group('run')]
-[doc('Score translations and Claude references against references')]
-score:
-    uv run bench.py score
 
 [group('run')]
 [doc('Show scores, issues and times of all runs')]
@@ -47,17 +23,12 @@ alias scores := report
 compare:
     uv run bench.py compare
 
-[group('llm')]
-[doc('Start llama server for model')]
-llama model:
-    uv run bench.py serve {{model}}
+[group('run')]
+[doc('List runs and their progress')]
+runs:
+    uv run bench.py runs
 
 [group('data')]
 [doc('Download models')]
 models *names:
     uv run --with huggingface_hub bench.py download {{names}}
-
-[group('data')]
-[doc('Copy English sources and official references from library')]
-sources:
-    uv run bench.py sources

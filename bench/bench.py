@@ -18,7 +18,6 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import timedelta
 from pathlib import Path
-from typing import IO
 
 import httpx
 import srt
@@ -97,29 +96,25 @@ class Model:
         log_action("download", Color.GREEN, f"{self.name}: {self.repo}/{self.file}")
         hf_hub_download(repo_id=self.repo, filename=self.file, local_dir=MODELS_DIR / self.repo)
 
-    def start(self, log: IO[bytes] | None = None) -> subprocess.Popen[bytes]:
-        if not self.path.exists():
-            raise FileNotFoundError(f"{self.name} not downloaded: {self.path}")
-        return subprocess.Popen(
-            [str(LLAMA_SERVER), "--model", str(self.path), "--device", "CUDA0", "--flash-attn", "on", "--port", str(LLAMA_PORT), *self.flags],
-            env={**os.environ, **LLAMA_ENV},
-            stdout=log,
-            stderr=subprocess.STDOUT if log else None,
-        )
-
     @contextmanager
     def serving(self, log: Path) -> Generator[None]:
-        served = find_served_file()
-        if served == self.file:
-            yield
-            return
-        if served is not None:
-            raise RuntimeError(f"port {LLAMA_PORT} is used by a llama server running {served}; stop it first")
+        if not self.path.exists():
+            raise FileNotFoundError(f"{self.name} not downloaded: {self.path}")
+        try:
+            props = httpx.get(f"{LLAMA_URL}/props", timeout=10).json()
+            raise RuntimeError(f"port {LLAMA_PORT} is used by a llama server running {Path(props.get('model_path', '?')).name}; stop it first")
+        except httpx.TransportError:
+            pass
 
         log.parent.mkdir(parents=True, exist_ok=True)
         with log.open("wb") as output:
             log_action("start", Color.GREEN, f"llama server for {self.name}, log in {log}")
-            server = self.start(log=output)
+            server = subprocess.Popen(
+                [str(LLAMA_SERVER), "--model", str(self.path), "--device", "CUDA0", "--flash-attn", "on", "--port", str(LLAMA_PORT), *self.flags],
+                env={**os.environ, **LLAMA_ENV},
+                stdout=output,
+                stderr=subprocess.STDOUT,
+            )
             try:
                 started = time.monotonic()
                 while True:
@@ -138,21 +133,6 @@ class Model:
                 server.terminate()
                 server.wait()
                 log_action("stop", Color.GREEN, f"llama server for {self.name}")
-
-    def ensure_served(self) -> None:
-        served = find_served_file()
-        if served is None:
-            raise SystemExit(f"llama server unreachable at {LLAMA_URL}; start it with: just llama {self.name}")
-        if served != self.file:
-            raise SystemExit(f"llama server runs {served}, not {self.file}; start it with: just llama {self.name}")
-
-
-def find_served_file() -> str | None:
-    try:
-        props = httpx.get(f"{LLAMA_URL}/props", timeout=10).json()
-        return Path(props["model_path"]).name if "model_path" in props else None
-    except httpx.TransportError:
-        return None
 
 
 # ------------------------------------------------------------------------------
@@ -354,7 +334,6 @@ class Run:
         self.score()
 
     def translate(self) -> None:
-        self.model.ensure_served()
         timings_file = self.dir / TIMINGS_FILE
         timings: dict[str, int] = json.loads(timings_file.read_text(encoding="utf-8")) if timings_file.exists() else {}
 
@@ -430,24 +409,28 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Benchmarks translation models on the same English sources.")
     commands = parser.add_subparsers(dest="command", required=True)
-    commands.add_parser("all", help="evaluate every run not evaluated yet, each with its own llama server")
+    commands.add_parser("all", help="copy the sources and evaluate every run not evaluated yet, each with its own llama server")
     commands.add_parser("runs", help="list the runs and what each one has done")
-    commands.add_parser("sources", help="copy the English sources and the official references from the library")
     command_download = commands.add_parser("download", help="download models from Hugging Face")
     command_download.add_argument("models", nargs="*", help=f"models to download: {', '.join(models)} (default: all)")
-    command_serve = commands.add_parser("serve", help="start the llama server of a model")
-    command_serve.add_argument("model", choices=models)
-    command_translate = commands.add_parser("translate", help="translate the sources with a run")
-    command_translate.add_argument("run", choices=runs)
-    command_check = commands.add_parser("check", help="check the translations of a run")
-    command_check.add_argument("run", choices=runs)
-    commands.add_parser("score", help="score every translation, and the claude references, against the references")
     commands.add_parser("report", help="show the scores, issues and time of every run")
     commands.add_parser("compare", help="write the entries of every run side by side")
     arguments = parser.parse_args()
 
     match arguments.command:
         case "all":
+            for library_file, snapshot in [(english, ENGLISH_DIR / english.parent.parent.name / english.name) for english in SOURCES] + [(official, Source(english=ENGLISH_DIR / english.parent.parent.name / english.name).reference_official.file) for english, official in OFFICIAL_REFERENCES.items()]:
+                if not snapshot.exists():
+                    snapshot.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(library_file, snapshot)
+                    log_action("copy", Color.GREEN, snapshot.name)
+
+            score_translations([
+                Scoring(english=source.english, hypothesis=source.reference_claude.file, reference=source.reference_official, output=source.score_claude_official)
+                for source in Source.find_all()
+                if source.reference_claude.file.exists() and source.reference_official.file.exists()
+            ])
+
             batch = Batch()
             for run in RUNS:
                 if run.is_evaluated():
@@ -470,38 +453,11 @@ if __name__ == "__main__":
                 table.add_row(run.name, run.model.name, run.translation.describe(), "yes" if run.model.path.exists() else "no", f"{translated}/{len(translations)}", f"{checked}/{len(translations)}", f"{sum(score.exists() for score in scores)}/{len(scores)}")
             console.print(table)
 
-        case "sources":
-            for library_file, snapshot in [(english, ENGLISH_DIR / english.parent.parent.name / english.name) for english in SOURCES] + [(official, Source(english=ENGLISH_DIR / english.parent.parent.name / english.name).reference_official.file) for english, official in OFFICIAL_REFERENCES.items()]:
-                if snapshot.exists():
-                    log_action("exists", Color.BLUE, snapshot.name)
-                    continue
-                snapshot.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(library_file, snapshot)
-                log_action("copy", Color.GREEN, snapshot.name)
-
         case "download":
             if unknown := set(arguments.models) - set(models):
                 parser.error(f"unknown models: {', '.join(sorted(unknown))}")
             for name in arguments.models or models:
                 models[name].download()
-
-        case "serve":
-            sys.exit(models[arguments.model].start().wait())
-
-        case "translate":
-            runs[arguments.run].translate()
-
-        case "check":
-            runs[arguments.run].check()
-
-        case "score":
-            for run in RUNS:
-                run.score()
-            score_translations([
-                Scoring(english=source.english, hypothesis=source.reference_claude.file, reference=source.reference_official, output=source.score_claude_official)
-                for source in Source.find_all()
-                if source.reference_claude.file.exists() and source.reference_official.file.exists()
-            ])
 
         case "report":
             table_scores = Table("run", "movie", "check score", "issues", "minutes", "comet official", "chrf++ official", "comet claude", "chrf++ claude")
