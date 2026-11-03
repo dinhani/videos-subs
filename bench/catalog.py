@@ -2,6 +2,7 @@ from pathlib import Path
 
 from models import LlamaModel, NmtFamily, NmtModel, ScoringModel
 from runs import PipelineTranslator, Run, Source
+from shared.llm import ReplyFormat
 
 PROMPTS_DIR = Path(__file__).parent / "prompts"
 
@@ -77,6 +78,7 @@ RUNS = (
     Run.from_model(MISTRAL_SMALL_3_2_24B),
     Run.from_model(MAGISTRAL_SMALL_24B),
     Run.from_model(GEMMA_4_26B),
+    Run(name=f"{GEMMA_4_26B.name}+reply-{ReplyFormat.PORTUGUESE}", translator=PipelineTranslator(model=GEMMA_4_26B, reply=ReplyFormat.PORTUGUESE)),
     *(Run.from_prompt(GEMMA_4_26B, prompt) for prompt in sorted(PROMPTS_DIR.glob("*.txt"))),
     Run(name=GEMMA_4_26B_THINKING.name, translator=PipelineTranslator(model=GEMMA_4_26B_THINKING, temperatures=(1.0, 1.0, 1.0))),
     Run.from_model(HY_MT2_30B),

@@ -14,7 +14,7 @@ from rich.progress import MofNCompleteColumn, TimeElapsedColumn, TimeRemainingCo
 
 from shared.console import Batch, Color, log_action, progress_bar
 from shared.files import SUBS_FOLDER, TRACES_FOLDER, find_files, parse_movie_dir, parse_srt, parse_subtitle_name, write_text_replacing
-from shared.llm import Trace, connect_llama
+from shared.llm import ReplyFormat, Trace, connect_llama
 from shared.subtitles import IGNORE_MARKER, SubtitleKind
 
 # ------------------------------------------------------------------------------
@@ -36,8 +36,7 @@ The input is a JSON object:
 - "context_after": upcoming English entries. Read-only.
 
 Reply with a JSON object that maps every id in "lines" to an object with:
-- "en": the English lines of that id as you read them, with any junk from the source removed.
-- "pt": the translated lines, one array element per English line, same number of elements.
+{reply_fields}
 Use exactly the same ids and nothing else.
 
 Translation rules:
@@ -75,10 +74,26 @@ Translation rules:
 - Use the context only to resolve gender, pronouns, formality and recurring terms. Never translate or output the context.
 
 Example. For this input:
-{"context_before": [{"en": ["Where's Victor?"], "pt": ["Cadê o Victor?"]}], "lines": {"1": ["[FAUCET DRIPS]"], "2": ["- We need a boat.", "- Okay."], "3": ["I think he took", "the old highway north,"], "4": ["but he's gonna run out of gas."], "5": ["[TYPEWRITER CLACKING]"], "6": ["<i>Fuck, we're out of gas.</i>"], "7": ["Good afternoon, sir.", "May I see your boarding pass?"], "8": ["♪ Fly me to the moon ♪"]}, "context_after": [["[SIREN WAILING]"]]}
+{example_request}
 the reply is:
-{"1": {"en": ["[FAUCET DRIPS]"], "pt": ["[TORNEIRA PINGA]"]}, "2": {"en": ["- We need a boat.", "- Okay."], "pt": ["- A gente precisa de um barco.", "- Tá."]}, "3": {"en": ["I think he took", "the old highway north,"], "pt": ["Acho que ele pegou", "a rodovia velha pro norte,"]}, "4": {"en": ["but he's gonna run out of gas."], "pt": ["mas vai ficar sem gasolina."]}, "5": {"en": ["[TYPEWRITER CLACKING]"], "pt": ["[MÁQUINA DE ESCREVER BATENDO]"]}, "6": {"en": ["<i>Fuck, we're out of gas.</i>"], "pt": ["<i>Porra, a gasolina acabou.</i>"]}, "7": {"en": ["Good afternoon, sir.", "May I see your boarding pass?"], "pt": ["Boa tarde, senhor.", "Posso ver seu cartão de embarque?"]}, "8": {"en": ["♪ Fly me to the moon ♪"], "pt": ["♪ Fly me to the moon ♪"]}}
+{example_reply}
 """
+LLM_REPLY_FIELDS = {
+    "en": "the English lines of that id as you read them, with any junk from the source removed.",
+    "pt": "the translated lines, one array element per English line, same number of elements.",
+}
+LLM_EXAMPLE_CONTEXT_BEFORE = [{"en": ["Where's Victor?"], "pt": ["Cadê o Victor?"]}]
+LLM_EXAMPLE_LINES = {
+    "1": {"en": ["[FAUCET DRIPS]"], "pt": ["[TORNEIRA PINGA]"]},
+    "2": {"en": ["- We need a boat.", "- Okay."], "pt": ["- A gente precisa de um barco.", "- Tá."]},
+    "3": {"en": ["I think he took", "the old highway north,"], "pt": ["Acho que ele pegou", "a rodovia velha pro norte,"]},
+    "4": {"en": ["but he's gonna run out of gas."], "pt": ["mas vai ficar sem gasolina."]},
+    "5": {"en": ["[TYPEWRITER CLACKING]"], "pt": ["[MÁQUINA DE ESCREVER BATENDO]"]},
+    "6": {"en": ["<i>Fuck, we're out of gas.</i>"], "pt": ["<i>Porra, a gasolina acabou.</i>"]},
+    "7": {"en": ["Good afternoon, sir.", "May I see your boarding pass?"], "pt": ["Boa tarde, senhor.", "Posso ver seu cartão de embarque?"]},
+    "8": {"en": ["♪ Fly me to the moon ♪"], "pt": ["♪ Fly me to the moon ♪"]},
+}
+LLM_EXAMPLE_CONTEXT_AFTER = [["[SIREN WAILING]"]]
 
 # ------------------------------------------------------------------------------
 # Translation
@@ -91,12 +106,13 @@ class SubtitleTranslation:
     trace: Trace
     temperatures: tuple[float, ...]
     prompt: str
+    reply: ReplyFormat
     translated: dict[int, list[str]] = field(default_factory=dict)
 
     @classmethod
-    def from_entries(cls, entries: list[srt.Subtitle], trace: Trace, temperatures: tuple[float, ...], prompt: str) -> "SubtitleTranslation":
+    def from_entries(cls, entries: list[srt.Subtitle], trace: Trace, temperatures: tuple[float, ...], prompt: str, reply: ReplyFormat) -> "SubtitleTranslation":
         lines = [[" ".join(line.split()) for line in entry.content.split("\n") if line.strip()] for entry in entries]
-        return cls(entries=entries, lines=lines, pending=[i for i, entry_lines in enumerate(lines) if entry_lines], trace=trace, temperatures=temperatures, prompt=prompt)
+        return cls(entries=entries, lines=lines, pending=[i for i, entry_lines in enumerate(lines) if entry_lines], trace=trace, temperatures=temperatures, prompt=prompt, reply=reply)
 
     def translate(self, start: int, end: int, splits: int = 0) -> None:
         # build request
@@ -107,24 +123,28 @@ class SubtitleTranslation:
             "lines": {id: self.lines[i] for id, i in zip(ids, chunk)},
             "context_after": [self.lines[i] for i in self.pending[end:end + CHUNK_CONTEXT_AFTER]],
         }
+        fields_by_id = {
+            id: {
+                "en": {"type": "array", "items": {"type": "string"}, "minItems": len(self.lines[i]), "maxItems": len(self.lines[i])},
+                "pt": {
+                    "type": "array",
+                    "items": {"type": "string", "minLength": 1, "maxLength": max(60, 3 * max(len(line) for line in self.lines[i]))},
+                    "minItems": len(self.lines[i]),
+                    "maxItems": len(self.lines[i]),
+                },
+            }
+            for id, i in zip(ids, chunk)
+        }
         schema = {
             "type": "object",
             "properties": {
                 id: {
                     "type": "object",
-                    "properties": {
-                        "en": {"type": "array", "items": {"type": "string"}, "minItems": len(self.lines[i]), "maxItems": len(self.lines[i])},
-                        "pt": {
-                            "type": "array",
-                            "items": {"type": "string", "minLength": 1, "maxLength": max(60, 3 * max(len(line) for line in self.lines[i]))},
-                            "minItems": len(self.lines[i]),
-                            "maxItems": len(self.lines[i]),
-                        },
-                    },
-                    "required": ["en", "pt"],
+                    "properties": {name: fields_by_id[id][name] for name in self.reply.fields},
+                    "required": list(self.reply.fields),
                     "additionalProperties": False,
                 }
-                for id, i in zip(ids, chunk)
+                for id in ids
             },
             "required": ids,
             "additionalProperties": False,
@@ -208,10 +228,19 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Translates English subtitles to Brazilian Portuguese; folders only English ones.")
     parser.add_argument("--temperatures", nargs="+", type=float, default=LLM_TEMPERATURES, help=f"temperature of each attempt of a chunk, in order (default: {' '.join(map(str, LLM_TEMPERATURES))})")
     parser.add_argument("--prompt", type=Path, help="text file with the system prompt to use instead of LLM_PROMPT; {movie} in it is replaced by the title of the movie or episode, as in LLM_PROMPT")
+    parser.add_argument("--reply", type=ReplyFormat, choices=list(ReplyFormat), default=ReplyFormat.ENGLISH_AND_PORTUGUESE, help=f"fields of each id in the reply: {ReplyFormat.ENGLISH_AND_PORTUGUESE} for the English lines and the translated lines, {ReplyFormat.PORTUGUESE} for the translated lines only (default: {ReplyFormat.ENGLISH_AND_PORTUGUESE})")
     subs_src = find_files(parser, extensions_file=(".srt",), extensions_folder=tuple(f".eng{kind}.srt" for kind in SubtitleKind), folder=SUBS_FOLDER)
     arguments = parser.parse_args()
     temperatures = tuple(arguments.temperatures)
-    prompt = arguments.prompt.read_text(encoding="utf-8") if arguments.prompt else LLM_PROMPT
+    reply: ReplyFormat = arguments.reply
+    example_request = {"context_before": LLM_EXAMPLE_CONTEXT_BEFORE, "lines": {id: lines["en"] for id, lines in LLM_EXAMPLE_LINES.items()}, "context_after": LLM_EXAMPLE_CONTEXT_AFTER}
+    example_reply = {id: {name: lines[name] for name in reply.fields} for id, lines in LLM_EXAMPLE_LINES.items()}
+    prompt = (
+        (arguments.prompt.read_text(encoding="utf-8") if arguments.prompt else LLM_PROMPT)
+        .replace("{reply_fields}", "\n".join(f'- "{name}": {LLM_REPLY_FIELDS[name]}' for name in reply.fields))
+        .replace("{example_request}", json.dumps(example_request, ensure_ascii=False))
+        .replace("{example_reply}", json.dumps(example_reply, ensure_ascii=False))
+    )
     llama = connect_llama()
 
     batch = Batch()
@@ -241,7 +270,7 @@ if __name__ == "__main__":
             sub_trace.parent.mkdir(exist_ok=True)
             progress = progress_bar(MofNCompleteColumn(), TimeElapsedColumn(), TimeRemainingColumn())
             with progress:
-                translation = SubtitleTranslation.from_entries(sub_entries, Trace(file=sub_trace), temperatures, prompt.replace("{movie}", movie_title))
+                translation = SubtitleTranslation.from_entries(sub_entries, Trace(file=sub_trace), temperatures, prompt.replace("{movie}", movie_title), reply)
                 chunk_starts = range(0, len(translation.pending), CHUNK_SIZE)
                 for chunk_start in progress.track(chunk_starts, total=len(chunk_starts)):
                     translation.translate(chunk_start, min(chunk_start + CHUNK_SIZE, len(translation.pending)))

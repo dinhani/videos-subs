@@ -2,6 +2,7 @@ import json
 import sys
 import threading
 from dataclasses import dataclass, field
+from enum import StrEnum
 from pathlib import Path
 from typing import Any
 
@@ -12,6 +13,19 @@ from shared.files import write_text_replacing
 
 LLM_URL = "http://127.0.0.1:9931/v1"
 LLM_PROPS_URL = "http://127.0.0.1:9931/props"
+
+
+class ReplyFormat(StrEnum):
+    ENGLISH_AND_PORTUGUESE = "en-pt"
+    PORTUGUESE = "pt"
+
+    @property
+    def fields(self) -> tuple[str, ...]:
+        match self:
+            case ReplyFormat.ENGLISH_AND_PORTUGUESE:
+                return ("en", "pt")
+            case ReplyFormat.PORTUGUESE:
+                return ("pt",)
 
 
 def connect_llama() -> OpenAI:

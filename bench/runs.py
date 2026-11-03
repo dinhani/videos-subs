@@ -19,6 +19,7 @@ import srt
 from models import LlamaModel, NmtModel
 from shared.console import Color, log_action
 from shared.files import CHECKS_FOLDER, SUBS_FOLDER, TRACES_FOLDER, parse_srt, parse_subtitle_name, write_text_replacing
+from shared.llm import ReplyFormat
 from shared.subtitles import IGNORE_MARKER, SubtitleKind, parse_plain_text
 
 BENCH_DIR = Path(__file__).parent
@@ -42,6 +43,7 @@ class PipelineTranslator:
     model: LlamaModel
     temperatures: tuple[float, ...] = ()
     prompt: Path | None = None
+    reply: ReplyFormat = ReplyFormat.ENGLISH_AND_PORTUGUESE
 
     def serving(self, log: Path) -> contextlib.AbstractContextManager[None]:
         return self.model.serving(log)
@@ -50,6 +52,7 @@ class PipelineTranslator:
         options = [
             *(["--temperatures", *map(str, self.temperatures)] if self.temperatures else []),
             *(["--prompt", str(self.prompt)] if self.prompt else []),
+            "--reply", self.reply,
         ]
         subprocess.run([sys.executable, str(SRC_DIR / "6-translate-subs.py"), str(english), *options], check=True)
 
