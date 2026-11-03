@@ -1,0 +1,60 @@
+set windows-shell := ["pwsh.exe", "-NoLogo", "-NoProfile", "-Command"]
+
+export UV_PROJECT_ENVIRONMENT := data_local_directory() / "uv" / "envs" / "videos-subs"
+
+[group('project')]
+[doc('List recipes')]
+default:
+    @just --list --unsorted
+
+[group('run')]
+[doc('List runs and their progress')]
+runs:
+    uv run bench.py runs
+
+[group('run')]
+[doc('Translate, fix and check run')]
+bench run: (translate run) (fix run) (check run)
+
+[group('run')]
+[doc('Translate sources with run')]
+translate run: sources
+    uv run bench.py translate {{run}}
+
+[group('run')]
+[doc('Fix translations of run')]
+fix run:
+    uv run ../src/7-fix-translations.py --yes --backups _backups runs/{{run}}
+
+[group('run')]
+[doc('Check translations of run')]
+check run:
+    uv run ../src/8-check-translations.py runs/{{run}}
+
+[group('run')]
+[doc('Show scores, issues and times of all runs')]
+report:
+    uv run bench.py report
+alias scores := report
+
+[group('run')]
+[doc('Write entries of all runs side by side')]
+compare:
+    uv run bench.py compare
+
+[group('llm')]
+[doc('Start llama server for model')]
+[env('GGML_CUDA_PDL', '1')]
+[env('GGML_CUDA_GRAPH_OPT', '1')]
+llama model:
+    uv run bench.py serve {{model}}
+
+[group('data')]
+[doc('Download models')]
+models *names:
+    uv run --with huggingface_hub bench.py download {{names}}
+
+[group('data')]
+[doc('Copy English sources from library')]
+sources:
+    uv run bench.py sources
