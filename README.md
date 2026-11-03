@@ -16,4 +16,4 @@ These tools on the `PATH`:
 
 ## Usage
 
-The `justfile` has a recipe for setup and for each step; `just` lists them. [AGENTS.md](AGENTS.md) describes each step, the file layout and the check rules in detail.
+The `justfile` has a recipe for setup and for each step; `just` lists them. [docs/PIPELINE.md](docs/PIPELINE.md) describes each step, [docs/RULES.md](docs/RULES.md) the check rules, and [AGENTS.md](AGENTS.md) the file layout.
