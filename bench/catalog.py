@@ -78,7 +78,6 @@ RUNS = (
     Run.from_model(MAGISTRAL_SMALL_24B),
     Run.from_model(GEMMA_4_26B),
     *(Run.from_prompt(GEMMA_4_26B, prompt) for prompt in sorted(PROMPTS_DIR.glob("*.txt"))),
-    Run(name="gemma-4-26b-temperature-1.0", translator=PipelineTranslator(model=GEMMA_4_26B, temperatures=(1.0, 1.0, 1.0))),
     Run(name=GEMMA_4_26B_THINKING.name, translator=PipelineTranslator(model=GEMMA_4_26B_THINKING, temperatures=(1.0, 1.0, 1.0))),
     Run.from_model(HY_MT2_30B),
     Run.from_model(GEMMA_4_31B),
