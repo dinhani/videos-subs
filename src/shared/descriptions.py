@@ -1,13 +1,23 @@
+import functools
 import re
 from dataclasses import dataclass
+from pathlib import Path
 
-from shared.data_lists import DataList
-from shared.subtitles import FORMATTING_TAGS
+import spacy
+
+from shared.data_lists import CHECK_WORDS, DataList
+from shared.files import find_language_code, parse_srt
+from shared.subtitles import FORMATTING_TAGS, parse_plain_text
 
 DESCRIPTION_SIMPLE = re.compile(r"\[([^\[\]()<>{}]+)\]|\(([^\[\]()<>{}]+)\)")
 DESCRIPTION_SUBJECT_WORDS_MAX = 2
 DESCRIPTION_PUNCTUATION = re.compile(r"[\[\]()\-–—]")
 DESCRIPTION_ARTICLE = re.compile(r"^(?:o|a|os|as)\s+")
+
+NLP_MODEL = "en_core_web_sm"
+NLP_NAME_LABELS = frozenset({"PERSON", "ORG"})
+NLP_BATCH_SIZE = 256
+SPEAKER_LABEL = re.compile(r"^\s*-?\s*([A-Z][A-Z0-9'.\- ]*[A-Z0-9.]):", re.MULTILINE)
 
 
 def normalize_description(text: str) -> str:
@@ -91,3 +101,28 @@ class DescriptionTable:
 
     def to_forms(self, phrases: tuple[str, ...], subject: str) -> frozenset[str]:
         return frozenset(DESCRIPTION_ARTICLE.sub("", normalize_description(f"{subject} {phrase}")) for phrase in phrases)
+
+
+@dataclass(frozen=True)
+class Movie:
+    names: frozenset[str]
+
+    @classmethod
+    @functools.cache
+    def from_subs_folder(cls, subs_folder: Path) -> "Movie":
+        # the words of the names in the English subtitles of the movie: the speaker labels, and the names NER finds in the entries that are not in capitals only, since NER reads names from their case
+        texts = [parse_plain_text(entry) for file in sorted(subs_folder.glob("*.srt")) if find_language_code(file) == "eng" for entry in parse_srt(file)]
+        labels = {word for text in texts for label in SPEAKER_LABEL.finditer(text) for word in normalize_description(label[1]).split()}
+        documents = load_nlp().pipe((text.replace("\n", " ") for text in texts if text != text.upper()), batch_size=NLP_BATCH_SIZE)
+        entities = {word for document in documents for entity in document.ents if entity.label_ in NLP_NAME_LABELS for word in normalize_description(entity.text).split()}
+        words_kept = {word for (line,) in CHECK_WORDS.parse() for word in normalize_description(line).split()}
+        return cls(names=frozenset(labels | entities | words_kept))
+
+    def has_names_only(self, description: str) -> bool:
+        words = normalize_description(description).split()
+        return bool(words) and all(word in self.names for word in words)
+
+
+@functools.cache
+def load_nlp() -> spacy.language.Language:
+    return spacy.load(NLP_MODEL, exclude=["tagger", "parser", "attribute_ruler", "lemmatizer"])

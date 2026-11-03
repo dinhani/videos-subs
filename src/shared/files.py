@@ -1,6 +1,9 @@
 import argparse
 import functools
 import os
+import shutil
+from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 
 import srt
@@ -9,13 +12,15 @@ from tenacity import Retrying, retry_if_exception_type, stop_after_attempt, wait
 
 from shared.subtitles import SubtitleKind
 
-DIR_FILMES = Path("Z:/midias/filmes/")
-DIR_SERIES = Path("Z:/midias/series/")
+DIR_MIDIAS = Path("Z:/midias")
+DIR_FILMES = DIR_MIDIAS / "filmes"
+DIR_SERIES = DIR_MIDIAS / "series"
 DIRS_MIDIAS = (DIR_FILMES, DIR_SERIES)
 
 SUBS_FOLDER = "_subs"
 TRACES_FOLDER = "_traces"
 CHECKS_FOLDER = "_checks"
+BACKUPS_FOLDER = DIR_MIDIAS / "_backups"
 
 REPLACE_ATTEMPTS = 10
 REPLACE_WAIT_SECONDS = 0.5
@@ -81,3 +86,38 @@ def write_text_replacing(file: Path, text: str, newline: str | None = None) -> N
                 file_part.replace(file)
     finally:
         file_part.unlink(missing_ok=True)
+
+
+def get_english_source(translation: Path) -> Path:
+    kind = SubtitleKind.find_in_translation(translation)
+    if kind is None:
+        raise ValueError(f"not a translation: {translation.name}")
+    source = parse_movie_dir(translation) / SUBS_FOLDER / f"{translation.name.removesuffix(kind.to_translation_suffix())}.eng{kind}.srt"
+    if not source.exists():
+        raise FileNotFoundError(f"English source not found: {source}")
+    return source
+
+
+@dataclass(frozen=True)
+class Backups:
+    run: Path
+
+    @staticmethod
+    def add_argument(parser: argparse.ArgumentParser) -> None:
+        parser.add_argument("--backups", type=Path, default=BACKUPS_FOLDER, help=f"folder that holds a folder of backups for each run (default: {BACKUPS_FOLDER})")
+
+    @classmethod
+    def start(cls, folder: Path) -> "Backups":
+        return cls(run=folder / datetime.now().strftime("%Y-%m-%dT%H-%M-%S"))
+
+    def save(self, file: Path) -> Path:
+        # a copy under the path of the file from the library root, in a folder of its own for this run, so no backup is ever replaced
+        file_absolute = file.absolute()
+        backup = self.run / (file_absolute.relative_to(DIR_MIDIAS) if file_absolute.is_relative_to(DIR_MIDIAS) else file_absolute.relative_to(file_absolute.anchor))
+        if backup.exists():
+            raise FileExistsError(f"backup already exists: {backup}")
+        backup.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(file, backup)
+        if backup.read_bytes() != file.read_bytes():
+            raise OSError(f"backup differs from the file: {backup}")
+        return backup

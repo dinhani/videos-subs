@@ -1,12 +1,9 @@
-import importlib
 from pathlib import Path
 
 import pytest
 
 from shared.data_lists import FIX_SOUNDS, FIX_SUBJECTS
-from shared.descriptions import DescriptionTable
-
-fix_translations = importlib.import_module("7-fix-translations")
+from shared.descriptions import DescriptionTable, Movie
 
 TABLE = DescriptionTable.from_lists(FIX_SOUNDS, FIX_SUBJECTS)
 
@@ -71,7 +68,7 @@ def test_movie_names(tmp_path: Path) -> None:
     )
     (tmp_path / "movie.embed.3.spa.srt").write_text("1\n00:00:01,000 --> 00:00:02,000\nRAMONA: Hola.\n", encoding="utf-8")
 
-    names = fix_translations.load_movie_names(tmp_path)
+    names = Movie.from_subs_folder(tmp_path).names
 
     assert {"shuri", "peter", "parker", "tulkun"} <= names
     assert not {"tony", "stark", "ramona"} & names

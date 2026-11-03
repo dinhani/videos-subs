@@ -6,29 +6,25 @@ import pytest
 import srt
 
 from shared.data_lists import DataList, DataListFormat
+from shared.descriptions import Movie
 
 fix_translations = importlib.import_module("7-fix-translations")
 TranslationEntry = fix_translations.TranslationEntry
 
 
-def entry(english: str, translated: str, names: frozenset[str] = frozenset()) -> TranslationEntry:
+def entry(english: str, translated: str) -> TranslationEntry:
     def subtitle(content: str) -> srt.Subtitle:
         return srt.Subtitle(index=1, start=timedelta(0), end=timedelta(seconds=1), content=content)
 
-    return TranslationEntry.from_entries(subtitle(english), subtitle(translated), names)
+    return TranslationEntry.from_entries(subtitle(english), subtitle(translated))
 
 
 def fix(fix: object, english: str, translated: str, names: frozenset[str] = frozenset()) -> str:
-    return "\n".join(fix.fix(entry(english, translated, names)))
+    return "\n".join(fix.fix(entry(english, translated), Movie(names=names)))
 
 
 def fix_all(english: str, translated: str, names: frozenset[str] = frozenset()) -> str:
-    translation = entry(english, translated, names)
-    if translation.is_broken:
-        return translated
-    for each in fix_translations.FIXES:
-        if each.enabled and (translation_fixed := translation.apply(each)) is not None:
-            translation = translation_fixed
+    translation, _ = entry(english, translated).apply_fixes(fix_translations.FIXES, Movie(names=names))
     return "\n".join(translation.target_lines)
 
 

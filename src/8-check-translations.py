@@ -23,7 +23,7 @@ from rich.progress import MofNCompleteColumn, TimeElapsedColumn, TimeRemainingCo
 
 from shared.console import Batch, Color, log_action, progress_bar
 from shared.data_lists import CHECK_EXPRESSIONS, CHECK_WORDS, DICTIONARY_HUNSPELL, DataList, load_dictionary
-from shared.files import CHECKS_FOLDER, SUBS_FOLDER, TRACES_FOLDER, find_files, parse_movie_dir, parse_srt
+from shared.files import CHECKS_FOLDER, TRACES_FOLDER, find_files, get_english_source, parse_movie_dir, parse_srt
 from shared.languages import WORDS_PT_PT, TextLanguage, parse_words
 from shared.reports import CHECK_WORKERS, Issue, IssueKind, Report, ReportScore, log_ranking
 from shared.subtitles import BRACKETS, FORMATTING_TAGS, SubtitleKind, parse_plain_text
@@ -287,14 +287,8 @@ class TranslationCheck:
     @classmethod
     def from_file(cls, subtitle: Path, languagetool_server: str) -> "TranslationCheck":
         # find the English source and the trace of the translation
-        movie_dir = parse_movie_dir(subtitle)
-        kind = SubtitleKind.find_in_translation(subtitle)
-        if kind is None:
-            raise ValueError(f"not a translation: {subtitle.name}")
-        source = movie_dir / SUBS_FOLDER / f"{subtitle.name.removesuffix(kind.to_translation_suffix())}.eng{kind}.srt"
-        if not source.exists():
-            raise FileNotFoundError(f"English source not found: {source}")
-        trace = movie_dir / TRACES_FOLDER / f"{subtitle.stem}.json"
+        source = get_english_source(subtitle)
+        trace = parse_movie_dir(subtitle) / TRACES_FOLDER / f"{subtitle.stem}.json"
         records = json.loads(trace.read_text(encoding="utf-8")) if trace.exists() else []
 
         # pair each translated entry with the source entry of the same index

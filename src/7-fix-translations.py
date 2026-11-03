@@ -7,40 +7,29 @@ import argparse
 import functools
 import itertools
 import re
-import shutil
 from collections import Counter
 from dataclasses import dataclass, replace
-from datetime import datetime
 from pathlib import Path
 from typing import ClassVar
 
-import spacy
 import srt
 from rich.prompt import Confirm
 from rich.text import Text
 
 from shared.console import Batch, Color, console, log_action
-from shared.data_lists import CHECK_WORDS, FIX_SOUNDS, FIX_SUBJECTS, FIX_WORDS, DataList
-from shared.descriptions import DESCRIPTION_SIMPLE, DescriptionTable, normalize_description
-from shared.files import CHECKS_FOLDER, DIR_FILMES, SUBS_FOLDER, find_files, find_language_code, parse_movie_dir, parse_srt, write_text_replacing
+from shared.data_lists import FIX_SOUNDS, FIX_SUBJECTS, FIX_WORDS, DataList
+from shared.descriptions import DESCRIPTION_SIMPLE, DescriptionTable, Movie
+from shared.files import CHECKS_FOLDER, Backups, find_files, get_english_source, parse_movie_dir, parse_srt, write_text_replacing
 from shared.languages import WORD
-from shared.subtitles import BRACKETS, FORMATTING_TAGS, IGNORE_MARKER, QUOTES, SubtitleKind, parse_plain_text
+from shared.subtitles import BRACKETS, FORMATTING_TAGS, IGNORE_MARKER, QUOTES, SubtitleKind
 
 # ------------------------------------------------------------------------------
 # Constants
 # ------------------------------------------------------------------------------
 TRANSLATION_SUFFIXES = tuple(kind.to_translation_suffix() for kind in SubtitleKind)
 
-DIR_MIDIAS_ROOT = DIR_FILMES.parent
-BACKUPS_FOLDER = DIR_MIDIAS_ROOT / "_backups"
-
 LINE_WORDS = re.compile(r"[^\W\d_]|[♪♫]")
 NUMBER = re.compile(r"\d+")
-
-NLP_MODEL = "en_core_web_sm"
-NLP_NAME_LABELS = frozenset({"PERSON", "ORG"})
-NLP_BATCH_SIZE = 256
-SPEAKER_LABEL = re.compile(r"^\s*-?\s*([A-Z][A-Z0-9'.\- ]*[A-Z0-9.]):", re.MULTILINE)
 
 # ------------------------------------------------------------------------------
 # Fixes
@@ -55,7 +44,7 @@ class TagsFix:
     ITALIC_LINE: ClassVar[re.Pattern[str]] = re.compile(r"^(?:\{\\an\d\})?<i>(?:(?!</?i>).)*</i>$", re.IGNORECASE)
     enabled: bool
 
-    def fix(self, entry: "TranslationEntry") -> tuple[str, ...]:
+    def fix(self, entry: "TranslationEntry", movie: Movie) -> tuple[str, ...]:
         # delete the tags the English entry does not have, leaving a space where a tag joined two words
         tags_source = {self.parse_tag_key(match) for line in entry.source_lines for match in self.TAG.finditer(line)}
 
@@ -99,7 +88,7 @@ class LeftoversFix:
     END: ClassVar[re.Pattern[str]] = re.compile(r"""(?P<quote>["'])?(?P<closers>\]\}?|\}),?\s*$""")
     enabled: bool
 
-    def fix(self, entry: "TranslationEntry") -> tuple[str, ...]:
+    def fix(self, entry: "TranslationEntry", movie: Movie) -> tuple[str, ...]:
         if not entry.is_aligned:
             return entry.target_lines
         lines = list(entry.target_lines)
@@ -129,7 +118,7 @@ class BracketsFix:
     LINE_WRAPPED: ClassVar[re.Pattern[str]] = re.compile(r"^(?P<start>(?:\{\\[^{}]*\}|<[^<>]+>|[\s\-–—])*)[\[(](?P<text>[^\[\]()]+)[\])](?P<end>(?:\s*<[^<>]+>)*\s*)$")
     enabled: bool
 
-    def fix(self, entry: "TranslationEntry") -> tuple[str, ...]:
+    def fix(self, entry: "TranslationEntry", movie: Movie) -> tuple[str, ...]:
         if not entry.is_aligned:
             return entry.target_lines
         lines = list(entry.target_lines)
@@ -169,7 +158,7 @@ class QuotesFix:
     name: ClassVar[str] = "quotes"
     enabled: bool
 
-    def fix(self, entry: "TranslationEntry") -> tuple[str, ...]:
+    def fix(self, entry: "TranslationEntry", movie: Movie) -> tuple[str, ...]:
         # one quote more than the English entry, at the start or end of the only line where the English line has none; curly quotes count as quotes
         if not entry.is_aligned:
             return entry.target_lines
@@ -198,7 +187,7 @@ class DescriptionsFix:
     sounds: DataList
     subjects: DataList
 
-    def fix(self, entry: "TranslationEntry") -> tuple[str, ...]:
+    def fix(self, entry: "TranslationEntry", movie: Movie) -> tuple[str, ...]:
         if not entry.is_aligned:
             return entry.target_lines
         table = load_description_table(self.sounds, self.subjects)
@@ -215,7 +204,7 @@ class DescriptionsFix:
             models = [description[1] or description[2] for description in descriptions_target] if paired else [line] * len(descriptions)
             texts: list[str | None] = []
             for description, translation, model in zip(descriptions, translations, models):
-                if translation is None or not translation.is_confirmed_by(model, entry.names) or (paired and translation.is_already_in(model)):
+                if translation is None or not translation.is_confirmed_by(model, movie.names) or (paired and translation.is_already_in(model)):
                     texts.append(None)
                     continue
                 inner = description[0][1:-1]
@@ -243,7 +232,7 @@ class WordsFix:
     enabled: bool
     words: DataList
 
-    def fix(self, entry: "TranslationEntry") -> tuple[str, ...]:
+    def fix(self, entry: "TranslationEntry", movie: Movie) -> tuple[str, ...]:
         words_right, words_wrong = load_words(self.words)
         if words_wrong is None:
             return entry.target_lines
@@ -282,11 +271,10 @@ FIXES: tuple[TranslationFix, ...] = (
 class TranslationEntry:
     source_lines: tuple[str, ...]
     target_lines: tuple[str, ...]
-    names: frozenset[str]
 
     @classmethod
-    def from_entries(cls, source: srt.Subtitle, target: srt.Subtitle, names: frozenset[str]) -> "TranslationEntry":
-        return cls(source_lines=tuple(" ".join(line.split()) for line in source.content.split("\n") if line.strip()), target_lines=tuple(target.content.split("\n")), names=names)
+    def from_entries(cls, source: srt.Subtitle, target: srt.Subtitle) -> "TranslationEntry":
+        return cls(source_lines=tuple(" ".join(line.split()) for line in source.content.split("\n") if line.strip()), target_lines=tuple(target.content.split("\n")))
 
     @property
     def is_aligned(self) -> bool:
@@ -299,27 +287,63 @@ class TranslationEntry:
         numbers_added = set(NUMBER.findall("\n".join(self.target_lines))) - set(NUMBER.findall("\n".join(self.source_lines)))
         return any(not line.strip() for line in self.target_lines) or lines_without_words > sum(1 for line in self.source_lines if not LINE_WORDS.search(FORMATTING_TAGS.sub("", line))) or bool(numbers_added)
 
-    def apply(self, fix: TranslationFix) -> "TranslationEntry | None":
-        lines = fix.fix(self)
-        if lines == self.target_lines or any(not line.strip() for line in lines):
-            return None
-        return replace(self, target_lines=lines)
+    def apply_fixes(self, fixes: tuple[TranslationFix, ...], movie: Movie) -> tuple["TranslationEntry", tuple[str, ...]]:
+        # a broken entry is left whole for check-translate; a fix that leaves a blank line is not applied
+        if self.is_broken:
+            return self, ()
+        entry = self
+        fixes_applied: list[str] = []
+        for fix in fixes:
+            if not fix.enabled:
+                continue
+            lines = fix.fix(entry, movie)
+            if lines == entry.target_lines or any(not line.strip() for line in lines):
+                continue
+            entry = replace(entry, target_lines=lines)
+            fixes_applied.append(fix.name)
+        return entry, tuple(fixes_applied)
 
 
-@functools.cache
-def load_movie_names(subs_folder: Path) -> frozenset[str]:
-    # the words of the names in the English subtitles of the movie: the speaker labels, and the names NER finds in the entries that are not in capitals only, since NER reads names from their case
-    texts = [parse_plain_text(entry) for file in sorted(subs_folder.glob("*.srt")) if find_language_code(file) == "eng" for entry in parse_srt(file)]
-    labels = {word for text in texts for label in SPEAKER_LABEL.finditer(text) for word in normalize_description(label[1]).split()}
-    documents = load_nlp().pipe((text.replace("\n", " ") for text in texts if text != text.upper()), batch_size=NLP_BATCH_SIZE)
-    entities = {word for document in documents for entity in document.ents if entity.label_ in NLP_NAME_LABELS for word in normalize_description(entity.text).split()}
-    words_kept = {word for (line,) in CHECK_WORDS.parse() for word in normalize_description(line).split()}
-    return frozenset(labels | entities | words_kept)
+@dataclass(frozen=True)
+class EntryChange:
+    position: int
+    source: srt.Subtitle
+    old: srt.Subtitle
+    new: srt.Subtitle
+    fixes: tuple[str, ...]
 
 
-@functools.cache
-def load_nlp() -> spacy.language.Language:
-    return spacy.load(NLP_MODEL, exclude=["tagger", "parser", "attribute_ruler", "lemmatizer"])
+@dataclass(frozen=True)
+class Translation:
+    entries: list[srt.Subtitle]
+    sources_by_index: dict[int, srt.Subtitle]
+    movie: Movie
+
+    @classmethod
+    def from_file(cls, file: Path) -> "Translation":
+        source = get_english_source(file)
+        return cls(entries=parse_srt(file), sources_by_index={entry.index: entry for entry in parse_srt(source)}, movie=Movie.from_subs_folder(source.parent))
+
+    def fix(self, fixes: tuple[TranslationFix, ...]) -> list[EntryChange]:
+        # fix every entry that has a source entry; a changed entry loses its marker, so check-translate judges it again
+        changes: list[EntryChange] = []
+        for position, entry in enumerate(self.entries):
+            source = self.sources_by_index.get(entry.index)
+            if source is None:
+                continue
+            translation, fixes_applied = TranslationEntry.from_entries(source, entry).apply_fixes(fixes, self.movie)
+            content = "\n".join(translation.target_lines)
+            if content == entry.content:
+                continue
+            entry_new = srt.Subtitle(index=entry.index, start=entry.start, end=entry.end, content=content, proprietary=IGNORE_MARKER.sub("", entry.proprietary or "").strip())
+            changes.append(EntryChange(position=position, source=source, old=entry, new=entry_new, fixes=fixes_applied))
+        return changes
+
+    def compose(self, changes: list[EntryChange]) -> str:
+        entries = list(self.entries)
+        for change in changes:
+            entries[change.position] = change.new
+        return srt.compose(entries, reindex=False)
 
 
 @functools.cache
@@ -342,9 +366,10 @@ def load_words(file: DataList) -> tuple[dict[str, list[tuple[str, str]]], re.Pat
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Fixes the mistakes of the translations that have a mechanical fix, by comparing each entry with its English source. Shows the changes of each translation and asks before writing it.")
     parser.add_argument("--yes", action="store_true", help="write every translation without showing its changes or asking")
+    Backups.add_argument(parser)
     subs = find_files(parser, extensions_file=TRANSLATION_SUFFIXES, extensions_folder=TRANSLATION_SUFFIXES)
-    confirmed: bool = parser.parse_args().yes
-    backups_run = BACKUPS_FOLDER / datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
+    arguments = parser.parse_args()
+    backups = Backups.start(arguments.backups)
     batch = Batch()
 
     for sub in subs:
@@ -352,65 +377,31 @@ if __name__ == "__main__":
         batch.log_movie(movie_dir)
 
         try:
-            # find the English source
-            kind = SubtitleKind.find_in_translation(sub)
-            if kind is None:
-                raise ValueError(f"not a translation: {sub.name}")
-            source = movie_dir / SUBS_FOLDER / f"{sub.name.removesuffix(kind.to_translation_suffix())}.eng{kind}.srt"
-            if not source.exists():
-                raise FileNotFoundError(f"English source not found: {source}")
-            sources_by_index = {entry.index: entry for entry in parse_srt(source)}
-
-            # fix every entry that has a source entry and no broken line, which check-translate must still see; a changed entry loses its marker, so it is judged again
-            entries = parse_srt(sub)
-            fixes_applied: Counter[str] = Counter()
-            entries_fixed: list[tuple[srt.Subtitle, srt.Subtitle, srt.Subtitle]] = []
-            for position, entry in enumerate(entries):
-                if entry.index not in sources_by_index:
-                    continue
-                translation = TranslationEntry.from_entries(sources_by_index[entry.index], entry, load_movie_names(source.parent))
-                if translation.is_broken:
-                    continue
-                for fix in FIXES:
-                    if not fix.enabled or (translation_fixed := translation.apply(fix)) is None:
-                        continue
-                    translation = translation_fixed
-                    fixes_applied[fix.name] += 1
-                content = "\n".join(translation.target_lines)
-                if content == entry.content:
-                    continue
-                entries[position] = srt.Subtitle(index=entry.index, start=entry.start, end=entry.end, content=content, proprietary=IGNORE_MARKER.sub("", entry.proprietary or "").strip())
-                entries_fixed.append((sources_by_index[entry.index], entry, entries[position]))
+            # fix the entries against the English source
+            translation = Translation.from_file(sub)
+            changes = translation.fix(FIXES)
 
             # skip subs with nothing to fix
-            if not entries_fixed:
+            if not changes:
                 log_action("skip", Color.BLUE, sub.name)
                 continue
 
             # show every changed entry and ask before writing, unless confirmed beforehand
-            summary = f"{sub.name} · {len(entries_fixed)} entries · {', '.join(f'{name} {count}' for name, count in fixes_applied.items())}"
-            if not confirmed:
-                for source_entry, entry_old, entry_new in entries_fixed:
-                    console.print(f"    entry {entry_old.index}")
-                    for prefix, content, color in (("en ", source_entry.content, ""), ("old", entry_old.content, Color.RED), ("new", entry_new.content, Color.GREEN)):
+            fixes_applied = Counter(fix for change in changes for fix in change.fixes)
+            summary = f"{sub.name} · {len(changes)} entries · {', '.join(f'{name} {count}' for name, count in fixes_applied.items())}"
+            if not arguments.yes:
+                for change in changes:
+                    console.print(f"    entry {change.old.index}")
+                    for prefix, content, color in (("en ", change.source.content, ""), ("old", change.old.content, Color.RED), ("new", change.new.content, Color.GREEN)):
                         for n, line in enumerate(content.split("\n")):
                             console.print(Text.assemble(f"      {prefix if n == 0 else '   '}  ", (line, color)))
                 if not Confirm.ask(f"  Apply {summary}?", console=console, default=False):
                     log_action("declined", Color.YELLOW, sub.name)
                     continue
 
-            # back up the sub before writing it, into a folder of its own for this run, so no backup is ever replaced
-            sub_absolute = sub.absolute()
-            backup = backups_run / (sub_absolute.relative_to(DIR_MIDIAS_ROOT) if sub_absolute.is_relative_to(DIR_MIDIAS_ROOT) else sub_absolute.relative_to(sub_absolute.anchor))
-            if backup.exists():
-                raise FileExistsError(f"backup already exists: {backup}")
-            backup.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(sub, backup)
-            if backup.read_bytes() != sub.read_bytes():
-                raise OSError(f"backup differs from the sub: {backup}")
-
-            # write the fixed sub and delete its report, which no longer matches it
-            write_text_replacing(sub, srt.compose(entries, reindex=False))
+            # back up the sub, write the fixed sub and delete its report, which no longer matches it
+            backups.save(sub)
+            write_text_replacing(sub, translation.compose(changes))
             (movie_dir / CHECKS_FOLDER / f"{sub.stem}.txt").unlink(missing_ok=True)
             log_action("fix", Color.GREEN, summary)
         except Exception as error:
