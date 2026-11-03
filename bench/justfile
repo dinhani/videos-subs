@@ -13,10 +13,14 @@ all:
     uv run bench.py all
 
 [group('run')]
+[doc('Check and score translations not checked or scored yet, without translating')]
+score:
+    uv run bench.py score
+
+[group('run')]
 [doc('Show scores, issues and times of all runs')]
 report:
     uv run bench.py report
-alias scores := report
 
 [group('run')]
 [doc('Write entries of all runs side by side')]

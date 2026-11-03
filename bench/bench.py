@@ -302,6 +302,11 @@ class Source:
     def find_references(self) -> list[Reference]:
         return [reference for reference in (self.reference_official, self.reference_claude) if reference.file.exists()]
 
+    def find_scorings_claude(self) -> list["Scoring"]:
+        if not (self.reference_claude.file.exists() and self.reference_official.file.exists()):
+            return []
+        return [Scoring(english=self.english, hypothesis=self.reference_claude.file, reference=self.reference_official, output=self.score_claude_official)]
+
 
 @dataclass(frozen=True)
 class Scoring:
@@ -437,12 +442,15 @@ class Run:
         subprocess.run([sys.executable, str(SRC_DIR / "8-check-translations.py"), str(self.dir)], check=True)
 
     def score(self) -> None:
-        score_translations([
+        score_translations(self.find_scorings())
+
+    def find_scorings(self) -> list[Scoring]:
+        return [
             Scoring(english=translation.source.english, hypothesis=translation.translation, reference=reference, output=translation.to_score(reference))
             for translation in self.find_translations()
             if translation.translation.exists()
             for reference in translation.source.find_references()
-        ])
+        ]
 
 
 GEMMA_4_26B = Model(name="gemma-4-26b", repo="lmstudio-community/gemma-4-26B-A4B-it-QAT-GGUF", file="gemma-4-26B-A4B-it-QAT-Q4_0.gguf", flags=(*FLAGS_PIPELINE, *FLAGS_THINKING_OFF, *FLAGS_GPU_ONLY, *FLAGS_GEMMA))
@@ -545,6 +553,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Benchmarks translation models on the same English sources.")
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("all", help="copy the sources and evaluate every run not evaluated yet, each with its own llama server")
+    commands.add_parser("score", help="check and score every translation not checked or scored yet, without translating")
     commands.add_parser("runs", help="list the runs and what each one has done")
     command_download = commands.add_parser("download", help="download models from Hugging Face")
     command_download.add_argument("models", nargs="*", help=f"models to download: {', '.join(models)} (default: all)")
@@ -560,11 +569,7 @@ if __name__ == "__main__":
                     shutil.copy2(library_file, snapshot)
                     log_action("copy", Color.GREEN, snapshot.name)
 
-            score_translations([
-                Scoring(english=source.english, hypothesis=source.reference_claude.file, reference=source.reference_official, output=source.score_claude_official)
-                for source in Source.find_all()
-                if source.reference_claude.file.exists() and source.reference_official.file.exists()
-            ])
+            score_translations([scoring for source in Source.find_all() for scoring in source.find_scorings_claude()])
 
             batch = Batch()
             for run in RUNS:
@@ -576,6 +581,18 @@ if __name__ == "__main__":
                     run.evaluate()
                 except Exception as error:
                     batch.fail(run.dir, error)
+            batch.finish()
+
+        case "score":
+            batch = Batch()
+            runs_translated = [run for run in RUNS if any(translation.translation.exists() for translation in run.find_translations())]
+            for run in runs_translated:
+                log_action("check", Color.GREEN, run.name)
+                try:
+                    run.check()
+                except Exception as error:
+                    batch.fail(run.dir, error)
+            score_translations([scoring for source in Source.find_all() for scoring in source.find_scorings_claude()] + [scoring for run in runs_translated for scoring in run.find_scorings()])
             batch.finish()
 
         case "runs":
