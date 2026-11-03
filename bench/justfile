@@ -1,6 +1,7 @@
 set windows-shell := ["pwsh.exe", "-NoLogo", "-NoProfile", "-Command"]
 
 export UV_PROJECT_ENVIRONMENT := data_local_directory() / "uv" / "envs" / "videos-subs"
+export PYTHONPATH := source_directory() / ".." / "src"
 
 [group('project')]
 [doc('List recipes')]
