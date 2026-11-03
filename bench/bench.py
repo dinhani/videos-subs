@@ -58,7 +58,9 @@ ALIGNMENT_OVERLAP_MIN = timedelta(milliseconds=200)
 ALIGNMENT_OFFSET_MAX = timedelta(seconds=2)
 
 MODELS_DIR = Path("D:/AI-Models-LMStudio")
-HUGGING_FACE_HUB_DIR = Path(os.environ.get("HF_HOME", Path.home() / ".cache" / "huggingface")) / "hub"
+HUGGING_FACE_HOME = Path("D:/AI-Models-Bench")
+HUGGING_FACE_HUB_DIR = HUGGING_FACE_HOME / "hub"
+HUGGING_FACE_ENV = {"HF_HOME": str(HUGGING_FACE_HOME)}
 LLAMA_SERVER = Path("C:/_scoop/apps/llama.cpp-cu133/current/llama-server.exe")
 LLAMA_ENV = {"GGML_CUDA_PDL": "1", "GGML_CUDA_GRAPH_OPT": "1"}
 LLAMA_PORT = 9931
@@ -170,7 +172,7 @@ class NmtModel:
         from huggingface_hub import snapshot_download
 
         log_action("download", Color.GREEN, f"{self.name}: {self.repo}")
-        snapshot_download(repo_id=self.repo)
+        snapshot_download(repo_id=self.repo, cache_dir=HUGGING_FACE_HUB_DIR)
 
     def is_downloaded(self) -> bool:
         return self.find_path() is not None
@@ -228,7 +230,7 @@ class NmtTranslation:
             raise FileNotFoundError(f"{self.model.name} not downloaded: {self.model.repo}")
         entries = parse_srt(source)
         replies_file = RUNS_DIR / NMT_REPLIES_FILE
-        subprocess.run(["uv", "run", "--script", str(BENCH_DIR / "nmt.py"), "--family", self.model.family, "--model", str(model_path), str(source), str(replies_file)], check=True)
+        subprocess.run(["uv", "run", "--script", str(BENCH_DIR / "nmt.py"), "--family", self.model.family, "--model", str(model_path), str(source), str(replies_file)], env={**os.environ, **HUGGING_FACE_ENV}, check=True)
         replies_by_index: dict[str, str] = json.loads(replies_file.read_text(encoding="utf-8"))
         replies_file.unlink()
         write_translation(entries=entries, replies=[replies_by_index.get(str(entry.index), "") for entry in entries], translation=translation)
@@ -352,7 +354,7 @@ def score_translations(scorings: list[Scoring]) -> None:
         return
     jobs_file = RUNS_DIR / SCORE_JOBS_FILE
     write_text_replacing(jobs_file, json.dumps(jobs, ensure_ascii=False))
-    subprocess.run(["uv", "run", "--script", str(BENCH_DIR / "score.py"), str(jobs_file)], check=True)
+    subprocess.run(["uv", "run", "--script", str(BENCH_DIR / "score.py"), str(jobs_file)], env={**os.environ, **HUGGING_FACE_ENV}, check=True)
     jobs_file.unlink()
 
 
