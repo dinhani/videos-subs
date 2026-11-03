@@ -1,9 +1,17 @@
 from pathlib import Path
 
 from models import LlamaModel, NmtFamily, NmtModel, ScoringModel
-from runs import PipelineTranslator, Run
+from runs import PipelineTranslator, Run, Source
 
 PROMPTS_DIR = Path(__file__).parent / "prompts"
+
+SOURCES = (
+    Source(library_english=Path("Z:/midias/filmes/Fall - 1 - Fall (2022)/_subs/Fall (2022, Web-DL, 1080p, SDR, h264, 5.1, EAC3).embed.3.eng.sdh.srt")),
+    Source(
+        library_english=Path("Z:/midias/filmes/Hannibal Lecter - 1 - Silence of the Lambs, The (1991)/_subs/The Silence of the Lambs (1991, Web-DL, 2160p, SDR, h265, 5.1, AAC).embed.2.eng.srt"),
+        library_official=Path("Z:/midias/filmes/Hannibal Lecter - 1 - Silence of the Lambs, The (1991)/_subs/The Silence of the Lambs (1991, Web-DL, 2160p, SDR, h265, 5.1, AAC).embed.21.pob.srt"),
+    ),
+)
 
 FLAGS_PIPELINE = ("--jinja", "--ctx-size", "16384", "--parallel", "1")
 FLAGS_PIPELINE_8K = ("--jinja", "--ctx-size", "8192", "--parallel", "1")

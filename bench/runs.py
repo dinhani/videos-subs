@@ -6,13 +6,12 @@ import statistics
 import subprocess
 import sys
 import time
-from collections import Counter
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import timedelta
 from enum import StrEnum
-from functools import cached_property
 from pathlib import Path
-from typing import Any, ClassVar
+from typing import Any, ClassVar, TypedDict
 
 import questionary
 import srt
@@ -160,13 +159,15 @@ class Source:
         return find_json(self.score_claude_official)
 
 
-SOURCES = (
-    Source(library_english=Path("Z:/midias/filmes/Fall - 1 - Fall (2022)/_subs/Fall (2022, Web-DL, 1080p, SDR, h264, 5.1, EAC3).embed.3.eng.sdh.srt")),
-    Source(
-        library_english=Path("Z:/midias/filmes/Hannibal Lecter - 1 - Silence of the Lambs, The (1991)/_subs/The Silence of the Lambs (1991, Web-DL, 2160p, SDR, h265, 5.1, AAC).embed.2.eng.srt"),
-        library_official=Path("Z:/midias/filmes/Hannibal Lecter - 1 - Silence of the Lambs, The (1991)/_subs/The Silence of the Lambs (1991, Web-DL, 2160p, SDR, h265, 5.1, AAC).embed.21.pob.srt"),
-    ),
-)
+class ScoringSegment(TypedDict):
+    src: str
+    mt: str
+    ref: str
+
+
+class ScoringJob(TypedDict):
+    output: str
+    segments: list[ScoringSegment]
 
 
 @dataclass(frozen=True)
@@ -176,7 +177,7 @@ class Scoring:
     reference: Reference
     output: Path
 
-    def to_job(self) -> dict[str, Any]:
+    def to_job(self) -> ScoringJob:
         hypothesis = {entry.index: entry for entry in parse_srt(self.hypothesis)}
         english_entries = parse_srt(self.english)
         reference_entries = parse_srt(self.reference.file)
@@ -195,7 +196,7 @@ class Scoring:
             blocks[-1].append(item)
             block_end = max(block_end, item[2])
 
-        segments = []
+        segments: list[ScoringSegment] = []
         for block in blocks:
             english = [entry for side, _, _, entry in block if side == "en"]
             reference = [entry for side, _, _, entry in block if side == "ref"]
@@ -266,10 +267,6 @@ class RunTranslation:
     def find_scores(self, reference: Reference) -> dict[str, float]:
         return find_json(self.to_score(reference)) or {}
 
-    def find_issues_by_kind(self) -> Counter[str]:
-        report_lines = self.report.read_text(encoding="utf-8").splitlines()
-        return Counter({line[7:28].strip(): int(line[2:6]) for line in itertools.takewhile(str.strip, report_lines[3:]) if line[7:28].strip() != "ignored"})
-
     def find_seconds(self) -> int | None:
         return Timings.from_file(self.run_dir / TIMINGS_FILE).find(self.translation)
 
@@ -299,25 +296,20 @@ class Run:
     def dir(self) -> Path:
         return RUNS_DIR / self.name
 
-    @cached_property
-    def translations(self) -> tuple[RunTranslation, ...]:
-        return tuple(RunTranslation(run_dir=self.dir, source=source) for source in SOURCES)
-
     def get_translation(self, source: Source) -> RunTranslation:
-        return next(translation for translation in self.translations if translation.source == source)
+        return RunTranslation(run_dir=self.dir, source=source)
 
-    def count_translated(self) -> int:
-        return sum(translation.is_translated() for translation in self.translations)
+    def count_translated(self, sources: Sequence[Source]) -> int:
+        return sum(self.get_translation(source).is_translated() for source in sources)
 
-    def is_translated(self) -> bool:
-        return self.count_translated() == len(self.translations)
+    def is_translated(self, sources: Sequence[Source]) -> bool:
+        return self.count_translated(sources) == len(sources)
 
-    def translate(self, sources: list[Source]) -> None:
+    def translate(self, sources: Sequence[Source]) -> None:
         timings = Timings.from_file(self.dir / TIMINGS_FILE)
         with self.translator.serving(log=self.dir / LLAMA_LOG_FILE):
-            for translation in self.translations:
-                if translation.source not in sources:
-                    continue
+            for source in sources:
+                translation = self.get_translation(source)
                 if translation.is_translated():
                     log_action("exists", Color.BLUE, f"{self.name}: {translation.translation.name}")
                     continue
@@ -331,26 +323,26 @@ class Run:
     def check(self) -> None:
         subprocess.run([sys.executable, str(SRC_DIR / "8-check-translations.py"), str(self.dir)], check=True)
 
-    def to_scorings(self) -> list[Scoring]:
-        return [scoring for translation in self.translations for scoring in translation.to_scorings()]
+    def to_scorings(self, sources: Sequence[Source]) -> list[Scoring]:
+        return [scoring for source in sources for scoring in self.get_translation(source).to_scorings()]
 
-    def to_choice(self, name_width: int) -> questionary.Choice:
+    def to_choice(self, sources: Sequence[Source], name_width: int) -> questionary.Choice:
         size = self.model.find_bytes()
-        title = f"{self.name:<{name_width}}  {self.translator.mode:<8}  {f'{size / 1e9:.1f} GB' if size else '-':>8}  translated {self.count_translated()}/{len(self.translations)}"
-        disabled = "translated" if self.is_translated() else "not downloaded" if not self.model.is_downloaded() else None
+        title = f"{self.name:<{name_width}}  {self.translator.mode:<8}  {f'{size / 1e9:.1f} GB' if size else '-':>8}  translated {self.count_translated(sources)}/{len(sources)}"
+        disabled = "translated" if self.is_translated(sources) else "not downloaded" if not self.model.is_downloaded() else None
         return questionary.Choice(title=title, value=self.name, disabled=disabled)
 
-    def to_status_row(self) -> tuple[str, ...]:
-        count = len(self.translations)
-        checked = sum(translation.is_checked() for translation in self.translations)
-        scores = [translation.to_score(reference) for translation in self.translations for reference in translation.source.find_references()]
+    def to_status_row(self, sources: Sequence[Source]) -> tuple[str, ...]:
+        translations = [self.get_translation(source) for source in sources]
+        checked = sum(translation.is_checked() for translation in translations)
+        scores = [translation.to_score(reference) for translation in translations for reference in translation.source.find_references()]
         return (
             self.name,
             self.model.name,
             self.translator.mode,
             "yes" if self.model.is_downloaded() else "no",
-            f"{self.count_translated()}/{count}",
-            f"{checked}/{count}",
+            f"{self.count_translated(sources)}/{len(sources)}",
+            f"{checked}/{len(sources)}",
             f"{sum(score.exists() for score in scores)}/{len(scores)}",
         )
 

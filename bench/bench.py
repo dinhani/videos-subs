@@ -11,10 +11,10 @@ import subprocess
 import questionary
 from rich.table import Table
 
-from catalog import BASELINE_RUN, MODELS, RUNS, SCORING_MODELS
+from catalog import BASELINE_RUN, MODELS, RUNS, SCORING_MODELS, SOURCES
 from models import PYTORCH_ENV
 from report import Comparison, SourceReport
-from runs import BENCH_DIR, RUNS_DIR, SCORE_JOBS_FILE, SOURCES
+from runs import BENCH_DIR, RUNS_DIR, SCORE_JOBS_FILE
 from shared.console import Batch, Color, console, log_action
 from shared.files import write_text_replacing
 
@@ -51,7 +51,7 @@ if __name__ == "__main__":
             runs_selected = [runs[name] for name in arguments.runs] or list(RUNS)
             if arguments.pick:
                 name_width = max(len(run.name) for run in runs_selected)
-                choices = [run.to_choice(name_width) for run in sorted(runs_selected, key=lambda run: (run.is_translated(), run.name))]
+                choices = [run.to_choice(SOURCES, name_width) for run in sorted(runs_selected, key=lambda run: (run.is_translated(SOURCES), run.name))]
                 picked = questionary.checkbox("Runs to translate (space checks, enter starts)", choices=choices).ask()
                 if not picked:
                     raise SystemExit(0)
@@ -65,7 +65,7 @@ if __name__ == "__main__":
 
             batch = Batch()
             for run in runs_selected:
-                if run.is_translated():
+                if run.is_translated(SOURCES):
                     log_action("translated", Color.BLUE, run.name)
                     continue
                 log_action("translate", Color.GREEN, run.name)
@@ -77,7 +77,7 @@ if __name__ == "__main__":
 
         case "score":
             batch = Batch()
-            runs_translated = [run for run in RUNS if run.count_translated()]
+            runs_translated = [run for run in RUNS if run.count_translated(SOURCES)]
             for run in runs_translated:
                 log_action("check", Color.GREEN, run.name)
                 try:
@@ -85,7 +85,7 @@ if __name__ == "__main__":
                 except Exception as error:
                     batch.fail(run.dir, error)
 
-            scorings = [scoring for source in SOURCES if (scoring := source.find_scoring_claude())] + [scoring for run in runs_translated for scoring in run.to_scorings()]
+            scorings = [scoring for source in SOURCES if (scoring := source.find_scoring_claude())] + [scoring for run in runs_translated for scoring in run.to_scorings(SOURCES)]
             jobs = [scoring.to_job() for scoring in scorings if not scoring.output.exists()]
             if jobs:
                 jobs_file = RUNS_DIR / SCORE_JOBS_FILE
@@ -97,7 +97,7 @@ if __name__ == "__main__":
         case "runs":
             table = Table("run", "model", "translation", "downloaded", "translated", "checked", "scored")
             for run in RUNS:
-                table.add_row(*run.to_status_row())
+                table.add_row(*run.to_status_row(SOURCES))
             console.print(table)
 
         case "download":
@@ -111,7 +111,7 @@ if __name__ == "__main__":
             console.print("check: check-translate score, weighted issues per 100 entries, lower is better. time: translation time in minutes:seconds, lower is better.")
             console.print(f"Each value shows its difference from {BASELINE_RUN}, the model of the translate step: green is better, red is worse.")
             for source in SOURCES:
-                report = SourceReport.from_runs(source, RUNS)
+                report = SourceReport.from_runs(source, RUNS, baseline=BASELINE_RUN)
                 console.print()
                 console.print(report.to_score_table())
                 console.print()

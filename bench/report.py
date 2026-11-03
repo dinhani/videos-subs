@@ -7,7 +7,6 @@ from rich.columns import Columns
 from rich.table import Column, Table
 from rich.text import Text
 
-from catalog import BASELINE_RUN
 from runs import Reference, ReferenceName, Run, Source
 from shared.console import Color
 from shared.files import parse_srt
@@ -73,12 +72,13 @@ METRIC_TIME = Metric(name="time", key="seconds", better=Better.LOWER, unit=Unit.
 @dataclass(frozen=True)
 class SourceReport:
     source: Source
+    baseline: str
     columns: tuple[tuple[Metric, Reference | None], ...]
     values_by_run: dict[str, list[float | None]]
     issues_by_run: dict[str, Counter[str]]
 
     @classmethod
-    def from_runs(cls, source: Source, runs: tuple[Run, ...]) -> "SourceReport":
+    def from_runs(cls, source: Source, runs: tuple[Run, ...], baseline: str) -> "SourceReport":
         columns = (*((metric, reference) for reference in source.find_references() for metric in (METRIC_COMET, METRIC_CHRF)), (METRIC_CHECK, None), (METRIC_TIME, None))
         values_by_run: dict[str, list[float | None]] = {}
         issues_by_run: dict[str, Counter[str]] = {}
@@ -89,8 +89,8 @@ class SourceReport:
                 continue
             values = {METRIC_CHECK.key: check.score, METRIC_TIME.key: translation.find_seconds()}
             values_by_run[run.name] = [translation.find_scores(reference).get(metric.key) if reference else values[metric.key] for metric, reference in columns]
-            issues_by_run[run.name] = translation.find_issues_by_kind()
-        return cls(source=source, columns=columns, values_by_run=values_by_run, issues_by_run=issues_by_run)
+            issues_by_run[run.name] = check.find_issues_by_label()
+        return cls(source=source, baseline=baseline, columns=columns, values_by_run=values_by_run, issues_by_run=issues_by_run)
 
     @property
     def runs_sorted(self) -> list[str]:
@@ -101,8 +101,8 @@ class SourceReport:
         return sorted(sum(self.issues_by_run.values(), Counter()), key=lambda kind: list(TRANSLATION_RULES).index(kind) if kind in TRANSLATION_RULES else len(TRANSLATION_RULES))
 
     def to_score_table(self) -> Table:
-        baseline = self.values_by_run.get(BASELINE_RUN, [None] * len(self.columns))
-        differences_by_run = {name: [metric.to_difference(value, None if name == BASELINE_RUN else baseline_value) for (metric, _), value, baseline_value in zip(self.columns, values, baseline)] for name, values in self.values_by_run.items()}
+        baseline = self.values_by_run.get(self.baseline, [None] * len(self.columns))
+        differences_by_run = {name: [metric.to_difference(value, None if name == self.baseline else baseline_value) for (metric, _), value, baseline_value in zip(self.columns, values, baseline)] for name, values in self.values_by_run.items()}
         value_widths = [max((len(metric.to_text(value)) if (value := values[i]) is not None else 1 for values in self.values_by_run.values()), default=1) for i, (metric, _) in enumerate(self.columns)]
         difference_widths = [max((len(differences[i]) for differences in differences_by_run.values()), default=0) for i in range(len(self.columns))]
 
