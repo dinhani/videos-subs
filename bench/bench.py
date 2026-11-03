@@ -63,7 +63,7 @@ ALIGNMENT_OFFSET_MAX = timedelta(seconds=2)
 MODELS_GGUF_DIR = Path("D:/AI-Models-LMStudio")
 MODELS_CTRANSLATE2_DIR = Path("D:/AI-Models-CTranslate2")
 MODELS_PYTORCH_DIR = Path("D:/AI-Models-PyTorch")
-PYTORCH_ENV = {"HF_HUB_CACHE": str(MODELS_PYTORCH_DIR)}
+PYTORCH_ENV = {"HF_HUB_CACHE": str(MODELS_PYTORCH_DIR), "HF_HUB_OFFLINE": "1"}
 LLAMA_SERVER = Path("C:/_scoop/apps/llama.cpp-cu133/current/llama-server.exe")
 LLAMA_ENV = {"GGML_CUDA_PDL": "1", "GGML_CUDA_GRAPH_OPT": "1"}
 LLAMA_PORT = 9931
@@ -175,6 +175,26 @@ class NmtModel:
 
     def is_downloaded(self) -> bool:
         return (self.path / "model.bin").exists()
+
+
+@dataclass(frozen=True)
+class ScoringModel:
+    name: str
+    repo: str
+    files: tuple[str, ...]
+
+    def download(self) -> None:
+        if self.is_downloaded():
+            log_action("exists", Color.BLUE, self.name)
+            return
+        from huggingface_hub import snapshot_download
+
+        log_action("download", Color.GREEN, f"{self.name}: {self.repo}")
+        snapshot_download(repo_id=self.repo, cache_dir=MODELS_PYTORCH_DIR, allow_patterns=list(self.files))
+
+    def is_downloaded(self) -> bool:
+        snapshots = MODELS_PYTORCH_DIR / f"models--{self.repo.replace('/', '--')}" / "snapshots"
+        return all(any(snapshots.glob(f"*/{file}")) for file in self.files)
 
 
 # ------------------------------------------------------------------------------
@@ -476,6 +496,10 @@ NMT_MODELS = (MADLAD_400_10B, MADLAD_400_7B, MADLAD_400_3B, NLLB_200_3_3B, NLLB_
 
 MODELS = (*NMT_MODELS, GEMMA_4_26B, GEMMA_4_26B_THINKING, GEMMA_4_12B, MISTRAL_SMALL_3_2_24B, MINISTRAL_3_14B, QWEN_3_14B, QWEN_3_5_9B, HY_MT2_7B, TOWER_PLUS_9B, TRANSLATEGEMMA_12B)
 
+COMET_WMT22 = ScoringModel(name="comet-wmt22", repo="Unbabel/wmt22-comet-da", files=("checkpoints/model.ckpt", "hparams.yaml"))
+XLM_ROBERTA_LARGE = ScoringModel(name="xlm-roberta-large", repo="xlm-roberta-large", files=("config.json", "sentencepiece.bpe.model", "tokenizer.json", "tokenizer_config.json"))
+SCORING_MODELS = (COMET_WMT22, XLM_ROBERTA_LARGE)
+
 RUNS = (
     *(Run(name=model.name, model=model, translation=NmtTranslation(model=model)) for model in NMT_MODELS),
     Run(name="gemma-4-26b", model=GEMMA_4_26B, translation=PipelineTranslation()),
@@ -547,7 +571,7 @@ METRIC_MINUTES = Metric(name="minutes", key="minutes", better=Better.LOWER, deci
 # Execution
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
-    models = {model.name: model for model in MODELS}
+    models = {model.name: model for model in (*MODELS, *SCORING_MODELS)}
     runs = {run.name: run for run in RUNS}
 
     parser = argparse.ArgumentParser(description="Benchmarks translation models on the same English sources.")
