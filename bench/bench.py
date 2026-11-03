@@ -405,10 +405,10 @@ class RunTranslation:
         report_lines = self.report.read_text(encoding="utf-8").splitlines()
         return Counter({line[7:28].strip(): int(line[2:6]) for line in itertools.takewhile(str.strip, report_lines[3:]) if line[7:28].strip() != "ignored"})
 
-    def find_minutes(self) -> float | None:
+    def find_seconds(self) -> int | None:
         timings_file = self.translation.parent.parent / TIMINGS_FILE
         timings: dict[str, int] = json.loads(timings_file.read_text(encoding="utf-8")) if timings_file.exists() else {}
-        return timings[self.translation.name] / 60 if self.translation.name in timings else None
+        return timings.get(self.translation.name)
 
 
 @dataclass(frozen=True)
@@ -545,33 +545,46 @@ class Better(StrEnum):
     LOWER = "lower"
 
 
+class Unit(StrEnum):
+    POINTS = "points"
+    SECONDS = "seconds"
+
+
 @dataclass(frozen=True)
 class Metric:
     name: str
     key: str
     better: Better
+    unit: Unit
     decimals: int
 
     def to_header(self, reference: Reference | None = None) -> str:
         return f"{self.name} {reference.name}" if reference else self.name
 
+    def to_text(self, value: float) -> str:
+        match self.unit:
+            case Unit.POINTS:
+                return f"{value:.{self.decimals}f}"
+            case Unit.SECONDS:
+                return f"{int(value) // 60}:{int(value) % 60:02}"
+
     def to_cell(self, value: float | None, baseline: float | None) -> Text:
         if value is None:
             return Text("-", style="dim")
-        cell = Text(f"{value:.{self.decimals}f}")
+        cell = Text(self.to_text(value))
         if baseline is None:
             return cell
         difference = round(value - baseline, self.decimals)
         if difference == 0:
-            return cell.append(f" {'=':>{self.decimals + 3}}", style="dim")
+            return cell.append(" =", style="dim")
         improved = difference > 0 if self.better == Better.HIGHER else difference < 0
-        return cell.append(f" {difference:+.{self.decimals}f}", style=Color.GREEN if improved else Color.RED)
+        return cell.append(f" {'+' if difference > 0 else '-'}{self.to_text(abs(difference))}", style=Color.GREEN if improved else Color.RED)
 
 
-METRIC_COMET = Metric(name="COMET", key="comet", better=Better.HIGHER, decimals=2)
-METRIC_CHRF = Metric(name="chrF++", key="chrf", better=Better.HIGHER, decimals=2)
-METRIC_CHECK = Metric(name="check", key="check", better=Better.LOWER, decimals=1)
-METRIC_MINUTES = Metric(name="minutes", key="minutes", better=Better.LOWER, decimals=1)
+METRIC_COMET = Metric(name="COMET", key="comet", better=Better.HIGHER, unit=Unit.POINTS, decimals=2)
+METRIC_CHRF = Metric(name="chrF++", key="chrf", better=Better.HIGHER, unit=Unit.POINTS, decimals=2)
+METRIC_CHECK = Metric(name="check", key="check", better=Better.LOWER, unit=Unit.POINTS, decimals=1)
+METRIC_TIME = Metric(name="time", key="seconds", better=Better.LOWER, unit=Unit.SECONDS, decimals=0)
 
 
 # ------------------------------------------------------------------------------
@@ -642,11 +655,11 @@ if __name__ == "__main__":
 
         case "report":
             console.print("COMET and chrF++: closeness to the reference translation, 0-100, higher is better.")
-            console.print("check: check-translate score, weighted issues per 100 entries, lower is better. minutes: translation time, lower is better.")
+            console.print("check: check-translate score, weighted issues per 100 entries, lower is better. time: translation time in minutes:seconds, lower is better.")
             console.print(f"Each value shows its difference from {BASELINE_RUN}, the model of the translate step: green is better, red is worse.")
             for source in Source.find_all():
                 references = [reference for reference in (source.reference_claude, source.reference_official) if reference.file.exists()]
-                columns = [(metric, reference) for reference in references for metric in (METRIC_COMET, METRIC_CHRF)] + [(METRIC_CHECK, None), (METRIC_MINUTES, None)]
+                columns = [(metric, reference) for reference in references for metric in (METRIC_COMET, METRIC_CHRF)] + [(METRIC_CHECK, None), (METRIC_TIME, None)]
 
                 values_by_run: dict[str, list[float | None]] = {}
                 issues_by_run: dict[str, Counter[str]] = {}
@@ -655,7 +668,7 @@ if __name__ == "__main__":
                     check = ReportScore.find(translation.report)
                     if check is None:
                         continue
-                    values = {METRIC_CHECK.key: check.score, METRIC_MINUTES.key: translation.find_minutes()}
+                    values = {METRIC_CHECK.key: check.score, METRIC_TIME.key: translation.find_seconds()}
                     values_by_run[run.name] = [translation.find_scores(reference).get(metric.key) if reference else values[metric.key] for metric, reference in columns]
                     issues_by_run[run.name] = translation.find_issues_by_kind()
                 runs_sorted = sorted(values_by_run, key=lambda name: (values_by_run[name][0] is None, -(values_by_run[name][0] or 0)))
