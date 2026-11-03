@@ -6,14 +6,15 @@ import pytest
 import srt
 
 check_translations = importlib.import_module("8-check-translations")
+TranslationCheck = check_translations.TranslationCheck
 
 
-def check(english: str, translated: str) -> object:
+def check(english: str, translated: str) -> TranslationCheck:
     def subtitle(content: str) -> srt.Subtitle:
         return srt.Subtitle(index=1, start=timedelta(0), end=timedelta(seconds=1), content=content)
 
     entry = check_translations.TranslationEntry.from_entries(subtitle(english), subtitle(translated))
-    return check_translations.TranslationCheck(subtitle=Path("movie.pob.translated.srt"), entries=[entry], problems_accepted={}, languagetool_server="")
+    return TranslationCheck(subtitle=Path("movie.pob.translated.srt"), entries=[entry], problems_accepted={}, languagetool_server="")
 
 
 BROKEN_LINE = check_translations.BrokenLineRule(enabled=True)

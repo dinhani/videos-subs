@@ -10,6 +10,8 @@ from shared.descriptions import Movie
 
 fix_translations = importlib.import_module("7-fix-translations")
 TranslationEntry = fix_translations.TranslationEntry
+TranslationFix = fix_translations.TranslationFix
+WordsFix = fix_translations.WordsFix
 
 
 def entry(english: str, translated: str) -> TranslationEntry:
@@ -19,7 +21,7 @@ def entry(english: str, translated: str) -> TranslationEntry:
     return TranslationEntry.from_entries(subtitle(english), subtitle(translated))
 
 
-def fix(fix: object, english: str, translated: str, names: frozenset[str] = frozenset()) -> str:
+def fix(fix: TranslationFix, english: str, translated: str, names: frozenset[str] = frozenset()) -> str:
     return "\n".join(fix.fix(entry(english, translated), Movie(names=names)))
 
 
@@ -96,10 +98,10 @@ def test_descriptions(english: str, translated: str, names: frozenset[str], expe
     assert fix(DESCRIPTIONS, english, translated, names) == expected
 
 
-def write_words(tmp_path: Path, *lines: str) -> object:
+def write_words(tmp_path: Path, *lines: str) -> WordsFix:
     file = tmp_path / "fix-words.txt"
     file.write_text("\n".join(lines) + "\n", encoding="utf-8")
-    return fix_translations.WordsFix(enabled=True, words=DataList(file=file, format=DataListFormat.TRIPLE))
+    return WordsFix(enabled=True, words=DataList(file=file, format=DataListFormat.TRIPLE))
 
 
 @pytest.mark.parametrize(("english", "translated", "expected"), [
