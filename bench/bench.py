@@ -153,6 +153,9 @@ class Model:
     def is_downloaded(self) -> bool:
         return self.path.exists()
 
+    def find_bytes(self) -> int | None:
+        return self.path.stat().st_size if self.path.exists() else None
+
 
 class NmtFamily(StrEnum):
     NLLB = "nllb"
@@ -181,6 +184,9 @@ class NmtModel:
 
     def is_downloaded(self) -> bool:
         return (self.path / "model.bin").exists()
+
+    def find_bytes(self) -> int | None:
+        return sum(file.stat().st_size for file in self.path.rglob("*") if file.is_file()) if self.path.exists() else None
 
 
 @dataclass(frozen=True)
@@ -635,13 +641,16 @@ if __name__ == "__main__":
                 parser.error(f"unknown runs: {', '.join(sorted(unknown))}")
             runs_selected = [runs[name] for name in arguments.runs] or list(RUNS)
             if arguments.pick:
-                picked = questionary.checkbox(
-                    "Runs to translate",
-                    choices=[
-                        questionary.Choice(title=run.name, value=run.name, disabled="translated" if run.is_translated() else "not downloaded" if not run.model.is_downloaded() else None)
-                        for run in runs_selected
-                    ],
-                ).ask()
+                width = max(len(run.name) for run in runs_selected)
+                choices = []
+                for run in sorted(runs_selected, key=lambda run: (run.is_translated(), run.name)):
+                    translations = run.find_translations()
+                    translated = sum(translation.translation.exists() for translation in translations)
+                    size = run.model.find_bytes()
+                    title = f"{run.name:<{width}}  {run.translation.describe():<8}  {f'{size / 1e9:.1f} GB' if size else '-':>8}  translated {translated}/{len(translations)}"
+                    disabled = "translated" if run.is_translated() else "not downloaded" if not run.model.is_downloaded() else None
+                    choices.append(questionary.Choice(title=title, value=run.name, disabled=disabled))
+                picked = questionary.checkbox("Runs to translate (space checks, enter starts)", choices=choices).ask()
                 if not picked:
                     raise SystemExit(0)
                 runs_selected = [runs[name] for name in picked]
