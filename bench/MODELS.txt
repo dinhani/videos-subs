@@ -1,0 +1,92 @@
+BENCH MODELS
+
+bench.py holds the same list in MODELS and RUNS; update this file when it changes.
+
+
+RUNS
+
+  run                 model                     maker     kind         arch   parameters             quant      file     fits 16 GB   mode
+  ------------------  ------------------------  --------  -----------  -----  ---------------------  ---------  -------  -----------  --------
+  gemma-4-26b         Gemma 4 26B A4B           Google    general      MoE    26B total, 4B active   QAT Q4_0   14.4 GB  yes          pipeline
+  gemma-4-31b         Gemma 4 31B               Google    general      dense  31B                    QAT Q4_0   17.7 GB  no, CPU too  pipeline
+  gemma-4-12b         Gemma 4 12B               Google    general      dense  12B                    QAT Q4_0    7.0 GB  yes          pipeline
+  qwen-3.6-35b        Qwen3.6 35B A3B           Alibaba   general      MoE    35B total, 3B active   Q4_K_M     21.2 GB  no, CPU too  pipeline
+  hy-mt2-7b           Hy-MT2 7B                 Tencent   translation  dense  7B                     Q8_0        8.0 GB  yes          native
+  tower-plus-9b       Tower+ 9B                 Unbabel   translation  dense  9B                     Q8_0        9.8 GB  yes          native
+  translategemma-12b  TranslateGemma 12B        Google    translation  dense  12B                    Q6_K        9.7 GB  yes          native
+
+  gemma-4-26b is the baseline: the model the pipeline uses today (just llama-translate).
+  "no, CPU too": the model does not fit the GPU, so some layers run on the CPU (--fit on) and it is several times slower.
+
+
+RELEASES AND BASES
+
+  gemma-4-26b         Gemma 4, 2026
+  gemma-4-31b         Gemma 4, 2026
+  gemma-4-12b         Gemma 4, 2026
+  qwen-3.6-35b        Qwen3.6, 2026
+  hy-mt2-7b           May 2026, HunYuan dense architecture, 33 languages
+  tower-plus-9b       2025, built on Gemma 2 9B
+  translategemma-12b  January 2026, built on Gemma 3 12B, 55 languages
+
+
+FILES  (under D:/AI-Models-LMStudio/<repo>/<file>)
+
+  gemma-4-26b         lmstudio-community/gemma-4-26B-A4B-it-QAT-GGUF   gemma-4-26B-A4B-it-QAT-Q4_0.gguf
+  gemma-4-31b         lmstudio-community/gemma-4-31B-it-QAT-GGUF       gemma-4-31B-it-QAT-Q4_0.gguf
+  gemma-4-12b         lmstudio-community/gemma-4-12B-it-QAT-GGUF       gemma-4-12B-it-QAT-Q4_0.gguf
+  qwen-3.6-35b        lmstudio-community/Qwen3.6-35B-A3B-GGUF          Qwen3.6-35B-A3B-Q4_K_M.gguf
+  hy-mt2-7b           tencent/Hy-MT2-7B-GGUF                           HY-MT2-7B-Q8_0.gguf
+  tower-plus-9b       mradermacher/Tower-Plus-9B-GGUF                  Tower-Plus-9B.Q8_0.gguf
+  translategemma-12b  mradermacher/translategemma-12b-it-GGUF          translategemma-12b-it.Q6_K.gguf
+
+
+MODES
+
+  pipeline  The real translate step (src/6-translate-subs.py), unchanged: chunks of 50 entries with
+            context before and after, a JSON schema reply, the project prompt.
+            Thinking off, context 16384, 1 slot.
+
+  native    Each entry alone, with the prompt of the model card, through the model's own chat template.
+            Context 8192, 8 parallel slots. A reply with another number of lines than the English entry
+            is split by words to the English line count; the trace counts these entries.
+
+
+NATIVE PROMPTS AND SAMPLING  (from the model cards)
+
+  hy-mt2-7b
+    prompt    Translate the following text into Brazilian Portuguese. Note that you should only output
+              the translated result without any additional explanation:
+
+              <entry>
+    sampling  temperature 0.7, top_p 0.6, top_k 20, repeat penalty 1.05
+
+  tower-plus-9b
+    prompt    Translate the following English source text to Portuguese (Brazilian):
+              English: <entry>
+              Portuguese (Brazilian):
+    sampling  greedy
+
+  translategemma-12b
+    prompt    structured content: source language en, target language pt-BR, text <entry>
+    sampling  greedy
+
+
+NOTES
+
+  hy-mt2-7b           Newest translation model of the list, with official GGUF files. The card does not
+                      tell Brazilian from European Portuguese.
+  tower-plus-9b       The only card that names Brazilian Portuguese as its own target.
+  translategemma-12b  Its chat template has broken in llama.cpp more than once (language codes dropped,
+                      template rejected). A failed run or a reply in the wrong language most likely
+                      comes from that.
+
+
+LEFT OUT
+
+  TranslateGemma 27B           Q4_K_M is 16.5 GB: no room left for context in 16 GB.
+  Hunyuan-MT-7B, HY-MT1.5-7B   Replaced by Hy-MT2 7B.
+  Hunyuan-MT-Chimera-7B        Not a translator: it merges 6 candidate translations into one.
+  Seed-X 7B (ByteDance)        The card asks for beam search, which llama-server does not do;
+                               no Brazilian Portuguese.
+  Sabia (Maritaca)             The good versions are API only, not open weights.
