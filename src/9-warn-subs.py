@@ -10,7 +10,7 @@ from datetime import timedelta
 import srt
 
 from shared.console import Batch, Color, log_action
-from shared.files import TRACES_FOLDER, find_files, parse_movie_dir, parse_srt, write_text_replacing
+from shared.files import TRACES_FOLDER, Backups, find_files, parse_movie_dir, parse_srt, write_text_replacing
 from shared.subtitles import SubtitleKind
 
 # ------------------------------------------------------------------------------
@@ -26,7 +26,10 @@ WARNING_DURATION = timedelta(seconds=5)
 # Execution
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
-    subs = find_files(argparse.ArgumentParser(description="Adds warnings at the start of every translation: SDH, and possible errors."), extensions_file=TRANSLATION_SUFFIXES, extensions_folder=TRANSLATION_SUFFIXES)
+    parser = argparse.ArgumentParser(description="Adds warnings at the start of every translation: SDH, and possible errors.")
+    Backups.add_argument(parser)
+    subs = find_files(parser, extensions_file=TRANSLATION_SUFFIXES, extensions_folder=TRANSLATION_SUFFIXES)
+    backups = Backups.start(parser.parse_args().backups)
     batch = Batch()
 
     for sub in subs:
@@ -52,7 +55,8 @@ if __name__ == "__main__":
                 log_action("exists", Color.BLUE, sub.name)
                 continue
 
-            # add each warning as entry 0, keeping the numbers of the other entries
+            # back up the sub and add each warning as entry 0, keeping the numbers of the other entries
+            backups.save(sub)
             entries_warning = [srt.Subtitle(index=0, start=timedelta(0), end=WARNING_DURATION, content=warning) for warning in warnings_missing]
             write_text_replacing(sub, srt.compose([*entries_warning, *sub_entries], reindex=False))
             log_action("warn", Color.GREEN, sub.name)

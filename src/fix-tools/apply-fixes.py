@@ -12,7 +12,7 @@ from typing import Any
 import srt
 
 from shared.console import Color, log_action
-from shared.files import parse_srt, write_text_replacing
+from shared.files import Backups, parse_srt, write_text_replacing
 from shared.reports import IssueKind
 from shared.subtitles import IGNORE_MARKER
 
@@ -111,7 +111,10 @@ class SubtitleFixes:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Applies fixes decided by hand to text subtitles, after checking every fix against its subtitle.")
     parser.add_argument("fixes", type=Path, help="JSON file: a list of {subtitle, entries: [{entry, old, new?, ignore?}]}")
-    fixes_file: Path = parser.parse_args().fixes
+    Backups.add_argument(parser)
+    arguments = parser.parse_args()
+    fixes_file: Path = arguments.fixes
+    backups = Backups.start(arguments.backups)
 
     # check every fix before writing any subtitle
     subtitles_fixes = [SubtitleFixes.from_json(item) for item in json.loads(fixes_file.read_text(encoding="utf-8"))]
@@ -119,6 +122,8 @@ if __name__ == "__main__":
         raise ValueError("a subtitle is in the fixes file more than once")
     texts = [(fixes, fixes.compose()) for fixes in subtitles_fixes]
 
+    # back up each subtitle before writing it
     for fixes, text in texts:
+        backups.save(fixes.subtitle)
         write_text_replacing(fixes.subtitle, text)
         log_action("fix", Color.GREEN, f"{fixes.subtitle.name} · {len(fixes.fixes)} entries")

@@ -208,7 +208,7 @@ reset-identifier-pt *paths:
 [script]
 [extension('.ps1')]
 [positional-arguments]
-apply-fixes fixes:
+apply-fixes fixes *options:
     uv run src/fix-tools/apply-fixes.py @args
     exit $LASTEXITCODE
 
