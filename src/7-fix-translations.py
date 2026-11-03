@@ -6,6 +6,7 @@
 import argparse
 import functools
 import itertools
+import os
 import re
 from collections import Counter
 from dataclasses import dataclass, replace
@@ -401,7 +402,7 @@ if __name__ == "__main__":
                 answer = ""
                 while answer not in ("y", "n"):
                     answer = readchar.readkey().lower().replace(readchar.key.ENTER, "n")
-                console.clear()
+                os.system("cls")
                 if answer == "n":
                     log_action("declined", Color.YELLOW, sub.name)
                     continue
