@@ -70,6 +70,7 @@ FLAGS_THINKING_OFF = ("--reasoning-budget", "0")
 FLAGS_THINKING_SHORT = ("--reasoning-budget", "2048")
 FLAGS_NATIVE = ("--jinja", "--ctx-size", "8192", "--parallel", str(NATIVE_WORKERS))
 FLAGS_GPU_ONLY = ("--n-gpu-layers", "all", "--fit", "off")
+FLAGS_CACHE_Q8 = ("--cache-type-k", "q8_0", "--cache-type-v", "q8_0")
 FLAGS_GEMMA = ("--no-mmproj", "--top-p", "0.95", "--top-k", "64")
 FLAGS_QWEN = ("--no-mmproj", "--top-p", "0.8", "--top-k", "20", "--min-p", "0")
 
@@ -367,18 +368,24 @@ class Run:
 GEMMA_4_26B = Model(name="gemma-4-26b", repo="lmstudio-community/gemma-4-26B-A4B-it-QAT-GGUF", file="gemma-4-26B-A4B-it-QAT-Q4_0.gguf", flags=(*FLAGS_PIPELINE, *FLAGS_THINKING_OFF, *FLAGS_GPU_ONLY, *FLAGS_GEMMA))
 GEMMA_4_26B_THINKING = Model(name="gemma-4-26b-thinking", repo="lmstudio-community/gemma-4-26B-A4B-it-QAT-GGUF", file="gemma-4-26B-A4B-it-QAT-Q4_0.gguf", flags=(*FLAGS_PIPELINE, *FLAGS_THINKING_SHORT, *FLAGS_GPU_ONLY, *FLAGS_GEMMA))
 GEMMA_4_12B = Model(name="gemma-4-12b", repo="lmstudio-community/gemma-4-12B-it-QAT-GGUF", file="gemma-4-12B-it-QAT-Q4_0.gguf", flags=(*FLAGS_PIPELINE, *FLAGS_THINKING_OFF, *FLAGS_GPU_ONLY, *FLAGS_GEMMA))
+MISTRAL_SMALL_3_2_24B = Model(name="mistral-small-3.2-24b", repo="bartowski/mistralai_Mistral-Small-3.2-24B-Instruct-2506-GGUF", file="mistralai_Mistral-Small-3.2-24B-Instruct-2506-IQ4_XS.gguf", flags=(*FLAGS_PIPELINE, *FLAGS_GPU_ONLY, *FLAGS_CACHE_Q8))
+MINISTRAL_3_14B = Model(name="ministral-3-14b", repo="bartowski/mistralai_Ministral-3-14B-Instruct-2512-GGUF", file="mistralai_Ministral-3-14B-Instruct-2512-Q6_K.gguf", flags=(*FLAGS_PIPELINE, *FLAGS_GPU_ONLY))
+QWEN_3_14B = Model(name="qwen-3-14b", repo="bartowski/Qwen_Qwen3-14B-GGUF", file="Qwen_Qwen3-14B-Q6_K.gguf", flags=(*FLAGS_PIPELINE, *FLAGS_THINKING_OFF, *FLAGS_GPU_ONLY, *FLAGS_CACHE_Q8, *FLAGS_QWEN))
 QWEN_3_5_9B = Model(name="qwen-3.5-9b", repo="lmstudio-community/Qwen3.5-9B-GGUF", file="Qwen3.5-9B-Q8_0.gguf", flags=(*FLAGS_PIPELINE, *FLAGS_THINKING_OFF, *FLAGS_GPU_ONLY, *FLAGS_QWEN))
 
 HY_MT2_7B = Model(name="hy-mt2-7b", repo="tencent/Hy-MT2-7B-GGUF", file="HY-MT2-7B-Q8_0.gguf", flags=(*FLAGS_NATIVE, *FLAGS_GPU_ONLY))
 TOWER_PLUS_9B = Model(name="tower-plus-9b", repo="mradermacher/Tower-Plus-9B-GGUF", file="Tower-Plus-9B.Q8_0.gguf", flags=(*FLAGS_NATIVE, *FLAGS_GPU_ONLY))
 TRANSLATEGEMMA_12B = Model(name="translategemma-12b", repo="mradermacher/translategemma-12b-it-GGUF", file="translategemma-12b-it.Q6_K.gguf", flags=(*FLAGS_NATIVE, *FLAGS_GPU_ONLY))
 
-MODELS = (GEMMA_4_26B, GEMMA_4_26B_THINKING, GEMMA_4_12B, QWEN_3_5_9B, HY_MT2_7B, TOWER_PLUS_9B, TRANSLATEGEMMA_12B)
+MODELS = (GEMMA_4_26B, GEMMA_4_26B_THINKING, GEMMA_4_12B, MISTRAL_SMALL_3_2_24B, MINISTRAL_3_14B, QWEN_3_14B, QWEN_3_5_9B, HY_MT2_7B, TOWER_PLUS_9B, TRANSLATEGEMMA_12B)
 
 RUNS = (
     Run(name="gemma-4-26b", model=GEMMA_4_26B, translation=PipelineTranslation()),
     Run(name="gemma-4-26b-thinking", model=GEMMA_4_26B_THINKING, translation=PipelineTranslation()),
     Run(name="gemma-4-12b", model=GEMMA_4_12B, translation=PipelineTranslation()),
+    Run(name="mistral-small-3.2-24b", model=MISTRAL_SMALL_3_2_24B, translation=PipelineTranslation()),
+    Run(name="ministral-3-14b", model=MINISTRAL_3_14B, translation=PipelineTranslation()),
+    Run(name="qwen-3-14b", model=QWEN_3_14B, translation=PipelineTranslation()),
     Run(name="qwen-3.5-9b", model=QWEN_3_5_9B, translation=PipelineTranslation()),
     Run(
         name="hy-mt2-7b",
