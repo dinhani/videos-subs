@@ -76,6 +76,7 @@ NATIVE_TOKENS_MAX = 256
 FLAGS_PIPELINE = ("--jinja", "--ctx-size", "16384", "--parallel", "1")
 FLAGS_THINKING_OFF = ("--reasoning-budget", "0")
 FLAGS_THINKING_FULL = ("--reasoning-budget", "-1")
+FLAGS_REASONING_LOW = ("--chat-template-kwargs", '{"reasoning_effort": "low"}')
 FLAGS_NATIVE = ("--jinja", "--ctx-size", "8192", "--parallel", str(NATIVE_WORKERS))
 FLAGS_GPU_ONLY = ("--n-gpu-layers", "all", "--fit", "off")
 FLAGS_CACHE_Q8 = ("--cache-type-k", "q8_0", "--cache-type-v", "q8_0")
@@ -480,6 +481,12 @@ MISTRAL_SMALL_3_2_24B = Model(name="mistral-small-3.2-24b", repo="bartowski/mist
 MINISTRAL_3_14B = Model(name="ministral-3-14b", repo="bartowski/mistralai_Ministral-3-14B-Instruct-2512-GGUF", file="mistralai_Ministral-3-14B-Instruct-2512-Q6_K.gguf", flags=(*FLAGS_PIPELINE, *FLAGS_GPU_ONLY))
 QWEN_3_14B = Model(name="qwen-3-14b", repo="bartowski/Qwen_Qwen3-14B-GGUF", file="Qwen_Qwen3-14B-Q6_K.gguf", flags=(*FLAGS_PIPELINE, *FLAGS_THINKING_OFF, *FLAGS_GPU_ONLY, *FLAGS_CACHE_Q8, *FLAGS_QWEN))
 QWEN_3_5_9B = Model(name="qwen-3.5-9b", repo="lmstudio-community/Qwen3.5-9B-GGUF", file="Qwen3.5-9B-Q8_0.gguf", flags=(*FLAGS_PIPELINE, *FLAGS_THINKING_OFF, *FLAGS_GPU_ONLY, *FLAGS_QWEN))
+GPT_OSS_20B = Model(name="gpt-oss-20b", repo="lmstudio-community/gpt-oss-20b-GGUF", file="gpt-oss-20b-MXFP4.gguf", flags=(*FLAGS_PIPELINE, *FLAGS_REASONING_LOW, *FLAGS_GPU_ONLY))
+ERNIE_4_5_21B = Model(name="ernie-4.5-21b", repo="lmstudio-community/ERNIE-4.5-21B-A3B-PT-GGUF", file="ERNIE-4.5-21B-A3B-PT-Q4_K_M.gguf", flags=(*FLAGS_PIPELINE, *FLAGS_GPU_ONLY, *FLAGS_CACHE_Q8))
+COMMAND_R7B = Model(name="command-r7b", repo="bartowski/c4ai-command-r7b-12-2024-GGUF", file="c4ai-command-r7b-12-2024-Q8_0.gguf", flags=(*FLAGS_PIPELINE, *FLAGS_GPU_ONLY))
+AYA_EXPANSE_8B = Model(name="aya-expanse-8b", repo="bartowski/aya-expanse-8b-GGUF", file="aya-expanse-8b-Q8_0.gguf", flags=(*FLAGS_PIPELINE, *FLAGS_GPU_ONLY))
+MAGISTRAL_SMALL_24B = Model(name="magistral-small-24b", repo="bartowski/mistralai_Magistral-Small-2509-GGUF", file="mistralai_Magistral-Small-2509-IQ4_XS.gguf", flags=(*FLAGS_PIPELINE, *FLAGS_THINKING_FULL, *FLAGS_GPU_ONLY, *FLAGS_CACHE_Q8))
+GEMMA_3_12B = Model(name="gemma-3-12b", repo="lmstudio-community/gemma-3-12b-it-GGUF", file="gemma-3-12b-it-Q4_K_M.gguf", flags=(*FLAGS_PIPELINE, *FLAGS_GPU_ONLY, *FLAGS_GEMMA))
 
 HY_MT2_7B = Model(name="hy-mt2-7b", repo="tencent/Hy-MT2-7B-GGUF", file="HY-MT2-7B-Q8_0.gguf", flags=(*FLAGS_NATIVE, *FLAGS_GPU_ONLY))
 TOWER_PLUS_9B = Model(name="tower-plus-9b", repo="mradermacher/Tower-Plus-9B-GGUF", file="Tower-Plus-9B.Q8_0.gguf", flags=(*FLAGS_NATIVE, *FLAGS_GPU_ONLY))
@@ -494,7 +501,7 @@ NLLB_200_600M = NmtModel(name="nllb-200-600m", repo="JustFrederik/nllb-200-disti
 OPUS_MT_EN_PT = NmtModel(name="opus-mt-en-pt", repo="ooeoeo/opus-mt-tc-big-en-pt-ct2-float16", family=NmtFamily.OPUS)
 NMT_MODELS = (MADLAD_400_10B, MADLAD_400_7B, MADLAD_400_3B, NLLB_200_3_3B, NLLB_200_1_3B, NLLB_200_600M, OPUS_MT_EN_PT)
 
-MODELS = (*NMT_MODELS, GEMMA_4_26B, GEMMA_4_26B_THINKING, GEMMA_4_12B, MISTRAL_SMALL_3_2_24B, MINISTRAL_3_14B, QWEN_3_14B, QWEN_3_5_9B, HY_MT2_7B, TOWER_PLUS_9B, TRANSLATEGEMMA_12B)
+MODELS = (*NMT_MODELS, GEMMA_4_26B, GEMMA_4_26B_THINKING, GEMMA_4_12B, MISTRAL_SMALL_3_2_24B, MINISTRAL_3_14B, QWEN_3_14B, QWEN_3_5_9B, GPT_OSS_20B, ERNIE_4_5_21B, COMMAND_R7B, AYA_EXPANSE_8B, MAGISTRAL_SMALL_24B, GEMMA_3_12B, HY_MT2_7B, TOWER_PLUS_9B, TRANSLATEGEMMA_12B)
 
 COMET_WMT22 = ScoringModel(name="comet-wmt22", repo="Unbabel/wmt22-comet-da", files=("checkpoints/model.ckpt", "hparams.yaml"))
 XLM_ROBERTA_LARGE = ScoringModel(name="xlm-roberta-large", repo="xlm-roberta-large", files=("config.json", "sentencepiece.bpe.model", "tokenizer.json", "tokenizer_config.json"))
@@ -509,6 +516,12 @@ RUNS = (
     Run(name="ministral-3-14b", model=MINISTRAL_3_14B, translation=PipelineTranslation()),
     Run(name="qwen-3-14b", model=QWEN_3_14B, translation=PipelineTranslation()),
     Run(name="qwen-3.5-9b", model=QWEN_3_5_9B, translation=PipelineTranslation()),
+    Run(name="gpt-oss-20b", model=GPT_OSS_20B, translation=PipelineTranslation()),
+    Run(name="ernie-4.5-21b", model=ERNIE_4_5_21B, translation=PipelineTranslation()),
+    Run(name="command-r7b", model=COMMAND_R7B, translation=PipelineTranslation()),
+    Run(name="aya-expanse-8b", model=AYA_EXPANSE_8B, translation=PipelineTranslation()),
+    Run(name="magistral-small-24b", model=MAGISTRAL_SMALL_24B, translation=PipelineTranslation()),
+    Run(name="gemma-3-12b", model=GEMMA_3_12B, translation=PipelineTranslation()),
     Run(
         name="hy-mt2-7b",
         model=HY_MT2_7B,
