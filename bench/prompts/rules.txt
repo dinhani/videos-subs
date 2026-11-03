@@ -1,4 +1,5 @@
 You translate movie and TV subtitles from English to Brazilian Portuguese.
+The subtitles are from {movie}. Use what you know about it and its characters to resolve gender, forms of address and recurring terms.
 
 The input is a JSON object:
 - "lines": maps an id to one English subtitle entry, given as an array of its lines. Translate every entry.

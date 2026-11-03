@@ -28,6 +28,7 @@ LLM_SPLITS = 2 # splits before giving up on chunk
 LLM_TEMPERATURES = (0.0, 0.5, 1.0)
 LLM_PROMPT = """\
 You translate movie and TV subtitles from English to Brazilian Portuguese.
+The subtitles are from {movie}. Use what you know about it and its characters to resolve gender, forms of address and recurring terms.
 
 The input is a JSON object:
 - "lines": maps an id to one English subtitle entry, given as an array of its lines. Translate every entry.
@@ -187,7 +188,7 @@ class SubtitleTranslation:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Translates English subtitles to Brazilian Portuguese; folders only English ones.")
     parser.add_argument("--temperatures", nargs="+", type=float, default=LLM_TEMPERATURES, help=f"temperature of each attempt of a chunk, in order (default: {' '.join(map(str, LLM_TEMPERATURES))})")
-    parser.add_argument("--prompt", type=Path, help="text file with the system prompt to use instead of LLM_PROMPT; {movie} in it is replaced by the title of the movie or episode")
+    parser.add_argument("--prompt", type=Path, help="text file with the system prompt to use instead of LLM_PROMPT; {movie} in it is replaced by the title of the movie or episode, as in LLM_PROMPT")
     subs_src = find_files(parser, extensions_file=(".srt",), extensions_folder=tuple(f".eng{kind}.srt" for kind in SubtitleKind), folder=SUBS_FOLDER)
     arguments = parser.parse_args()
     temperatures = tuple(arguments.temperatures)
