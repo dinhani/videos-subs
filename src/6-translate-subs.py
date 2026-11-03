@@ -5,6 +5,7 @@
 # ------------------------------------------------------------------------------
 import argparse
 import json
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -186,7 +187,7 @@ class SubtitleTranslation:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Translates English subtitles to Brazilian Portuguese; folders only English ones.")
     parser.add_argument("--temperatures", nargs="+", type=float, default=LLM_TEMPERATURES, help=f"temperature of each attempt of a chunk, in order (default: {' '.join(map(str, LLM_TEMPERATURES))})")
-    parser.add_argument("--prompt", type=Path, help="text file with the system prompt to use instead of LLM_PROMPT")
+    parser.add_argument("--prompt", type=Path, help="text file with the system prompt to use instead of LLM_PROMPT; {movie} in it is replaced by the title of the movie or episode")
     subs_src = find_files(parser, extensions_file=(".srt",), extensions_folder=tuple(f".eng{kind}.srt" for kind in SubtitleKind), folder=SUBS_FOLDER)
     arguments = parser.parse_args()
     temperatures = tuple(arguments.temperatures)
@@ -209,6 +210,9 @@ if __name__ == "__main__":
         log_action("translate", Color.GREEN, sub_dst.name)
 
         sub_trace = movie_dir / TRACES_FOLDER / f"{sub_dst.stem}.json"
+        movie_title = re.sub(r"^(.*?) \((\d{4})\b.*$", r"\1 (\2)", sub_name)
+        if movie_dir.name.startswith("Season"):
+            movie_title = f"{movie_dir.parent.name}, {movie_title}"
         try:
             # parse entries
             sub_entries = parse_srt(sub_src)
@@ -217,7 +221,7 @@ if __name__ == "__main__":
             sub_trace.parent.mkdir(exist_ok=True)
             progress = progress_bar(MofNCompleteColumn(), TimeElapsedColumn(), TimeRemainingColumn())
             with progress:
-                translation = SubtitleTranslation.from_entries(sub_entries, Trace(file=sub_trace), temperatures, prompt)
+                translation = SubtitleTranslation.from_entries(sub_entries, Trace(file=sub_trace), temperatures, prompt.replace("{movie}", movie_title))
                 chunk_starts = range(0, len(translation.pending), CHUNK_SIZE)
                 for chunk_start in progress.track(chunk_starts, total=len(chunk_starts)):
                     translation.translate(chunk_start, min(chunk_start + CHUNK_SIZE, len(translation.pending)))

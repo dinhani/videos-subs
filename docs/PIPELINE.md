@@ -58,7 +58,7 @@ check-ocr compares the width of each line on the image with the width of its tex
 - Subtitles are translated in chunks of `CHUNK_SIZE` entries, with `CHUNK_CONTEXT_BEFORE` earlier entries (with their accepted translations) and `CHUNK_CONTEXT_AFTER` upcoming entries as read-only context.
 - The reply is constrained by a JSON schema that fixes the ids and the number of lines per entry. The `en` field in the reply is not used by the code; it makes the model restate each line before translating it.
 - A failed chunk is retried at temperatures 0.0, 0.5 and 1.0 (`--temperatures` sets others, one attempt each), then split in halves up to `LLM_SPLITS` times. After that, the last reply is accepted and recorded in the trace as accepted with a problem; warn adds the warning entry. The translation is written without renumbering, so its entries keep the numbers of the source.
-- The system prompt is `LLM_PROMPT`; `--prompt <file>` reads another one from a text file, for the bench.
+- The system prompt is `LLM_PROMPT`; `--prompt <file>` reads another one from a text file, for the bench; `{movie}` in it is replaced by the title and year of the movie, or by the series folder and the episode title.
 - Translated lines keep the source line breaks. Lines are not wrapped; the player wraps lines that do not fit the screen.
 
 ## 7. fix-translations

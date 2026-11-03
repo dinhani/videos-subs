@@ -418,19 +418,21 @@ class Run:
     def is_translated(self) -> bool:
         return all(translation.translation.exists() for translation in self.find_translations())
 
-    def translate(self) -> None:
+    def translate(self, sources: list[Source]) -> None:
         match self.model:
             case Model():
                 with self.model.serving(log=self.dir / LLAMA_LOG_FILE):
-                    self.translate_sources()
+                    self.translate_sources(sources)
             case NmtModel():
-                self.translate_sources()
+                self.translate_sources(sources)
 
-    def translate_sources(self) -> None:
+    def translate_sources(self, sources: list[Source]) -> None:
         timings_file = self.dir / TIMINGS_FILE
         timings: dict[str, int] = json.loads(timings_file.read_text(encoding="utf-8")) if timings_file.exists() else {}
 
         for translation in self.find_translations():
+            if translation.source not in sources:
+                continue
             if translation.translation.exists():
                 log_action("exists", Color.BLUE, f"{self.name}: {translation.translation.name}")
                 continue
@@ -508,6 +510,7 @@ RUNS = (
     Run(name="magistral-small-24b", model=MAGISTRAL_SMALL_24B, translation=PipelineTranslation()),
     Run(name="gemma-4-26b", model=GEMMA_4_26B, translation=PipelineTranslation()),
     *(Run(name=f"gemma-4-26b+{prompt.stem}", model=GEMMA_4_26B, translation=PipelineTranslation(prompt=prompt)) for prompt in sorted(PROMPTS_DIR.glob("*.txt"))),
+    Run(name="gemma-4-26b-temperature-0.7", model=GEMMA_4_26B, translation=PipelineTranslation(temperatures=(0.7, 0.7, 1.0))),
     Run(name="gemma-4-26b-thinking", model=GEMMA_4_26B_THINKING, translation=PipelineTranslation(temperatures=(1.0, 1.0, 1.0))),
     Run(name="hy-mt2-30b-iq3", model=HY_MT2_30B, translation=PipelineTranslation()),
     Run(name="gemma-4-31b-iq3", model=GEMMA_4_31B, translation=PipelineTranslation()),
@@ -582,6 +585,7 @@ if __name__ == "__main__":
     command_run = commands.add_parser("run", help="copy the sources and translate every run not translated yet, each with its own llama server; checks and scores are left to score")
     command_run.add_argument("runs", nargs="*", help=f"runs to translate: {', '.join(runs)} (default: all)")
     command_run.add_argument("--pick", action="store_true", help="pick the runs to translate from a list")
+    command_run.add_argument("--movie", default="", help="translate only the sources whose title contains this text, such as fall (default: all)")
     commands.add_parser("score", help="check and score every translation not checked or scored yet, without translating")
     commands.add_parser("runs", help="list the runs and what each one has done")
     command_download = commands.add_parser("download", help="download models from Hugging Face")
@@ -615,6 +619,9 @@ if __name__ == "__main__":
                     snapshot.parent.mkdir(parents=True, exist_ok=True)
                     shutil.copy2(library_file, snapshot)
                     log_action("copy", Color.GREEN, snapshot.name)
+            sources = [source for source in Source.find_all() if arguments.movie.lower() in source.title.lower()]
+            if not sources:
+                parser.error(f"no source title contains {arguments.movie}")
 
             batch = Batch()
             for run in runs_selected:
@@ -623,7 +630,7 @@ if __name__ == "__main__":
                     continue
                 log_action("translate", Color.GREEN, run.name)
                 try:
-                    run.translate()
+                    run.translate(sources)
                 except Exception as error:
                     batch.fail(run.dir, error)
             batch.finish()
