@@ -490,8 +490,8 @@ QWEN_3_6_35B = Model(name="qwen-3.6-35b-iq3", repo="bartowski/Qwen_Qwen3.6-35B-A
 HY_MT2_7B = Model(name="hy-mt2-7b", repo="tencent/Hy-MT2-7B-GGUF", file="HY-MT2-7B-Q8_0.gguf", flags=(*FLAGS_NATIVE, *FLAGS_GPU_ONLY))
 TOWER_PLUS_9B = Model(name="tower-plus-9b", repo="mradermacher/Tower-Plus-9B-GGUF", file="Tower-Plus-9B.Q8_0.gguf", flags=(*FLAGS_NATIVE, *FLAGS_GPU_ONLY))
 TRANSLATEGEMMA_12B = Model(name="translategemma-12b", repo="mradermacher/translategemma-12b-it-GGUF", file="translategemma-12b-it.Q6_K.gguf", flags=(*FLAGS_NATIVE, *FLAGS_GPU_ONLY))
-TRANSLATEGEMMA_27B = Model(name="translategemma-27b-iq3", repo="bartowski/google_translategemma-27b-it-GGUF", file="google_translategemma-27b-it-IQ3_XS.gguf", flags=(*FLAGS_NATIVE, *FLAGS_GPU_ONLY))
-HY_MT2_30B = Model(name="hy-mt2-30b-iq3", repo="bartowski/tencent_Hy-MT2-30B-A3B-GGUF", file="tencent_Hy-MT2-30B-A3B-IQ3_XS.gguf", flags=(*FLAGS_NATIVE, *FLAGS_GPU_ONLY))
+TRANSLATEGEMMA_27B = Model(name="translategemma-27b-iq3", repo="mradermacher/translategemma-27b-it-i1-GGUF", file="translategemma-27b-it.i1-IQ3_XS.gguf", flags=(*FLAGS_NATIVE, *FLAGS_GPU_ONLY))
+HY_MT2_30B = Model(name="hy-mt2-30b-iq3", repo="mradermacher/Hy-MT2-30B-A3B-i1-GGUF", file="Hy-MT2-30B-A3B.i1-IQ3_XS.gguf", flags=(*FLAGS_NATIVE, *FLAGS_GPU_ONLY))
 
 MADLAD_400_10B = NmtModel(name="madlad-400-10b", repo="SoybeanMilk/madlad400-10b-mt-ct2-int8_float16", family=NmtFamily.MADLAD)
 MADLAD_400_7B = NmtModel(name="madlad-400-7b", repo="avans06/madlad400-7b-mt-bt-ct2-int8_float16", family=NmtFamily.MADLAD)

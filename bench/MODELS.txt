@@ -22,10 +22,10 @@ mistral-small-3.2-24b  Mistral Small 3.2 24B    Mistral   general      dense    
 magistral-small-24b    Magistral Small 1.2      Mistral   reasoning    dense    24B                   IQ4_XS    12.8 GB  yes        pipeline
 gemma-4-26b            Gemma 4 26B A4B          Google    general      MoE      26B total, 4B active  QAT Q4_0  14.4 GB  yes        pipeline
 gemma-4-26b-thinking   Gemma 4 26B A4B, thinks  Google    general      MoE      26B total, 4B active  QAT Q4_0  14.4 GB  yes        pipeline
-translategemma-27b-iq3 TranslateGemma 27B       Google    translation  dense    27B                   IQ3_XS    11.2 GB  yes        native
+translategemma-27b-iq3 TranslateGemma 27B       Google    translation  dense    27B                   IQ3_XS    11.6 GB  yes        native
 hy-mt2-30b-iq3         Hy-MT2 30B A3B           Tencent   translation  MoE      30B total, 3B active  IQ3_XS    12.4 GB  yes        native
-gemma-4-31b-iq3        Gemma 4 31B              Google    general      dense    31B                   IQ3_XS    12.8 GB  yes        pipeline
-qwen-3.6-35b-iq3       Qwen3.6 35B A3B          Alibaba   general      MoE      35B total, 3B active  IQ3_XXS   13.4 GB  yes        pipeline
+gemma-4-31b-iq3        Gemma 4 31B              Google    general      dense    31B                   IQ3_XS    13.8 GB  yes        pipeline
+qwen-3.6-35b-iq3       Qwen3.6 35B A3B          Alibaba   general      MoE      35B total, 3B active  IQ3_XXS   15.8 GB  yes        pipeline
 
 discarded              reason
 ---------------------  ------------------------------------------------------------
