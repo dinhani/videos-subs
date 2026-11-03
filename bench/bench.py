@@ -484,7 +484,7 @@ COMMAND_R7B = Model(name="command-r7b", repo="bartowski/c4ai-command-r7b-12-2024
 AYA_EXPANSE_8B = Model(name="aya-expanse-8b", repo="bartowski/aya-expanse-8b-GGUF", file="aya-expanse-8b-Q8_0.gguf", flags=(*FLAGS_PIPELINE, *FLAGS_GPU_ONLY, *FLAGS_COHERE))
 MAGISTRAL_SMALL_24B = Model(name="magistral-small-24b", repo="bartowski/mistralai_Magistral-Small-2509-GGUF", file="mistralai_Magistral-Small-2509-IQ4_XS.gguf", flags=(*FLAGS_PIPELINE, *FLAGS_THINKING_FULL, *FLAGS_GPU_ONLY, *FLAGS_CACHE_Q8))
 GEMMA_3_12B = Model(name="gemma-3-12b", repo="lmstudio-community/gemma-3-12b-it-GGUF", file="gemma-3-12b-it-Q4_K_M.gguf", flags=(*FLAGS_PIPELINE, *FLAGS_GPU_ONLY, *FLAGS_GEMMA))
-GEMMA_4_31B = Model(name="gemma-4-31b-iq3", repo="bartowski/google_gemma-4-31B-it-GGUF", file="google_gemma-4-31B-it-IQ3_XS.gguf", flags=(*FLAGS_PIPELINE_8K, *FLAGS_THINKING_OFF, *FLAGS_GPU_ONLY, *FLAGS_GEMMA))
+GEMMA_4_31B = Model(name="gemma-4-31b-iq3", repo="bartowski/google_gemma-4-31B-it-GGUF", file="google_gemma-4-31B-it-IQ3_XS.gguf", flags=(*FLAGS_PIPELINE_8K, *FLAGS_THINKING_OFF, *FLAGS_GPU_ONLY, *FLAGS_CACHE_Q8, *FLAGS_GEMMA))
 
 HY_MT2_7B = Model(name="hy-mt2-7b", repo="tencent/Hy-MT2-7B-GGUF", file="HY-MT2-7B-Q8_0.gguf", flags=(*FLAGS_NATIVE, *FLAGS_GPU_ONLY))
 TOWER_PLUS_9B = Model(name="tower-plus-9b", repo="mradermacher/Tower-Plus-9B-GGUF", file="Tower-Plus-9B.Q8_0.gguf", flags=(*FLAGS_NATIVE, *FLAGS_GPU_ONLY))
