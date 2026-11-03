@@ -468,7 +468,6 @@ GEMMA_4_31B = Model(name="gemma-4-31b-iq3", repo="bartowski/google_gemma-4-31B-i
 HY_MT2_7B = Model(name="hy-mt2-7b", repo="tencent/Hy-MT2-7B-GGUF", file="HY-MT2-7B-Q8_0.gguf", flags=(*FLAGS_PIPELINE, *FLAGS_GPU_ONLY))
 TOWER_PLUS_9B = Model(name="tower-plus-9b", repo="mradermacher/Tower-Plus-9B-GGUF", file="Tower-Plus-9B.Q8_0.gguf", flags=(*FLAGS_PIPELINE, *FLAGS_GPU_ONLY))
 TRANSLATEGEMMA_12B = Model(name="translategemma-12b", repo="mradermacher/translategemma-12b-it-GGUF", file="translategemma-12b-it.Q6_K.gguf", flags=(*FLAGS_PIPELINE, *FLAGS_GPU_ONLY, *FLAGS_TRANSLATEGEMMA))
-TRANSLATEGEMMA_27B = Model(name="translategemma-27b-iq3", repo="mradermacher/translategemma-27b-it-i1-GGUF", file="translategemma-27b-it.i1-IQ3_XS.gguf", flags=(*FLAGS_PIPELINE_8K, *FLAGS_GPU_ONLY, *FLAGS_TRANSLATEGEMMA))
 HY_MT2_30B = Model(name="hy-mt2-30b-iq3", repo="mradermacher/Hy-MT2-30B-A3B-i1-GGUF", file="Hy-MT2-30B-A3B.i1-IQ3_XS.gguf", flags=(*FLAGS_PIPELINE_8K, *FLAGS_GPU_ONLY))
 
 MADLAD_400_10B = NmtModel(name="madlad-400-10b", repo="SoybeanMilk/madlad400-10b-mt-ct2-int8_float16", family=NmtFamily.MADLAD)
@@ -480,7 +479,7 @@ NLLB_200_600M = NmtModel(name="nllb-200-600m", repo="JustFrederik/nllb-200-disti
 OPUS_MT_EN_PT = NmtModel(name="opus-mt-en-pt", repo="ooeoeo/opus-mt-tc-big-en-pt-ct2-float16", family=NmtFamily.OPUS)
 NMT_MODELS = (MADLAD_400_10B, MADLAD_400_7B, MADLAD_400_3B, NLLB_200_3_3B, NLLB_200_1_3B, NLLB_200_600M, OPUS_MT_EN_PT)
 
-MODELS = (*NMT_MODELS, GEMMA_4_26B, GEMMA_4_26B_THINKING, GEMMA_4_12B, MISTRAL_SMALL_3_2_24B, MINISTRAL_3_14B, QWEN_3_14B, GPT_OSS_20B, ERNIE_4_5_21B, COMMAND_R7B, AYA_EXPANSE_8B, MAGISTRAL_SMALL_24B, GEMMA_3_12B, GEMMA_4_31B, HY_MT2_7B, TOWER_PLUS_9B, TRANSLATEGEMMA_12B, TRANSLATEGEMMA_27B, HY_MT2_30B)
+MODELS = (*NMT_MODELS, GEMMA_4_26B, GEMMA_4_26B_THINKING, GEMMA_4_12B, MISTRAL_SMALL_3_2_24B, MINISTRAL_3_14B, QWEN_3_14B, GPT_OSS_20B, ERNIE_4_5_21B, COMMAND_R7B, AYA_EXPANSE_8B, MAGISTRAL_SMALL_24B, GEMMA_3_12B, GEMMA_4_31B, HY_MT2_7B, TOWER_PLUS_9B, TRANSLATEGEMMA_12B, HY_MT2_30B)
 
 COMET_WMT22 = ScoringModel(name="comet-wmt22", repo="Unbabel/wmt22-comet-da", files=("checkpoints/model.ckpt", "hparams.yaml"))
 XLM_ROBERTA_LARGE = ScoringModel(name="xlm-roberta-large", repo="xlm-roberta-large", files=("config.json", "sentencepiece.bpe.model", "tokenizer.json", "tokenizer_config.json"))
@@ -504,7 +503,6 @@ RUNS = (
     Run(name="magistral-small-24b", model=MAGISTRAL_SMALL_24B, translation=PipelineTranslation()),
     Run(name="gemma-4-26b", model=GEMMA_4_26B, translation=PipelineTranslation()),
     Run(name="gemma-4-26b-thinking", model=GEMMA_4_26B_THINKING, translation=PipelineTranslation(temperatures=(1.0, 1.0, 1.0))),
-    Run(name="translategemma-27b-iq3", model=TRANSLATEGEMMA_27B, translation=PipelineTranslation()),
     Run(name="hy-mt2-30b-iq3", model=HY_MT2_30B, translation=PipelineTranslation()),
     Run(name="gemma-4-31b-iq3", model=GEMMA_4_31B, translation=PipelineTranslation()),
 )
