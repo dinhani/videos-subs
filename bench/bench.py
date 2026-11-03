@@ -17,6 +17,7 @@ from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import timedelta
+from enum import StrEnum
 from pathlib import Path
 
 import httpx
@@ -50,6 +51,7 @@ COMPARE_DIR = BENCH_DIR / "4-compare"
 SCORES_FOLDER = "_scores"
 TIMINGS_FILE = "timings.json"
 SCORE_JOBS_FILE = "score-jobs.json"
+NMT_REPLIES_FILE = "nmt-replies.json"
 LLAMA_LOG_FILE = "llama.log"
 
 ALIGNMENT_OVERLAP_MIN = timedelta(milliseconds=200)
@@ -136,6 +138,38 @@ class Model:
                 server.wait()
                 log_action("stop", Color.GREEN, f"llama server for {self.name}")
 
+    def is_downloaded(self) -> bool:
+        return self.path.exists()
+
+
+class NmtFamily(StrEnum):
+    NLLB = "nllb"
+    MADLAD = "madlad"
+    OPUS = "opus"
+
+
+@dataclass(frozen=True)
+class NmtModel:
+    name: str
+    repo: str
+    family: NmtFamily
+
+    @property
+    def path(self) -> Path:
+        return MODELS_DIR / self.repo
+
+    def download(self) -> None:
+        if self.is_downloaded():
+            log_action("exists", Color.BLUE, self.name)
+            return
+        from huggingface_hub import snapshot_download
+
+        log_action("download", Color.GREEN, f"{self.name}: {self.repo}")
+        snapshot_download(repo_id=self.repo, local_dir=self.path)
+
+    def is_downloaded(self) -> bool:
+        return (self.path / "model.bin").exists()
+
 
 # ------------------------------------------------------------------------------
 # Translations
@@ -173,26 +207,47 @@ class NativeTranslation:
             with progress_bar(MofNCompleteColumn(), TimeElapsedColumn(), TimeRemainingColumn()) as progress:
                 replies = list(progress.track(pool.map(complete, entries_lines), total=len(entries_lines)))
 
-        # split a reply with another line count by words, in proportion to the English lines
-        records = []
-        translated_entries = []
-        for entry, entry_lines, reply in zip(entries, entries_lines, replies):
-            translated_lines = [line.strip() for line in reply.split("\n") if line.strip()]
-            resplit = bool(entry_lines) and len(translated_lines) != len(entry_lines)
-            if resplit:
-                words = " ".join(translated_lines).split()
-                characters = sum(len(line) for line in entry_lines)
-                cuts = [0, *(round(len(words) * share / characters) for share in itertools.accumulate(len(line) for line in entry_lines))]
-                translated_lines = [" ".join(words[start:end]) for start, end in itertools.pairwise(cuts)]
-            records.append({"entry": entry.index, "en": entry_lines, "reply": reply, "resplit": resplit})
-            content = "\n".join(translated_lines) if entry_lines else entry.content
-            translated_entries.append(srt.Subtitle(index=entry.index, start=entry.start, end=entry.end, content=content, proprietary=IGNORE_MARKER.sub("", entry.proprietary).strip()))
+        write_translation(entries=entries, replies=replies, translation=translation)
 
-        trace = translation.parent / TRACES_FOLDER / f"{translation.stem}.json"
-        trace.parent.mkdir(exist_ok=True)
-        write_text_replacing(trace, json.dumps(records, ensure_ascii=False, indent=2))
-        write_text_replacing(translation, srt.compose(translated_entries, reindex=False))
-        log_action("resplit", Color.YELLOW, f"{sum(record['resplit'] for record in records)} entries replied with another line count")
+
+@dataclass(frozen=True)
+class NmtTranslation:
+    model: NmtModel
+
+    def describe(self) -> str:
+        return "nmt"
+
+    def translate(self, source: Path, translation: Path) -> None:
+        entries = parse_srt(source)
+        replies_file = RUNS_DIR / NMT_REPLIES_FILE
+        subprocess.run(["uv", "run", "--script", str(BENCH_DIR / "nmt.py"), "--family", self.model.family, "--model", str(self.model.path), str(source), str(replies_file)], check=True)
+        replies_by_index: dict[str, str] = json.loads(replies_file.read_text(encoding="utf-8"))
+        replies_file.unlink()
+        write_translation(entries=entries, replies=[replies_by_index.get(str(entry.index), "") for entry in entries], translation=translation)
+
+
+def write_translation(entries: list[srt.Subtitle], replies: list[str], translation: Path) -> None:
+    # split a reply with another line count by words, in proportion to the English lines
+    records = []
+    translated_entries = []
+    for entry, reply in zip(entries, replies):
+        entry_lines = [" ".join(line.split()) for line in entry.content.split("\n") if line.strip()]
+        translated_lines = [line.strip() for line in reply.split("\n") if line.strip()]
+        resplit = bool(entry_lines) and len(translated_lines) != len(entry_lines)
+        if resplit:
+            words = " ".join(translated_lines).split()
+            characters = sum(len(line) for line in entry_lines)
+            cuts = [0, *(round(len(words) * share / characters) for share in itertools.accumulate(len(line) for line in entry_lines))]
+            translated_lines = [" ".join(words[start:end]) for start, end in itertools.pairwise(cuts)]
+        records.append({"entry": entry.index, "en": entry_lines, "reply": reply, "resplit": resplit})
+        content = "\n".join(translated_lines) if entry_lines else entry.content
+        translated_entries.append(srt.Subtitle(index=entry.index, start=entry.start, end=entry.end, content=content, proprietary=IGNORE_MARKER.sub("", entry.proprietary).strip()))
+
+    trace = translation.parent / TRACES_FOLDER / f"{translation.stem}.json"
+    trace.parent.mkdir(exist_ok=True)
+    write_text_replacing(trace, json.dumps(records, ensure_ascii=False, indent=2))
+    write_text_replacing(translation, srt.compose(translated_entries, reindex=False))
+    log_action("resplit", Color.YELLOW, f"{sum(record['resplit'] for record in records)} entries replied with another line count")
 
 
 # ------------------------------------------------------------------------------
@@ -310,8 +365,8 @@ class RunTranslation:
 @dataclass(frozen=True)
 class Run:
     name: str
-    model: Model
-    translation: PipelineTranslation | NativeTranslation
+    model: Model | NmtModel
+    translation: PipelineTranslation | NativeTranslation | NmtTranslation
 
     @property
     def dir(self) -> Path:
@@ -330,8 +385,12 @@ class Run:
 
     def evaluate(self) -> None:
         if not all(translation.translation.exists() for translation in self.find_translations()):
-            with self.model.serving(log=self.dir / LLAMA_LOG_FILE):
-                self.translate()
+            match self.model:
+                case Model():
+                    with self.model.serving(log=self.dir / LLAMA_LOG_FILE):
+                        self.translate()
+                case NmtModel():
+                    self.translate()
         self.check()
         self.score()
 
@@ -377,9 +436,19 @@ HY_MT2_7B = Model(name="hy-mt2-7b", repo="tencent/Hy-MT2-7B-GGUF", file="HY-MT2-
 TOWER_PLUS_9B = Model(name="tower-plus-9b", repo="mradermacher/Tower-Plus-9B-GGUF", file="Tower-Plus-9B.Q8_0.gguf", flags=(*FLAGS_NATIVE, *FLAGS_GPU_ONLY))
 TRANSLATEGEMMA_12B = Model(name="translategemma-12b", repo="mradermacher/translategemma-12b-it-GGUF", file="translategemma-12b-it.Q6_K.gguf", flags=(*FLAGS_NATIVE, *FLAGS_GPU_ONLY))
 
-MODELS = (GEMMA_4_26B, GEMMA_4_26B_THINKING, GEMMA_4_12B, MISTRAL_SMALL_3_2_24B, MINISTRAL_3_14B, QWEN_3_14B, QWEN_3_5_9B, HY_MT2_7B, TOWER_PLUS_9B, TRANSLATEGEMMA_12B)
+MADLAD_400_10B = NmtModel(name="madlad-400-10b", repo="SoybeanMilk/madlad400-10b-mt-ct2-int8_float16", family=NmtFamily.MADLAD)
+MADLAD_400_7B = NmtModel(name="madlad-400-7b", repo="avans06/madlad400-7b-mt-bt-ct2-int8_float16", family=NmtFamily.MADLAD)
+MADLAD_400_3B = NmtModel(name="madlad-400-3b", repo="SoybeanMilk/madlad400-3b-mt-ct2-int8_float16", family=NmtFamily.MADLAD)
+NLLB_200_3_3B = NmtModel(name="nllb-200-3.3b", repo="OpenNMT/nllb-200-3.3B-ct2-int8", family=NmtFamily.NLLB)
+NLLB_200_1_3B = NmtModel(name="nllb-200-1.3b", repo="OpenNMT/nllb-200-distilled-1.3B-ct2-int8", family=NmtFamily.NLLB)
+NLLB_200_600M = NmtModel(name="nllb-200-600m", repo="JustFrederik/nllb-200-distilled-600M-ct2-int8", family=NmtFamily.NLLB)
+OPUS_MT_EN_PT = NmtModel(name="opus-mt-en-pt", repo="ooeoeo/opus-mt-tc-big-en-pt-ct2-float16", family=NmtFamily.OPUS)
+NMT_MODELS = (MADLAD_400_10B, MADLAD_400_7B, MADLAD_400_3B, NLLB_200_3_3B, NLLB_200_1_3B, NLLB_200_600M, OPUS_MT_EN_PT)
+
+MODELS = (*NMT_MODELS, GEMMA_4_26B, GEMMA_4_26B_THINKING, GEMMA_4_12B, MISTRAL_SMALL_3_2_24B, MINISTRAL_3_14B, QWEN_3_14B, QWEN_3_5_9B, HY_MT2_7B, TOWER_PLUS_9B, TRANSLATEGEMMA_12B)
 
 RUNS = (
+    *(Run(name=model.name, model=model, translation=NmtTranslation(model=model)) for model in NMT_MODELS),
     Run(name="gemma-4-26b", model=GEMMA_4_26B, translation=PipelineTranslation()),
     Run(name="gemma-4-26b-thinking", model=GEMMA_4_26B_THINKING, translation=PipelineTranslation()),
     Run(name="gemma-4-12b", model=GEMMA_4_12B, translation=PipelineTranslation()),
@@ -458,7 +527,7 @@ if __name__ == "__main__":
                 translated = sum(translation.translation.exists() for translation in translations)
                 checked = sum(translation.report.exists() for translation in translations)
                 scores = [translation.to_score(reference) for translation in translations for reference in translation.source.find_references()]
-                table.add_row(run.name, run.model.name, run.translation.describe(), "yes" if run.model.path.exists() else "no", f"{translated}/{len(translations)}", f"{checked}/{len(translations)}", f"{sum(score.exists() for score in scores)}/{len(scores)}")
+                table.add_row(run.name, run.model.name, run.translation.describe(), "yes" if run.model.is_downloaded() else "no", f"{translated}/{len(translations)}", f"{checked}/{len(translations)}", f"{sum(score.exists() for score in scores)}/{len(scores)}")
             console.print(table)
 
         case "download":
