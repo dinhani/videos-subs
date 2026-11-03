@@ -53,5 +53,7 @@ if __name__ == "__main__":
         chrf = sacrebleu.corpus_chrf([segment["mt"] for segment in segments], [[segment["ref"] for segment in segments]], word_order=2)
         output = Path(job["output"])
         output.parent.mkdir(parents=True, exist_ok=True)
-        output.write_text(json.dumps({"comet": round(100 * comet.system_score, 2), "chrf": round(chrf.score, 2), "segments": len(segments)}, indent=2), encoding="utf-8")
+        output_part = output.with_name(f"{output.name}.part")
+        output_part.write_text(json.dumps({"comet": round(100 * comet.system_score, 2), "chrf": round(chrf.score, 2), "segments": len(segments)}, indent=2), encoding="utf-8")
+        output_part.replace(output)
         print(f"  score     {output.name}: comet {100 * comet.system_score:.2f}, chrf++ {chrf.score:.2f}")

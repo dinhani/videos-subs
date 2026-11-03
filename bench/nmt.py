@@ -16,6 +16,8 @@
 import argparse
 import json
 import re
+from collections.abc import Callable
+from dataclasses import dataclass
 from pathlib import Path
 
 import ctranslate2
@@ -32,6 +34,42 @@ DECODING_LENGTH_MAX = 256
 FORMATTING_TAGS = re.compile(r"<[^>]+>|\{[^}]*\}")
 
 # ------------------------------------------------------------------------------
+# Types
+# ------------------------------------------------------------------------------
+@dataclass(frozen=True)
+class Tokenization:
+    encode: Callable[[str], list[str]]
+    decode: Callable[[list[str]], str]
+    target_prefix: list[str] | None
+
+    @classmethod
+    def from_family(cls, family: str, model: Path) -> "Tokenization":
+        # each family has its own tokenizer and its own way to ask for Portuguese
+        match family:
+            case "nllb":
+                tokenizer = AutoTokenizer.from_pretrained(model, src_lang="eng_Latn")
+                return cls(
+                    encode=lambda text: tokenizer.convert_ids_to_tokens(tokenizer.encode(text)),
+                    decode=lambda tokens: tokenizer.decode(tokenizer.convert_tokens_to_ids(tokens[1:]), skip_special_tokens=True),
+                    target_prefix=["por_Latn"],
+                )
+            case "madlad":
+                pieces = SentencePieceProcessor(model_file=str(model / "spiece.model"))
+                return cls(
+                    encode=lambda text: pieces.encode(f"<2pt> {text}", out_type=str) + ["</s>"],
+                    decode=lambda tokens: pieces.decode(tokens),
+                    target_prefix=None,
+                )
+            case "opus":
+                tokenizer = AutoTokenizer.from_pretrained(model)
+                return cls(
+                    encode=lambda text: tokenizer.convert_ids_to_tokens(tokenizer.encode(f">>pob<< {text}")),
+                    decode=lambda tokens: tokenizer.decode(tokenizer.convert_tokens_to_ids(tokens), skip_special_tokens=True),
+                    target_prefix=None,
+                )
+        raise ValueError(f"unknown family: {family}")
+
+# ------------------------------------------------------------------------------
 # Execution
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
@@ -44,39 +82,24 @@ if __name__ == "__main__":
 
     if ctranslate2.get_cuda_device_count() == 0:
         raise SystemExit("no CUDA device for CTranslate2")
+    tokenization = Tokenization.from_family(arguments.family, arguments.model)
 
-    # each family has its own tokenizer and its own way to ask for Portuguese
-    match arguments.family:
-        case "nllb":
-            tokenizer = AutoTokenizer.from_pretrained(arguments.model, src_lang="eng_Latn")
-            encode = lambda text: tokenizer.convert_ids_to_tokens(tokenizer.encode(text))
-            target_prefix = ["por_Latn"]
-            decode = lambda tokens: tokenizer.decode(tokenizer.convert_tokens_to_ids(tokens[1:]), skip_special_tokens=True)
-        case "madlad":
-            pieces = SentencePieceProcessor(model_file=str(arguments.model / "spiece.model"))
-            encode = lambda text: pieces.encode(f"<2pt> {text}", out_type=str) + ["</s>"]
-            target_prefix = None
-            decode = lambda tokens: pieces.decode(tokens)
-        case "opus":
-            tokenizer = AutoTokenizer.from_pretrained(arguments.model)
-            encode = lambda text: tokenizer.convert_ids_to_tokens(tokenizer.encode(f">>pob<< {text}"))
-            target_prefix = None
-            decode = lambda tokens: tokenizer.decode(tokenizer.convert_tokens_to_ids(tokens), skip_special_tokens=True)
-
-    entries = list(srt.parse(arguments.source.read_text(encoding="utf-8-sig")))
+    entries = list(srt.parse(arguments.source.read_text(encoding="utf-8-sig", errors="replace"), ignore_errors=True))
     texts = {entry.index: " ".join(FORMATTING_TAGS.sub("", entry.content).split()) for entry in entries}
     indexes = [index for index, text in texts.items() if text]
 
     translator = ctranslate2.Translator(str(arguments.model), device="cuda", compute_type="int8_float16")
     results = translator.translate_batch(
-        [encode(texts[index]) for index in indexes],
-        target_prefix=[target_prefix] * len(indexes) if target_prefix else None,
+        [tokenization.encode(texts[index]) for index in indexes],
+        target_prefix=[tokenization.target_prefix] * len(indexes) if tokenization.target_prefix else None,
         beam_size=BEAM_SIZE,
         max_batch_size=BATCH_SIZE,
         max_decoding_length=DECODING_LENGTH_MAX,
     )
-    replies = {str(index): decode(result.hypotheses[0]) for index, result in zip(indexes, results)}
+    replies = {str(index): tokenization.decode(result.hypotheses[0]) for index, result in zip(indexes, results)}
 
     arguments.replies.parent.mkdir(parents=True, exist_ok=True)
-    arguments.replies.write_text(json.dumps(replies, ensure_ascii=False, indent=2), encoding="utf-8")
+    replies_part = arguments.replies.with_name(f"{arguments.replies.name}.part")
+    replies_part.write_text(json.dumps(replies, ensure_ascii=False, indent=2), encoding="utf-8")
+    replies_part.replace(arguments.replies)
     print(f"  translate {len(replies)} entries with {arguments.model.name}")
