@@ -57,10 +57,10 @@ LLAMA_LOG_FILE = "llama.log"
 ALIGNMENT_OVERLAP_MIN = timedelta(milliseconds=200)
 ALIGNMENT_OFFSET_MAX = timedelta(seconds=2)
 
-MODELS_DIR = Path("D:/AI-Models-LMStudio")
-HUGGING_FACE_HOME = Path("D:/AI-Models-Bench")
-HUGGING_FACE_HUB_DIR = HUGGING_FACE_HOME / "hub"
-HUGGING_FACE_ENV = {"HF_HOME": str(HUGGING_FACE_HOME)}
+MODELS_GGUF_DIR = Path("D:/AI-Models-LMStudio")
+MODELS_CTRANSLATE2_DIR = Path("D:/AI-Models-CTranslate2")
+MODELS_PYTORCH_DIR = Path("D:/AI-Models-PyTorch")
+PYTORCH_ENV = {"HF_HUB_CACHE": str(MODELS_PYTORCH_DIR)}
 LLAMA_SERVER = Path("C:/_scoop/apps/llama.cpp-cu133/current/llama-server.exe")
 LLAMA_ENV = {"GGML_CUDA_PDL": "1", "GGML_CUDA_GRAPH_OPT": "1"}
 LLAMA_PORT = 9931
@@ -92,7 +92,7 @@ class Model:
 
     @property
     def path(self) -> Path:
-        return MODELS_DIR / self.repo / self.file
+        return MODELS_GGUF_DIR / self.repo / self.file
 
     def download(self) -> None:
         if self.path.exists():
@@ -101,7 +101,7 @@ class Model:
         from huggingface_hub import hf_hub_download
 
         log_action("download", Color.GREEN, f"{self.name}: {self.repo}/{self.file}")
-        hf_hub_download(repo_id=self.repo, filename=self.file, local_dir=MODELS_DIR / self.repo)
+        hf_hub_download(repo_id=self.repo, filename=self.file, local_dir=MODELS_GGUF_DIR / self.repo)
 
     @contextmanager
     def serving(self, log: Path) -> Generator[None]:
@@ -157,13 +157,9 @@ class NmtModel:
     repo: str
     family: NmtFamily
 
-    def find_path(self) -> Path | None:
-        cache = HUGGING_FACE_HUB_DIR / f"models--{self.repo.replace('/', '--')}"
-        reference = cache / "refs" / "main"
-        if not reference.exists():
-            return None
-        snapshot = cache / "snapshots" / reference.read_text(encoding="utf-8").strip()
-        return snapshot if (snapshot / "model.bin").exists() else None
+    @property
+    def path(self) -> Path:
+        return MODELS_CTRANSLATE2_DIR / self.repo
 
     def download(self) -> None:
         if self.is_downloaded():
@@ -172,10 +168,10 @@ class NmtModel:
         from huggingface_hub import snapshot_download
 
         log_action("download", Color.GREEN, f"{self.name}: {self.repo}")
-        snapshot_download(repo_id=self.repo, cache_dir=HUGGING_FACE_HUB_DIR)
+        snapshot_download(repo_id=self.repo, local_dir=self.path)
 
     def is_downloaded(self) -> bool:
-        return self.find_path() is not None
+        return (self.path / "model.bin").exists()
 
 
 # ------------------------------------------------------------------------------
@@ -225,12 +221,11 @@ class NmtTranslation:
         return "nmt"
 
     def translate(self, source: Path, translation: Path) -> None:
-        model_path = self.model.find_path()
-        if model_path is None:
-            raise FileNotFoundError(f"{self.model.name} not downloaded: {self.model.repo}")
+        if not self.model.is_downloaded():
+            raise FileNotFoundError(f"{self.model.name} not downloaded: {self.model.path}")
         entries = parse_srt(source)
         replies_file = RUNS_DIR / NMT_REPLIES_FILE
-        subprocess.run(["uv", "run", "--script", str(BENCH_DIR / "nmt.py"), "--family", self.model.family, "--model", str(model_path), str(source), str(replies_file)], env={**os.environ, **HUGGING_FACE_ENV}, check=True)
+        subprocess.run(["uv", "run", "--script", str(BENCH_DIR / "nmt.py"), "--family", self.model.family, "--model", str(self.model.path), str(source), str(replies_file)], check=True)
         replies_by_index: dict[str, str] = json.loads(replies_file.read_text(encoding="utf-8"))
         replies_file.unlink()
         write_translation(entries=entries, replies=[replies_by_index.get(str(entry.index), "") for entry in entries], translation=translation)
@@ -354,7 +349,7 @@ def score_translations(scorings: list[Scoring]) -> None:
         return
     jobs_file = RUNS_DIR / SCORE_JOBS_FILE
     write_text_replacing(jobs_file, json.dumps(jobs, ensure_ascii=False))
-    subprocess.run(["uv", "run", "--script", str(BENCH_DIR / "score.py"), str(jobs_file)], env={**os.environ, **HUGGING_FACE_ENV}, check=True)
+    subprocess.run(["uv", "run", "--script", str(BENCH_DIR / "score.py"), str(jobs_file)], env={**os.environ, **PYTORCH_ENV}, check=True)
     jobs_file.unlink()
 
 
