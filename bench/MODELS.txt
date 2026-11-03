@@ -1,30 +1,35 @@
-run                    model                    maker     kind         arch     parameters            quant     size     fits 5080  mode
----------------------  -----------------------  --------  -----------  -------  --------------------  --------  -------  ---------  --------
-madlad-400-10b         MADLAD-400 10B           Google    translation  enc-dec  10B                   int8      10.7 GB  yes        nmt
-madlad-400-7b          MADLAD-400 7B            Google    translation  enc-dec  7B                    int8       8.3 GB  yes        nmt
-madlad-400-3b          MADLAD-400 3B            Google    translation  enc-dec  3B                    int8       3.0 GB  yes        nmt
-nllb-200-3.3b          NLLB-200 3.3B            Meta      translation  enc-dec  3.3B                  int8       3.4 GB  yes        nmt
-nllb-200-1.3b          NLLB-200 1.3B distilled  Meta      translation  enc-dec  1.3B                  int8       1.4 GB  yes        nmt
-nllb-200-600m          NLLB-200 600M distilled  Meta      translation  enc-dec  600M                  int8       0.6 GB  yes        nmt
-opus-mt-en-pt          Opus-MT tc-big en-pt     Helsinki  translation  enc-dec  about 240M            float16    0.5 GB  yes        nmt
-hy-mt2-7b              Hy-MT2 7B                Tencent   translation  dense    7B                    Q8_0       8.0 GB  yes        native
-command-r7b            Command R7B              Cohere    general      dense    7B                    Q8_0       8.5 GB  yes        pipeline
-aya-expanse-8b         Aya Expanse 8B           Cohere    general      dense    8B                    Q8_0       8.5 GB  yes        pipeline
-tower-plus-9b          Tower+ 9B                Unbabel   translation  dense    9B                    Q8_0       9.8 GB  yes        native
-gemma-4-12b            Gemma 4 12B              Google    general      dense    12B                   QAT Q4_0   7.0 GB  yes        pipeline
-gemma-3-12b            Gemma 3 12B              Google    general      dense    12B                   Q4_K_M     7.3 GB  yes        pipeline
-translategemma-12b     TranslateGemma 12B       Google    translation  dense    12B                   Q6_K       9.7 GB  yes        native
-ministral-3-14b        Ministral 3 14B          Mistral   general      dense    14B                   Q6_K      11.1 GB  yes        pipeline
-qwen-3-14b             Qwen3 14B                Alibaba   general      dense    14B                   Q6_K      12.1 GB  yes        pipeline
-gpt-oss-20b            gpt-oss 20B, low effort  OpenAI    general      MoE      21B total, 4B active  MXFP4     12.1 GB  yes        pipeline
-ernie-4.5-21b          ERNIE 4.5 21B A3B        Baidu     general      MoE      21B total, 3B active  Q4_K_M    13.5 GB  yes        pipeline
-mistral-small-3.2-24b  Mistral Small 3.2 24B    Mistral   general      dense    24B                   IQ4_XS    12.8 GB  yes        pipeline
-magistral-small-24b    Magistral Small 1.2      Mistral   reasoning    dense    24B                   IQ4_XS    12.8 GB  yes        pipeline
-gemma-4-26b            Gemma 4 26B A4B          Google    general      MoE      26B total, 4B active  QAT Q4_0  14.4 GB  yes        pipeline
-gemma-4-26b-thinking   Gemma 4 26B A4B, thinks  Google    general      MoE      26B total, 4B active  QAT Q4_0  14.4 GB  yes        pipeline
-translategemma-27b-iq3 TranslateGemma 27B       Google    translation  dense    27B                   IQ3_XS    11.6 GB  yes        native
-hy-mt2-30b-iq3         Hy-MT2 30B A3B           Tencent   translation  MoE      30B total, 3B active  IQ3_XS    12.4 GB  yes        native
-gemma-4-31b-iq3        Gemma 4 31B              Google    general      dense    31B                   IQ3_XS    13.8 GB  yes        pipeline
+run                              model                    maker     kind         arch     parameters            quant     size     fits 5080  mode
+-------------------------------  -----------------------  --------  -----------  -------  --------------------  --------  -------  ---------  --------
+madlad-400-10b                   MADLAD-400 10B           Google    translation  enc-dec  10B                   int8      10.7 GB  yes        nmt
+madlad-400-7b                    MADLAD-400 7B            Google    translation  enc-dec  7B                    int8       8.3 GB  yes        nmt
+madlad-400-3b                    MADLAD-400 3B            Google    translation  enc-dec  3B                    int8       3.0 GB  yes        nmt
+nllb-200-3.3b                    NLLB-200 3.3B            Meta      translation  enc-dec  3.3B                  int8       3.4 GB  yes        nmt
+nllb-200-1.3b                    NLLB-200 1.3B distilled  Meta      translation  enc-dec  1.3B                  int8       1.4 GB  yes        nmt
+nllb-200-600m                    NLLB-200 600M distilled  Meta      translation  enc-dec  600M                  int8       0.6 GB  yes        nmt
+opus-mt-en-pt                    Opus-MT tc-big en-pt     Helsinki  translation  enc-dec  about 240M            float16    0.5 GB  yes        nmt
+hy-mt2-7b                        Hy-MT2 7B                Tencent   translation  dense    7B                    Q8_0       8.0 GB  yes        native
+hy-mt2-7b-pipeline               Hy-MT2 7B                Tencent   translation  dense    7B                    Q8_0       8.0 GB  yes        pipeline
+command-r7b                      Command R7B              Cohere    general      dense    7B                    Q8_0       8.5 GB  yes        pipeline
+aya-expanse-8b                   Aya Expanse 8B           Cohere    general      dense    8B                    Q8_0       8.5 GB  yes        pipeline
+tower-plus-9b                    Tower+ 9B                Unbabel   translation  dense    9B                    Q8_0       9.8 GB  yes        native
+tower-plus-9b-pipeline           Tower+ 9B                Unbabel   translation  dense    9B                    Q8_0       9.8 GB  yes        pipeline
+gemma-4-12b                      Gemma 4 12B              Google    general      dense    12B                   QAT Q4_0   7.0 GB  yes        pipeline
+gemma-3-12b                      Gemma 3 12B              Google    general      dense    12B                   Q4_K_M     7.3 GB  yes        pipeline
+translategemma-12b               TranslateGemma 12B       Google    translation  dense    12B                   Q6_K       9.7 GB  yes        native
+translategemma-12b-pipeline      TranslateGemma 12B       Google    translation  dense    12B                   Q6_K       9.7 GB  yes        pipeline
+ministral-3-14b                  Ministral 3 14B          Mistral   general      dense    14B                   Q6_K      11.1 GB  yes        pipeline
+qwen-3-14b                       Qwen3 14B                Alibaba   general      dense    14B                   Q6_K      12.1 GB  yes        pipeline
+gpt-oss-20b                      gpt-oss 20B, low effort  OpenAI    general      MoE      21B total, 4B active  MXFP4     12.1 GB  yes        pipeline
+ernie-4.5-21b                    ERNIE 4.5 21B A3B        Baidu     general      MoE      21B total, 3B active  Q4_K_M    13.5 GB  yes        pipeline
+mistral-small-3.2-24b            Mistral Small 3.2 24B    Mistral   general      dense    24B                   IQ4_XS    12.8 GB  yes        pipeline
+magistral-small-24b              Magistral Small 1.2      Mistral   reasoning    dense    24B                   IQ4_XS    12.8 GB  yes        pipeline
+gemma-4-26b                      Gemma 4 26B A4B          Google    general      MoE      26B total, 4B active  QAT Q4_0  14.4 GB  yes        pipeline
+gemma-4-26b-thinking             Gemma 4 26B A4B, thinks  Google    general      MoE      26B total, 4B active  QAT Q4_0  14.4 GB  yes        pipeline
+translategemma-27b-iq3           TranslateGemma 27B       Google    translation  dense    27B                   IQ3_XS    11.6 GB  yes        native
+translategemma-27b-iq3-pipeline  TranslateGemma 27B       Google    translation  dense    27B                   IQ3_XS    11.6 GB  yes        pipeline
+hy-mt2-30b-iq3                   Hy-MT2 30B A3B           Tencent   translation  MoE      30B total, 3B active  IQ3_XS    12.4 GB  yes        native
+hy-mt2-30b-iq3-pipeline          Hy-MT2 30B A3B           Tencent   translation  MoE      30B total, 3B active  IQ3_XS    12.4 GB  yes        pipeline
+gemma-4-31b-iq3                  Gemma 4 31B              Google    general      dense    31B                   IQ3_XS    13.8 GB  yes        pipeline
 
 discarded              reason
 ---------------------  ------------------------------------------------------------
