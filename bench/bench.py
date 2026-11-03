@@ -58,6 +58,7 @@ ALIGNMENT_OVERLAP_MIN = timedelta(milliseconds=200)
 ALIGNMENT_OFFSET_MAX = timedelta(seconds=2)
 
 MODELS_DIR = Path("D:/AI-Models-LMStudio")
+HUGGING_FACE_HUB_DIR = Path(os.environ.get("HF_HOME", Path.home() / ".cache" / "huggingface")) / "hub"
 LLAMA_SERVER = Path("C:/_scoop/apps/llama.cpp-cu133/current/llama-server.exe")
 LLAMA_ENV = {"GGML_CUDA_PDL": "1", "GGML_CUDA_GRAPH_OPT": "1"}
 LLAMA_PORT = 9931
@@ -154,9 +155,13 @@ class NmtModel:
     repo: str
     family: NmtFamily
 
-    @property
-    def path(self) -> Path:
-        return MODELS_DIR / self.repo
+    def find_path(self) -> Path | None:
+        cache = HUGGING_FACE_HUB_DIR / f"models--{self.repo.replace('/', '--')}"
+        reference = cache / "refs" / "main"
+        if not reference.exists():
+            return None
+        snapshot = cache / "snapshots" / reference.read_text(encoding="utf-8").strip()
+        return snapshot if (snapshot / "model.bin").exists() else None
 
     def download(self) -> None:
         if self.is_downloaded():
@@ -165,10 +170,10 @@ class NmtModel:
         from huggingface_hub import snapshot_download
 
         log_action("download", Color.GREEN, f"{self.name}: {self.repo}")
-        snapshot_download(repo_id=self.repo, local_dir=self.path)
+        snapshot_download(repo_id=self.repo)
 
     def is_downloaded(self) -> bool:
-        return (self.path / "model.bin").exists()
+        return self.find_path() is not None
 
 
 # ------------------------------------------------------------------------------
@@ -218,9 +223,12 @@ class NmtTranslation:
         return "nmt"
 
     def translate(self, source: Path, translation: Path) -> None:
+        model_path = self.model.find_path()
+        if model_path is None:
+            raise FileNotFoundError(f"{self.model.name} not downloaded: {self.model.repo}")
         entries = parse_srt(source)
         replies_file = RUNS_DIR / NMT_REPLIES_FILE
-        subprocess.run(["uv", "run", "--script", str(BENCH_DIR / "nmt.py"), "--family", self.model.family, "--model", str(self.model.path), str(source), str(replies_file)], check=True)
+        subprocess.run(["uv", "run", "--script", str(BENCH_DIR / "nmt.py"), "--family", self.model.family, "--model", str(model_path), str(source), str(replies_file)], check=True)
         replies_by_index: dict[str, str] = json.loads(replies_file.read_text(encoding="utf-8"))
         replies_file.unlink()
         write_translation(entries=entries, replies=[replies_by_index.get(str(entry.index), "") for entry in entries], translation=translation)
