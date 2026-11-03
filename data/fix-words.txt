@@ -46,7 +46,6 @@ squeaks = chioando = chiando
 tajikistan = tajikistão = tajiquistão
 themistocles = temistócles = temístocles
 themistokles = temistócles = temístocles
-transmitters = transmitores = transmissores
 weakly = fraquemente = fracamente
 whistle = assóbio = assobio
 whistling = assóbio = assobio

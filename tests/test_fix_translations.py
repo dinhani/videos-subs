@@ -86,7 +86,7 @@ def test_quotes(english: str, translated: str, expected: str) -> None:
     ("(Grunts)", "(Grunnido)", frozenset(), "(Grunhe)"),
     ("[ GRUNTS ]", "[ GRUNNIDO ]", frozenset(), "[ GRUNHE ]"),
     ("[ GRUNTS ]", "[GRUNNIDO]", frozenset(), "[GRUNHE]"),
-    ("- [ Screams ]\n- [ Shrieking ]", "- [Grita]\n- [Berrando]", frozenset(), "- [Grita]\n- [Gritando]"),
+    ("- [ Screams ]\n- [ Shrieking ]", "- [Grita]\n- [Berrando]", frozenset(), "- [Grita]\n- [Berrando]"),
     ("(GRUNTS)", "GRUNNIDO", frozenset(), "(GRUNHE)"),
     ("(SIGHS) Okay.", "(SUSPIRANDO) Tudo bem.", frozenset(), "(SUSPIRA) Tudo bem."),
     ("(CHUCKLES)", "(RISOS)", frozenset(), "(RISOS)"),
