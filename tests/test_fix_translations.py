@@ -22,11 +22,11 @@ def entry(english: str, translated: str) -> TranslationEntry:
 
 
 def fix(fix: TranslationFix, english: str, translated: str, names: frozenset[str] = frozenset()) -> str:
-    return "\n".join(fix.fix(entry(english, translated), Movie(names=names)))
+    return "\n".join(fix.fix(entry(english, translated), Movie(names_known=names, dialogue=())))
 
 
 def fix_all(english: str, translated: str, names: frozenset[str] = frozenset()) -> str:
-    translation, _ = entry(english, translated).apply_fixes(fix_translations.FIXES, Movie(names=names))
+    translation, _ = entry(english, translated).apply_fixes(fix_translations.FIXES, Movie(names_known=names, dialogue=()))
     return "\n".join(translation.target_lines)
 
 

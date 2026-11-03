@@ -8,6 +8,7 @@ import functools
 import itertools
 import re
 from collections import Counter
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import ClassVar
@@ -30,6 +31,8 @@ TRANSLATION_SUFFIXES = tuple(kind.to_translation_suffix() for kind in SubtitleKi
 
 LINE_WORDS = re.compile(r"[^\W\d_]|[♪♫]")
 NUMBER = re.compile(r"\d+")
+
+READ_WORKERS = 8
 
 # ------------------------------------------------------------------------------
 # Fixes
@@ -206,7 +209,7 @@ class DescriptionsFix:
             spacings = descriptions_target if paired else descriptions
             texts: list[str | None] = []
             for description, translation, model, spacing in zip(descriptions, translations, models, spacings):
-                if translation is None or not translation.is_confirmed_by(model, movie.names) or (paired and translation.is_already_in(model)):
+                if translation is None or not translation.is_confirmed_by(model, movie) or (paired and translation.is_already_in(model)):
                     texts.append(None)
                     continue
                 inner = spacing[0][1:-1]
@@ -374,45 +377,48 @@ if __name__ == "__main__":
     backups = Backups.start(arguments.backups)
     batch = Batch()
 
-    for sub in subs:
-        movie_dir = parse_movie_dir(sub)
-        batch.log_movie(movie_dir)
+    # read the subs READ_WORKERS at a time, ahead of the one being fixed
+    with ThreadPoolExecutor(max_workers=READ_WORKERS) as executor:
+        translations_read = [executor.submit(Translation.from_file, sub) for sub in subs]
+        for sub, translation_read in zip(subs, translations_read):
+            movie_dir = parse_movie_dir(sub)
+            batch.log_movie(movie_dir)
 
-        try:
-            # fix the entries against the English source
-            translation = Translation.from_file(sub)
-            changes = translation.fix(FIXES)
+            try:
+                # fix the entries against the English source
+                translation = translation_read.result()
+                changes = translation.fix(FIXES)
 
-            # skip subs with nothing to fix
-            if not changes:
-                log_action("skip", Color.BLUE, sub.name)
-                continue
-
-            # show every changed entry and ask before writing, unless confirmed beforehand
-            fixes_applied = Counter(fix for change in changes for fix in change.fixes)
-            summary = f"{sub.name} · {len(changes)} entries · {', '.join(f'{name} {count}' for name, count in fixes_applied.items())}"
-            if not arguments.yes:
-                batch.clear_screen()
-                batch.log_movie(movie_dir)
-                for change in changes:
-                    console.print(f"    entry {change.old.index}")
-                    for prefix, content, color in (("en ", change.source.content, ""), ("old", change.old.content, Color.RED), ("new", change.new.content, Color.GREEN)):
-                        for n, line in enumerate(content.split("\n")):
-                            console.print(Text.assemble(f"      {prefix if n == 0 else '   '}  ", (line, color)))
-                console.print(Text(f"  Apply {summary}? (y/N) "), end="")
-                answer = ""
-                while answer not in ("y", "n"):
-                    answer = readchar.readkey().lower().replace(readchar.key.ENTER, "n")
-                if answer == "n":
-                    log_action("declined", Color.YELLOW, sub.name)
+                # skip subs with nothing to fix
+                if not changes:
+                    log_action("skip", Color.BLUE, sub.name)
                     continue
 
-            # back up the sub, write the fixed sub and delete its report, which no longer matches it
-            backups.save(sub)
-            write_text_replacing(sub, translation.compose(changes))
-            (movie_dir / CHECKS_FOLDER / f"{sub.stem}.txt").unlink(missing_ok=True)
-            log_action("fix", Color.GREEN, summary)
-        except Exception as error:
-            batch.fail(sub, error)
+                # show every changed entry and ask before writing, unless confirmed beforehand
+                fixes_applied = Counter(fix for change in changes for fix in change.fixes)
+                summary = f"{sub.name} · {len(changes)} entries · {', '.join(f'{name} {count}' for name, count in fixes_applied.items())}"
+                if not arguments.yes:
+                    batch.clear_screen()
+                    batch.log_movie(movie_dir)
+                    for change in changes:
+                        console.print(f"    entry {change.old.index}")
+                        for prefix, content, color in (("en ", change.source.content, ""), ("old", change.old.content, Color.RED), ("new", change.new.content, Color.GREEN)):
+                            for n, line in enumerate(content.split("\n")):
+                                console.print(Text.assemble(f"      {prefix if n == 0 else '   '}  ", (line, color)))
+                    console.print(Text(f"  Apply {summary}? (y/N) "), end="")
+                    answer = ""
+                    while answer not in ("y", "n"):
+                        answer = readchar.readkey().lower().replace(readchar.key.ENTER, "n")
+                    if answer == "n":
+                        log_action("declined", Color.YELLOW, sub.name)
+                        continue
+
+                # back up the sub, write the fixed sub and delete its report, which no longer matches it
+                backups.save(sub)
+                write_text_replacing(sub, translation.compose(changes))
+                (movie_dir / CHECKS_FOLDER / f"{sub.stem}.txt").unlink(missing_ok=True)
+                log_action("fix", Color.GREEN, summary)
+            except Exception as error:
+                batch.fail(sub, error)
 
     batch.finish()

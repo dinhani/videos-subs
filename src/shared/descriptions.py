@@ -1,6 +1,6 @@
 import functools
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 import spacy
@@ -39,12 +39,12 @@ class DescriptionTranslation:
     name: str
     forms: tuple[frozenset[str], ...]
 
-    def is_confirmed_by(self, translation: str, names: frozenset[str]) -> bool:
+    def is_confirmed_by(self, translation: str, movie: "Movie") -> bool:
         if not self.name:
             return True
         words = normalize_description(translation)
         name = normalize_description(self.name)
-        return all(word in names for word in name.split()) and words != normalize_description(self.source) and f" {name} " in f" {words} "
+        return words != normalize_description(self.source) and f" {name} " in f" {words} " and all(movie.is_name(word) for word in name.split())
 
     def is_already_in(self, translation: str) -> bool:
         parts = [DESCRIPTION_ARTICLE.sub("", part.strip()) for part in normalize_description(translation).split(",")]
@@ -105,22 +105,39 @@ class DescriptionTable:
 
 @dataclass(frozen=True)
 class Movie:
-    names: frozenset[str]
+    names_known: frozenset[str]
+    dialogue: tuple[str, ...]
+    names_checked: dict[str, bool] = field(default_factory=dict, compare=False)
+    entities_by_entry: dict[int, frozenset[str]] = field(default_factory=dict, compare=False)
 
     @classmethod
     @functools.cache
     def from_subs_folder(cls, subs_folder: Path) -> "Movie":
-        # the words of the names in the English subtitles of the movie: the speaker labels, and the names NER finds in the dialogue of the entries that are not in capitals only, since NER reads names from their case and reads the words of a description as names
+        # the names of the movie are the words of the speaker labels and of check-words, and the words that NER finds as names in the dialogue of the entries that are not in capitals only, since NER reads names from their case and reads the words of a description as names
         texts = [parse_plain_text(entry) for file in sorted(subs_folder.glob("*.srt")) if find_language_code(file) == "eng" for entry in parse_srt(file)]
         labels = {word for text in texts for label in SPEAKER_LABEL.finditer(text) for word in normalize_description(label[1]).split()}
-        documents = load_nlp().pipe((DESCRIPTION_SIMPLE.sub(" ", text).replace("\n", " ") for text in texts if text != text.upper()), batch_size=NLP_BATCH_SIZE)
-        entities = {word for document in documents for entity in document.ents if entity.label_ in NLP_NAME_LABELS for word in normalize_description(entity.text).split()}
         words_kept = {word for (line,) in CHECK_WORDS.parse() for word in normalize_description(line).split()}
-        return cls(names=frozenset(labels | entities | words_kept))
+        dialogue = tuple(DESCRIPTION_SIMPLE.sub(" ", text).replace("\n", " ") for text in texts if text != text.upper())
+        return cls(names_known=frozenset(labels | words_kept), dialogue=dialogue)
+
+    def is_name(self, word: str) -> bool:
+        if word in self.names_known:
+            return True
+        if word in self.names_checked:
+            return self.names_checked[word]
+
+        # NER runs only on the entries whose text has the word, each entry once, since it reads every entry on its own
+        entries = [n for n, text in enumerate(self.dialogue) if word in text.lower()]
+        entries_pending = [n for n in entries if n not in self.entities_by_entry]
+        documents = load_nlp().pipe((self.dialogue[n] for n in entries_pending), batch_size=NLP_BATCH_SIZE)
+        for n, document in zip(entries_pending, documents):
+            self.entities_by_entry[n] = frozenset(entity_word for entity in document.ents if entity.label_ in NLP_NAME_LABELS for entity_word in normalize_description(entity.text).split())
+        self.names_checked[word] = any(word in self.entities_by_entry[n] for n in entries)
+        return self.names_checked[word]
 
     def has_names_only(self, description: str) -> bool:
         words = normalize_description(description).split()
-        return bool(words) and all(word in self.names for word in words)
+        return bool(words) and all(self.is_name(word) for word in words)
 
 
 @functools.cache
