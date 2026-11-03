@@ -18,18 +18,13 @@ runs:
     uv run bench.py runs
 
 [group('run')]
-[doc('Translate, fix and check run with llama server already started')]
-bench run: (translate run) (fix run) (check run)
+[doc('Translate, check and score run with llama server already started')]
+bench run: (translate run) (check run) score
 
 [group('run')]
 [doc('Translate sources with run')]
 translate run: sources
     uv run bench.py translate {{run}}
-
-[group('run')]
-[doc('Fix translations of run')]
-fix run:
-    uv run bench.py fix {{run}}
 
 [group('run')]
 [doc('Check translations of run')]

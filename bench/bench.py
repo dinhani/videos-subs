@@ -48,7 +48,6 @@ ENGLISH_DIR = BENCH_DIR / "1-english"
 REFERENCES_DIR = BENCH_DIR / "2-references"
 RUNS_DIR = BENCH_DIR / "3-runs"
 COMPARE_DIR = BENCH_DIR / "4-compare"
-BACKUPS_FOLDER = "_backups"
 SCORES_FOLDER = "_scores"
 TIMINGS_FILE = "timings.json"
 SCORE_JOBS_FILE = "score-jobs.json"
@@ -351,7 +350,6 @@ class Run:
         if not all(translation.translation.exists() for translation in self.find_translations()):
             with self.model.serving(log=self.dir / LLAMA_LOG_FILE):
                 self.translate()
-        self.fix()
         self.check()
         self.score()
 
@@ -373,9 +371,6 @@ class Run:
             self.translation.translate(translation.english, translation.translation)
             timings[translation.translation.name] = round(time.perf_counter() - started)
             write_text_replacing(timings_file, json.dumps(timings, ensure_ascii=False, indent=2))
-
-    def fix(self) -> None:
-        subprocess.run([sys.executable, str(SRC_DIR / "7-fix-translations.py"), "--yes", "--backups", str(self.dir / BACKUPS_FOLDER), str(self.dir)], check=True)
 
     def check(self) -> None:
         subprocess.run([sys.executable, str(SRC_DIR / "8-check-translations.py"), str(self.dir)], check=True)
@@ -444,8 +439,6 @@ if __name__ == "__main__":
     command_serve.add_argument("model", choices=models)
     command_translate = commands.add_parser("translate", help="translate the sources with a run")
     command_translate.add_argument("run", choices=runs)
-    command_fix = commands.add_parser("fix", help="fix the translations of a run")
-    command_fix.add_argument("run", choices=runs)
     command_check = commands.add_parser("check", help="check the translations of a run")
     command_check.add_argument("run", choices=runs)
     commands.add_parser("score", help="score every translation, and the claude references, against the references")
@@ -497,9 +490,6 @@ if __name__ == "__main__":
 
         case "translate":
             runs[arguments.run].translate()
-
-        case "fix":
-            runs[arguments.run].fix()
 
         case "check":
             runs[arguments.run].check()
