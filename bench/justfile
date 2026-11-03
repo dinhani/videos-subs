@@ -37,6 +37,11 @@ check run:
     uv run bench.py check {{run}}
 
 [group('run')]
+[doc('Score translations and Claude references against references')]
+score:
+    uv run bench.py score
+
+[group('run')]
 [doc('Show scores, issues and times of all runs')]
 report:
     uv run bench.py report
