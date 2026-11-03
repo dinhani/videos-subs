@@ -401,7 +401,7 @@ if __name__ == "__main__":
                 answer = ""
                 while answer not in ("y", "n"):
                     answer = readchar.readkey().lower().replace(readchar.key.ENTER, "n")
-                console.print(answer)
+                console.clear()
                 if answer == "n":
                     log_action("declined", Color.YELLOW, sub.name)
                     continue
