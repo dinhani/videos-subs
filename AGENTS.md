@@ -101,4 +101,4 @@ All code is in `src`: the pipeline scripts, `crosscheck-subs.py`, `shared` and `
 
 - Never tell the user that files written before a change, such as reports, traces or translations, keep the old format or the old results. The user knows.
 - Never hand translation content or data lists (`data/*.txt`, translations, reports) to the user to review. Judging them against the purpose this file states is the agent's job: review them, decide, and fix them.
-- The user runs the bench (`just bench all`, `just bench score`); the agent never starts it.
+- The user runs the bench (`just bench run`, `just bench score`); the agent never starts it.

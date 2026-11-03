@@ -22,6 +22,7 @@ from enum import StrEnum
 from pathlib import Path
 
 import httpx
+import questionary
 import srt
 from rich.progress import MofNCompleteColumn, TimeElapsedColumn, TimeRemainingColumn
 from rich.table import Table
@@ -608,7 +609,9 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Benchmarks translation models on the same English sources.")
     commands = parser.add_subparsers(dest="command", required=True)
-    commands.add_parser("all", help="copy the sources and translate every run not translated yet, each with its own llama server; checks and scores are left to score")
+    command_run = commands.add_parser("run", help="copy the sources and translate every run not translated yet, each with its own llama server; checks and scores are left to score")
+    command_run.add_argument("runs", nargs="*", help=f"runs to translate: {', '.join(runs)} (default: all)")
+    command_run.add_argument("--pick", action="store_true", help="pick the runs to translate from a list")
     commands.add_parser("score", help="check and score every translation not checked or scored yet, without translating")
     commands.add_parser("runs", help="list the runs and what each one has done")
     command_download = commands.add_parser("download", help="download models from Hugging Face")
@@ -618,7 +621,22 @@ if __name__ == "__main__":
     arguments = parser.parse_args()
 
     match arguments.command:
-        case "all":
+        case "run":
+            if unknown := set(arguments.runs) - set(runs):
+                parser.error(f"unknown runs: {', '.join(sorted(unknown))}")
+            runs_selected = [runs[name] for name in arguments.runs] or list(RUNS)
+            if arguments.pick:
+                picked = questionary.checkbox(
+                    "Runs to translate",
+                    choices=[
+                        questionary.Choice(title=run.name, value=run.name, disabled="translated" if run.is_translated() else "not downloaded" if not run.model.is_downloaded() else None)
+                        for run in runs_selected
+                    ],
+                ).ask()
+                if not picked:
+                    raise SystemExit(0)
+                runs_selected = [runs[name] for name in picked]
+
             for library_file, snapshot in [(english, ENGLISH_DIR / english.parent.parent.name / english.name) for english in SOURCES] + [(official, Source(english=ENGLISH_DIR / english.parent.parent.name / english.name).reference_official.file) for english, official in OFFICIAL_REFERENCES.items()]:
                 if not snapshot.exists():
                     snapshot.parent.mkdir(parents=True, exist_ok=True)
@@ -626,7 +644,7 @@ if __name__ == "__main__":
                     log_action("copy", Color.GREEN, snapshot.name)
 
             batch = Batch()
-            for run in RUNS:
+            for run in runs_selected:
                 if run.is_translated():
                     log_action("translated", Color.BLUE, run.name)
                     continue

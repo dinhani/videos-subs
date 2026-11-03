@@ -8,9 +8,9 @@ default:
     @just --list --unsorted
 
 [group('run')]
-[doc('Translate every run not translated yet, each with its own llama server')]
-all:
-    uv run bench.py all
+[doc('Translate runs not translated yet; pass run names or --pick')]
+run *arguments:
+    uv run bench.py run {{arguments}}
 
 [group('run')]
 [doc('Check and score translations not checked or scored yet, without translating')]
