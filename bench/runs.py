@@ -18,7 +18,7 @@ import srt
 
 from models import LlamaModel, NmtModel
 from shared.console import Action
-from shared.files import SUBS_FOLDER, SubtitleFile, parse_srt, write_text_replacing
+from shared.files import SUBS_FOLDER, SubtitleFile, SubtitleFormat, move_replacing, parse_srt, write_text_replacing
 from shared.subtitles import parse_plain_text, replace_text
 
 BENCH_DIR = Path(__file__).parent
@@ -273,16 +273,25 @@ class RunTranslation:
         if self.source.nfo.exists() and not nfo.exists():
             shutil.copy2(self.source.nfo, nfo)
 
-    def replace_with(self, retranslation: "RunTranslation") -> None:
-        retranslation.translation.replace(self.translation)
+    def to_retranslation(self) -> "RunTranslation":
+        return RunTranslation(run_dir=self.run_dir / RETRANSLATION_FOLDER, source=self.source)
+
+    def replace_with(self, retranslation: "RunTranslation", seconds: int) -> None:
         trace = SubtitleFile.from_path(retranslation.translation).to_trace()
+        trace_old = SubtitleFile.from_path(self.translation).to_trace()
         if trace.exists():
-            trace_old = SubtitleFile.from_path(self.translation).to_trace()
             trace_old.parent.mkdir(exist_ok=True)
-            trace.replace(trace_old)
+            move_replacing(trace, trace_old)
+        else:
+            trace_old.unlink(missing_ok=True)
         for file in (self.report, *(self.to_score(reference) for reference in self.source.find_references())):
             file.unlink(missing_ok=True)
-        shutil.rmtree(retranslation.run_dir)
+        Timings.from_file(self.run_dir / TIMINGS_FILE).record(self.translation, seconds)
+        move_replacing(retranslation.translation, self.translation)
+
+        retranslation.english.unlink()
+        if not any(retranslation.run_dir.rglob(f"*{SubtitleFormat.TRANSLATION.extension}")):
+            shutil.rmtree(retranslation.run_dir)
 
     def to_score(self, reference: Reference) -> Path:
         return self.translation.parent / SCORES_FOLDER / f"{self.translation.stem}.{reference.name}.json"
@@ -334,23 +343,28 @@ class Run:
         return self.count_translated(sources) == len(sources)
 
     def translate(self, sources: Sequence[Source], existing: Existing) -> None:
-        timings = Timings.from_file(self.dir / TIMINGS_FILE)
         with self.translator.serving(log=self.dir / LLAMA_LOG_FILE):
             for source in sources:
                 translation = self.get_translation(source)
                 if translation.is_translated() and existing is Existing.KEEP:
                     Action.EXISTS.log(f"{self.name}: {translation.translation.name}")
                     continue
-                Action.TRANSLATE.log(f"{self.name}: {translation.translation.name}")
-                target = RunTranslation(run_dir=self.dir / RETRANSLATION_FOLDER, source=source) if translation.is_translated() else translation
-                target.copy_english()
+                target = translation.to_retranslation() if translation.is_translated() else translation
 
-                started = time.perf_counter()
-                self.translator.translate(target.english, target.translation)
-                seconds = round(time.perf_counter() - started)
+                seconds = target.find_seconds() if target.is_translated() else None
+                if seconds is None:
+                    Action.TRANSLATE.log(f"{self.name}: {translation.translation.name}")
+                    target.translation.unlink(missing_ok=True)
+                    target.copy_english()
+                    started = time.perf_counter()
+                    self.translator.translate(target.english, target.translation)
+                    seconds = round(time.perf_counter() - started)
+                    Timings.from_file(target.run_dir / TIMINGS_FILE).record(target.translation, seconds)
+                else:
+                    Action.EXISTS.log(f"{self.name}: {target.translation.name} translated in {RETRANSLATION_FOLDER}")
+
                 if target != translation:
-                    translation.replace_with(target)
-                timings.record(translation.translation, seconds)
+                    translation.replace_with(target, seconds)
 
     def find_unchecked(self, sources: Sequence[Source]) -> list[Path]:
         return [translation.translation for source in sources if (translation := self.get_translation(source)).is_translated() and not translation.is_checked()]
