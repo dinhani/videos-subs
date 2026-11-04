@@ -54,11 +54,14 @@ if __name__ == "__main__":
             runs_selected = [runs[name] for name in arguments.runs] or list(RUNS)
             if arguments.pick:
                 name_width = max(len(run.name) for run in runs_selected)
-                choices = [run.to_choice(SOURCES, name_width) for run in sorted(runs_selected, key=lambda run: (run.is_translated(SOURCES), run.name))]
-                if all(choice.disabled for choice in choices):
+                runs_sorted = sorted(runs_selected, key=lambda run: run.name)
+                choices_untranslated = [run.to_choice(SOURCES, name_width) for run in runs_sorted if not run.is_translated(SOURCES)]
+                choices_translated = [run.to_choice(SOURCES, name_width) for run in runs_sorted if run.is_translated(SOURCES)]
+                if all(choice.disabled for choice in [*choices_untranslated, *choices_translated]):
                     Action.SKIP.log("no run has its model downloaded")
                     raise SystemExit(0)
-                picked = questionary.checkbox("Runs to translate (space checks, enter starts)", choices=choices).ask()
+                separator = [questionary.Separator()] if choices_untranslated and choices_translated else []
+                picked = questionary.checkbox("Runs to translate (space checks, enter starts)", choices=[*choices_untranslated, *separator, *choices_translated]).ask()
                 if not picked:
                     raise SystemExit(0)
                 runs_selected = [runs[name] for name in picked]
