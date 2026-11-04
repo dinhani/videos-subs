@@ -13,13 +13,9 @@ default:
     @just --list --unsorted
 
 [group('project')]
-[doc('Install dependencies')]
-setup: dictionary
+[doc('Install dependencies and Brazilian Portuguese dictionary')]
+setup:
     uv sync
-
-[group('project')]
-[doc('Download Brazilian Portuguese dictionary')]
-dictionary:
     New-Item -ItemType Directory -Force -Path '{{dictionary_dir}}' | Out-Null
     Invoke-WebRequest -Uri https://raw.githubusercontent.com/LibreOffice/dictionaries/master/pt_BR/pt_BR.dic -OutFile '{{dictionary_dir}}/pt_BR.dic'
     Invoke-WebRequest -Uri https://raw.githubusercontent.com/LibreOffice/dictionaries/master/pt_BR/pt_BR.aff -OutFile '{{dictionary_dir}}/pt_BR.aff'
