@@ -6,6 +6,7 @@
 import argparse
 import json
 import re
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from xml.etree import ElementTree
@@ -17,7 +18,7 @@ from shared.console import Action, Batch, track
 from shared.files import SubtitleFile, SubtitleFormat, find_subtitles, parse_srt, write_text_replacing
 from shared.languages import WORD, parse_words
 from shared.llm import JsonReply, Trace, connect_llama
-from shared.subtitles import LANGUAGE_SOURCE, replace_text
+from shared.subtitles import LANGUAGE_SOURCE, parse_lines, replace_text
 
 # ------------------------------------------------------------------------------
 # Constants
@@ -143,17 +144,17 @@ class MovieInfo:
 @dataclass
 class SubtitleTranslation:
     entries: list[srt.Subtitle]
-    lines: list[list[str]]
+    lines: list[tuple[str, ...]]
     pending: list[int]
     trace: Trace
     temperatures: tuple[float, ...]
     prompt: str
     llama: OpenAI
-    translated: dict[int, list[str]] = field(default_factory=dict)
+    translated: dict[int, Sequence[str]] = field(default_factory=dict)
 
     @classmethod
     def from_entries(cls, entries: list[srt.Subtitle], trace: Trace, temperatures: tuple[float, ...], prompt: str, llama: OpenAI) -> "SubtitleTranslation":
-        lines = [[" ".join(line.split()) for line in entry.content.split("\n") if line.strip()] for entry in entries]
+        lines = [parse_lines(entry) for entry in entries]
         return cls(entries=entries, lines=lines, pending=[i for i, entry_lines in enumerate(lines) if entry_lines], trace=trace, temperatures=temperatures, prompt=prompt, llama=llama)
 
     def translate(self, start: int, end: int, splits: int = 0) -> None:

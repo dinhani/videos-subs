@@ -21,7 +21,7 @@ from shared.data_lists import FIX_SOUNDS, FIX_SUBJECTS, FIX_WORDS, DataList
 from shared.descriptions import DESCRIPTION_SIMPLE, DescriptionTable, MovieNames
 from shared.files import Backups, SubtitleFile, SubtitleFormat, find_subtitles, parse_srt, write_text_replacing
 from shared.languages import WORD
-from shared.subtitles import BRACKETS, FORMATTING_TAGS, LANGUAGE_TRANSLATION, QUOTES, replace_text
+from shared.subtitles import BRACKETS, FORMATTING_TAGS, LANGUAGE_TRANSLATION, QUOTES, parse_lines, replace_text
 
 # ------------------------------------------------------------------------------
 # Constants
@@ -276,7 +276,7 @@ class TranslationEntry:
 
     @classmethod
     def from_entries(cls, source: srt.Subtitle, target: srt.Subtitle) -> "TranslationEntry":
-        return cls(source_lines=tuple(" ".join(line.split()) for line in source.content.split("\n") if line.strip()), target_lines=tuple(target.content.split("\n")))
+        return cls(source_lines=parse_lines(source), target_lines=tuple(target.content.split("\n")))
 
     @property
     def is_aligned(self) -> bool:

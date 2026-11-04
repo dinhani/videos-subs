@@ -1,7 +1,7 @@
 import itertools
 import re
 from collections import Counter
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
@@ -60,6 +60,15 @@ class IssueKind(Enum):
 
     def is_ignored_in(self, entry: srt.Subtitle) -> bool:
         return self.marker in IgnoreMarker.from_entry(entry).kinds
+
+
+def quote_entries(entries: Sequence[tuple[int, Sequence[str]]], i: int, context: int) -> tuple[str, ...]:
+    quote: list[str] = []
+    for j in range(max(0, i - context), min(len(entries), i + context + 1)):
+        index, lines = entries[j]
+        mark = ">>" if j == i else "  "
+        quote += [f"{mark} {str(index) if n == 0 else '':>4}  {line}" for n, line in enumerate(lines)]
+    return tuple(quote)
 
 
 def log_ranking(scores: list["ReportScore"]) -> None:

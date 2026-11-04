@@ -20,7 +20,7 @@ from PIL import ImageFont, ImageOps
 from shared.console import Action, Batch, cancel_on_interrupt
 from shared.files import SubtitleFile, SubtitleFormat, find_subtitles, parse_srt
 from shared.image_subtitles import SubtitleEntry, parse_image_subtitle
-from shared.reports import CHECK_WORKERS, Issue, IssueKind, Report, ReportScore, log_ranking
+from shared.reports import CHECK_WORKERS, Issue, IssueKind, Report, ReportScore, log_ranking, quote_entries
 from shared.subtitles import LANGUAGE_SOURCE, OCR_FAILED_TEXT, parse_plain_text
 
 # ------------------------------------------------------------------------------
@@ -266,12 +266,7 @@ class OcrCheck:
         return cls(subtitle=subtitle.path, entries=[OcrEntry.from_entries(text, entry) for text, entry in zip(texts, images)])
 
     def quote(self, entry: "OcrEntry") -> tuple[str, ...]:
-        i = self.entries.index(entry)
-        quote: list[str] = []
-        for j in range(max(0, i - QUOTE_CONTEXT_ENTRIES), min(len(self.entries), i + QUOTE_CONTEXT_ENTRIES + 1)):
-            mark = ">>" if j == i else "  "
-            quote += [f"{mark} {str(self.entries[j].subtitle.index) if n == 0 else '':>4}  {line}" for n, line in enumerate(self.entries[j].subtitle.content.split("\n"))]
-        return tuple(quote)
+        return quote_entries([(entry_listed.subtitle.index, entry_listed.subtitle.content.split("\n")) for entry_listed in self.entries], self.entries.index(entry), QUOTE_CONTEXT_ENTRIES)
 
     def to_report(self) -> Report:
         issues: list[Issue] = []

@@ -25,6 +25,22 @@ class DataListFormat(Enum):
         self.shape = shape
         self.fields = fields
 
+    def ensure_valid(self, item: str) -> None:
+        if not item or item != " ".join(item.split()):
+            raise ValueError(f"not a trimmed text: {item!r}")
+        parts = item.split(SEPARATOR)
+        if len(parts) != self.fields or not all(parts):
+            raise ValueError(f"not a '{self.shape}' item: {item!r}")
+        match self:
+            case DataListFormat.WORD if " " in item:
+                raise ValueError(f"not a single word: {item!r}")
+            case DataListFormat.EXPRESSION if " " not in item:
+                raise ValueError(f"not an expression of several words: {item!r}")
+            case DataListFormat.TRIPLE if " " in parts[1]:
+                raise ValueError(f"the misspelled word is not a single word: {item!r}")
+            case DataListFormat.TRIPLE if load_dictionary(DICTIONARY_HUNSPELL).lookup(parts[1]):
+                raise ValueError(f"the misspelled word is a Brazilian Portuguese word: {item!r}")
+
 
 @dataclass(frozen=True)
 class DataList:
@@ -50,30 +66,11 @@ class DataList:
     def parse_key(self, item: str) -> str:
         return SEPARATOR.join(item.split(SEPARATOR)[:-1]) if self.format.fields > 1 else item
 
-    def ensure_valid(self, item: str) -> None:
-        if not item or item != " ".join(item.split()):
-            raise ValueError(f"not a trimmed text: {item!r}")
-        parts = item.split(SEPARATOR)
-        if len(parts) != self.format.fields or not all(parts):
-            raise ValueError(f"not a '{self.format.shape}' item: {item!r}")
-        if self.format == DataListFormat.WORD and " " in item:
-            raise ValueError(f"not a single word: {item!r}")
-        if self.format == DataListFormat.EXPRESSION and " " not in item:
-            raise ValueError(f"not an expression of several words: {item!r}")
-        if self.format != DataListFormat.TRIPLE:
-            return
-
-        misspelled = parts[1]
-        if " " in misspelled:
-            raise ValueError(f"the misspelled word is not a single word: {item!r}")
-        if load_dictionary(DICTIONARY_HUNSPELL).lookup(misspelled):
-            raise ValueError(f"the misspelled word is a Brazilian Portuguese word: {item!r}")
-
     def add(self, items: list[str]) -> dict[str, bool]:
         # check every item before writing; an item whose key is listed with another value is an error
         items = list(dict.fromkeys(" ".join(item.lower().split()) for item in items))
         for item in items:
-            self.ensure_valid(item)
+            self.format.ensure_valid(item)
         items_listed = self.file.read_text(encoding="utf-8").splitlines()
         values_listed = {self.parse_key(item): item for item in items_listed}
         for item in items:

@@ -14,7 +14,7 @@ def data_list(tmp_path: Path, format: DataListFormat, *lines: str) -> DataList:
 @pytest.mark.parametrize("data_list_real", DATA_LISTS, ids=lambda data_list: data_list.name)
 def test_real_lists_parse(data_list_real: DataList) -> None:
     for item in data_list_real.parse():
-        data_list_real.ensure_valid(" = ".join(item))
+        data_list_real.format.ensure_valid(" = ".join(item))
 
 
 @pytest.mark.parametrize(("format", "item"), [
@@ -27,9 +27,9 @@ def test_real_lists_parse(data_list_real: DataList) -> None:
     (DataListFormat.TRIPLE, "maybe = tal ve = talvez"),
     (DataListFormat.TRIPLE, "maybe = casa = talvez"),
 ])
-def test_ensure_valid_refuses(tmp_path: Path, format: DataListFormat, item: str) -> None:
+def test_ensure_valid_refuses(format: DataListFormat, item: str) -> None:
     with pytest.raises(ValueError):
-        data_list(tmp_path, format).ensure_valid(item)
+        format.ensure_valid(item)
 
 
 def test_add_sorts_without_accents_and_lowercases(tmp_path: Path) -> None:

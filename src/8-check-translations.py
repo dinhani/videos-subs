@@ -24,7 +24,7 @@ from shared.data_lists import CHECK_EXPRESSIONS, CHECK_WORDS, DICTIONARY_HUNSPEL
 from shared.files import SubtitleFile, SubtitleFormat, find_subtitles, parse_srt
 from shared.languages import WORDS_PT_PT, TextLanguage, parse_words
 from shared.llm import Trace
-from shared.reports import CHECK_WORKERS, Issue, IssueKind, Report, ReportScore, log_ranking
+from shared.reports import CHECK_WORKERS, Issue, IssueKind, Report, ReportScore, log_ranking, quote_entries
 from shared.subtitles import BRACKETS, FORMATTING_TAGS, LANGUAGE_TRANSLATION, parse_plain_text
 
 # ------------------------------------------------------------------------------
@@ -158,11 +158,15 @@ class GrammarRule:
 
 
 class WordCase(Enum):
-    CAPS = "caps"
-    OTHER = "other"
+    CAPS = (True, IssueKind.UNKNOWN_WORD_CAPS)
+    OTHER = (False, IssueKind.UNKNOWN_WORD)
+
+    def __init__(self, upper: bool, issue_kind: IssueKind) -> None:
+        self.upper = upper
+        self.issue_kind = issue_kind
 
     def matches(self, word: str) -> bool:
-        return word.isupper() == (self == WordCase.CAPS)
+        return word.isupper() == self.upper
 
 
 @dataclass(frozen=True)
@@ -176,7 +180,7 @@ class UnknownWordRule:
 
     @property
     def kind(self) -> IssueKind:
-        return IssueKind.UNKNOWN_WORD_CAPS if self.case == WordCase.CAPS else IssueKind.UNKNOWN_WORD
+        return self.case.issue_kind
 
     def find_issues(self, check: "TranslationCheck") -> Iterator[tuple[int, str]]:
         dictionary_hunspell = load_dictionary(self.dictionary_hunspell)
@@ -309,11 +313,7 @@ class TranslationCheck:
         return connect_languagetool(self.languagetool_server, LANGUAGETOOL_RULES).check(self.target_text)
 
     def quote(self, i: int) -> tuple[str, ...]:
-        quote: list[str] = []
-        for j in range(max(0, i - QUOTE_CONTEXT_ENTRIES), min(len(self.entries), i + QUOTE_CONTEXT_ENTRIES + 1)):
-            mark = ">>" if j == i else "  "
-            quote += [f"{mark} {str(self.entries[j].target.index) if n == 0 else '':>4}  {line}" for n, line in enumerate(self.entries[j].quote)]
-        return tuple(quote)
+        return quote_entries([(entry.target.index, entry.quote) for entry in self.entries], i, QUOTE_CONTEXT_ENTRIES)
 
     def to_report(self) -> Report:
         issues: list[Issue] = []

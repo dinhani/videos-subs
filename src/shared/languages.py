@@ -51,10 +51,6 @@ class TextLanguage(Enum):
         self.code = code
         self.wordfreq_code = wordfreq_code
 
-    @property
-    def counterpart(self) -> "TextLanguage":
-        return TextLanguage.PORTUGUESE_BRAZIL if self == TextLanguage.ENGLISH else TextLanguage.ENGLISH
-
     @functools.cache
     def measure_frequency(self, word: str) -> float:
         word = word.lower()

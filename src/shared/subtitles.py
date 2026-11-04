@@ -66,5 +66,9 @@ def replace_text(entry: srt.Subtitle, content: str) -> srt.Subtitle:
     return srt.Subtitle(index=entry.index, start=entry.start, end=entry.end, content=content, proprietary=IGNORE_MARKER.sub("", entry.proprietary or "").strip())
 
 
+def parse_lines(entry: srt.Subtitle) -> tuple[str, ...]:
+    return tuple(" ".join(line.split()) for line in entry.content.split("\n") if line.strip())
+
+
 def parse_plain_text(entry: srt.Subtitle) -> str:
     return "\n".join(" ".join(line.split()) for line in FORMATTING_TAGS.sub("", entry.content).split("\n") if line.strip())
