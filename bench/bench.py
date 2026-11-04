@@ -129,6 +129,7 @@ if __name__ == "__main__":
             runs_selected = tuple(runs[name] for name in arguments.runs) or RUNS
             COMPARE_DIR.mkdir(exist_ok=True)
             for source in SOURCES:
+                source.copy_from_library()
                 comparison = Comparison.from_runs(source, runs_selected)
                 compare = COMPARE_DIR / f"{source.name}.txt"
                 write_text_replacing(compare, comparison.text)
