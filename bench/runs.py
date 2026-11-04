@@ -267,6 +267,10 @@ class RunTranslation:
         if self.source.nfo.exists() and not nfo.exists():
             shutil.copy2(self.source.nfo, nfo)
 
+    def discard(self) -> None:
+        for file in (self.translation, self.report, *(self.to_score(reference) for reference in self.source.find_references())):
+            file.unlink(missing_ok=True)
+
     def to_score(self, reference: Reference) -> Path:
         return self.translation.parent / SCORES_FOLDER / f"{self.translation.stem}.{reference.name}.json"
 
@@ -316,6 +320,13 @@ class Run:
     def is_translated(self, sources: Sequence[Source]) -> bool:
         return self.count_translated(sources) == len(sources)
 
+    def discard(self, sources: Sequence[Source]) -> None:
+        for source in sources:
+            translation = self.get_translation(source)
+            if translation.is_translated():
+                Action.DISCARD.log(f"{self.name}: {translation.translation.name}")
+            translation.discard()
+
     def translate(self, sources: Sequence[Source]) -> None:
         timings = Timings.from_file(self.dir / TIMINGS_FILE)
         with self.translator.serving(log=self.dir / LLAMA_LOG_FILE):
@@ -340,7 +351,7 @@ class Run:
     def to_choice(self, sources: Sequence[Source], name_width: int) -> questionary.Choice:
         size = self.model.find_bytes()
         title = f"{self.name:<{name_width}}  {self.translator.mode:<8}  {f'{size / 1e9:.1f} GB' if size else '-':>8}  translated {self.count_translated(sources)}/{len(sources)}"
-        disabled = "translated" if self.is_translated(sources) else "not downloaded" if not self.model.is_downloaded() else None
+        disabled = "not downloaded" if not self.model.is_downloaded() else None
         return questionary.Choice(title=title, value=self.name, disabled=disabled)
 
     def to_status_row(self, sources: Sequence[Source]) -> tuple[str, ...]:

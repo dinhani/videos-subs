@@ -37,6 +37,7 @@ if __name__ == "__main__":
     command_run.add_argument("runs", nargs="*", help=f"runs to translate: {', '.join(runs)} (default: all)")
     command_run.add_argument("--pick", action="store_true", help="pick the runs to translate from a list")
     command_run.add_argument("--movie", default="", help="translate only the sources whose title contains this text, such as fall (default: all)")
+    command_run.add_argument("--force", action="store_true", help="discard the translations, reports and scores of the runs and translate again")
     commands.add_parser("score", help="check and score every translation not checked or scored yet, without translating")
     commands.add_parser("runs", help="list the runs and what each one has done")
     command_download = commands.add_parser("download", help="download models from Hugging Face")
@@ -55,7 +56,7 @@ if __name__ == "__main__":
                 name_width = max(len(run.name) for run in runs_selected)
                 choices = [run.to_choice(SOURCES, name_width) for run in sorted(runs_selected, key=lambda run: (run.is_translated(SOURCES), run.name))]
                 if all(choice.disabled for choice in choices):
-                    Action.SKIP.log("every run is translated or not downloaded")
+                    Action.SKIP.log("no run has its model downloaded")
                     raise SystemExit(0)
                 picked = questionary.checkbox("Runs to translate (space checks, enter starts)", choices=choices).ask()
                 if not picked:
@@ -70,7 +71,9 @@ if __name__ == "__main__":
 
             with Batch() as batch:
                 for run in runs_selected:
-                    if run.is_translated(sources):
+                    if arguments.force:
+                        run.discard(sources)
+                    elif run.is_translated(sources):
                         Action.EXISTS.log(run.name)
                         continue
                     Action.TRANSLATE.log(run.name)
