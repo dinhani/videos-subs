@@ -139,7 +139,6 @@ llama-translate:
 test *args:
     uv run pytest @args
     exit $LASTEXITCODE
-alias tests := test
 
 [group('data')]
 [doc('Delete OCR reports')]
