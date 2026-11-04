@@ -28,6 +28,9 @@ class SubtitleKind(StrEnum):
     BASE = ""
     SDH = ".sdh"
 
+    def is_sdh(self) -> bool:
+        return self == SubtitleKind.SDH
+
     @classmethod
     def from_texts(cls, texts: list[str]) -> "SubtitleKind":
         texts = [FORMATTING_TAGS.sub("", text) for text in texts]

@@ -17,7 +17,7 @@ import questionary
 import srt
 
 from models import LlamaModel, NmtModel
-from shared.console import Color, log_action
+from shared.console import Action
 from shared.files import SUBS_FOLDER, SubtitleFile, parse_srt, write_text_replacing
 from shared.subtitles import parse_plain_text, replace_text
 
@@ -92,7 +92,7 @@ class NmtTranslator:
         trace.parent.mkdir(exist_ok=True)
         write_text_replacing(trace, json.dumps(records, ensure_ascii=False, indent=2))
         write_text_replacing(translation, srt.compose(translated_entries, reindex=False))
-        log_action("resplit", Color.YELLOW, f"{sum(record['resplit'] for record in records)} entries replied with another line count")
+        Action.RESPLIT.log(f"{sum(record['resplit'] for record in records)} entries replied with another line count")
 
 
 class ReferenceName(StrEnum):
@@ -125,7 +125,7 @@ class Source:
 
     @property
     def library_nfo(self) -> Path:
-        return self.library_english.parent.parent / f"{SubtitleFile.from_path(self.library_english).video_name}.nfo"
+        return SubtitleFile.from_path(self.library_english).nfo
 
     @property
     def nfo(self) -> Path:
@@ -153,7 +153,7 @@ class Source:
                 continue
             copy.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(library_file, copy)
-            log_action("copy", Color.GREEN, copy.name)
+            Action.COPY.log(copy.name)
 
     def find_references(self) -> list[Reference]:
         return [reference for reference in (self.reference_claude, self.reference_official) if reference.file.exists()]
@@ -215,7 +215,7 @@ class Scoring:
                 "mt": " ".join(to_plain_line(hypothesis[entry.index]) for entry in english if entry.index in hypothesis),
                 "ref": " ".join(to_plain_line(entry) for entry in reference),
             })
-        log_action("align", Color.GREEN, f"{self.hypothesis.name} with {self.reference.name}: {len(segments)} segments, offset {offset.total_seconds():.2f}s")
+        Action.ALIGN.log(f"{self.hypothesis.name} with {self.reference.name}: {len(segments)} segments, offset {offset.total_seconds():.2f}s")
         return {"output": str(self.output), "segments": segments}
 
 
@@ -322,9 +322,9 @@ class Run:
             for source in sources:
                 translation = self.get_translation(source)
                 if translation.is_translated():
-                    log_action("exists", Color.BLUE, f"{self.name}: {translation.translation.name}")
+                    Action.EXISTS.log(f"{self.name}: {translation.translation.name}")
                     continue
-                log_action("translate", Color.GREEN, f"{self.name}: {translation.translation.name}")
+                Action.TRANSLATE.log(f"{self.name}: {translation.translation.name}")
                 translation.copy_english()
 
                 started = time.perf_counter()

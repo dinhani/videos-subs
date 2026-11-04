@@ -4,7 +4,6 @@
 # Libraries
 # ------------------------------------------------------------------------------
 import argparse
-import itertools
 import re
 import statistics
 from collections import Counter, defaultdict
@@ -17,10 +16,9 @@ from typing import ClassVar
 
 import srt
 from PIL import ImageFont, ImageOps
-from rich.progress import MofNCompleteColumn, TimeElapsedColumn, TimeRemainingColumn
 
-from shared.console import Batch, Color, log_action, progress_bar
-from shared.files import SUBS_FOLDER, SubtitleFile, SubtitleFormat, find_files, parse_movie_dir, parse_srt
+from shared.console import Action, Batch, cancel_on_interrupt
+from shared.files import SubtitleFile, SubtitleFormat, find_subtitles, parse_srt
 from shared.image_subtitles import SubtitleEntry, parse_image_subtitle
 from shared.reports import CHECK_WORKERS, Issue, IssueKind, Report, ReportScore, log_ranking
 from shared.subtitles import LANGUAGE_SOURCE, OCR_FAILED_TEXT, parse_plain_text
@@ -251,12 +249,12 @@ class OcrCheck:
     entries: list[OcrEntry]
 
     @classmethod
-    def from_file(cls, subtitle: Path) -> "OcrCheck":
-        image_file = SubtitleFile.from_path(subtitle).find_image_subtitle()
+    def from_file(cls, subtitle: SubtitleFile) -> "OcrCheck":
+        image_file = subtitle.find_image_subtitle()
         if image_file is None:
             raise FileNotFoundError(f"image subtitle not found next to {subtitle.name}")
         image = image_file.path
-        texts = parse_srt(subtitle)
+        texts = parse_srt(subtitle.path)
 
         # srt drops entries without duration when it writes a subtitle, so they are dropped here too
         images = [entry for entry in parse_image_subtitle(image) if entry.end > entry.start]
@@ -265,7 +263,7 @@ class OcrCheck:
         shifted = next((text.index for text, entry in zip(texts, images) if abs(text.start - entry.start) > ENTRY_START_TOLERANCE), None)
         if shifted is not None:
             raise ValueError(f"entry {shifted} starts at a different time than in {image.name}")
-        return cls(subtitle=subtitle, entries=[OcrEntry.from_entries(text, entry) for text, entry in zip(texts, images)])
+        return cls(subtitle=subtitle.path, entries=[OcrEntry.from_entries(text, entry) for text, entry in zip(texts, images)])
 
     def quote(self, entry: "OcrEntry") -> tuple[str, ...]:
         i = self.entries.index(entry)
@@ -288,8 +286,8 @@ def measure_em(text: str) -> float:
     return FONT.getlength(text) / FONT_SIZE
 
 
-def check_subtitle(subtitle: Path, report: Path) -> ReportScore:
-    return OcrCheck.from_file(subtitle).to_report().write(report)
+def check_subtitle(subtitle: SubtitleFile) -> ReportScore:
+    return OcrCheck.from_file(subtitle).to_report().write(subtitle.to_report())
 
 # ------------------------------------------------------------------------------
 # Execution
@@ -297,45 +295,25 @@ def check_subtitle(subtitle: Path, report: Path) -> ReportScore:
 if __name__ == "__main__":
     subs = [
         sub
-        for sub in find_files(argparse.ArgumentParser(description="Checks text subtitles made by OCR against their image subtitles; only ones next to an image subtitle, folders only English ones."), extensions_file=(".srt",), extensions_folder=SubtitleFormat.TEXT.to_suffixes(LANGUAGE_SOURCE), folder=SUBS_FOLDER)
-        if SubtitleFile.from_path(sub).find_image_subtitle() is not None
+        for sub in find_subtitles(argparse.ArgumentParser(description="Checks text subtitles made by OCR against their image subtitles; only ones next to an image subtitle, folders only English ones."), formats=(SubtitleFormat.TEXT,), language=LANGUAGE_SOURCE)
+        if sub.find_image_subtitle() is not None
     ]
-    reports = {sub: SubtitleFile.from_path(sub).to_report() for sub in subs}
-    scores_current = {sub: ReportScore.find(reports[sub]) for sub in subs}
-    batch = Batch()
-    scores = [score for score in scores_current.values() if score is not None]
+    scores_current = {sub: score for sub in subs if (score := ReportScore.find(sub.to_report())) is not None}
+    scores = list(scores_current.values())
 
-    with ProcessPoolExecutor(max_workers=CHECK_WORKERS) as executor:
+    with Batch() as batch, cancel_on_interrupt(ProcessPoolExecutor(max_workers=CHECK_WORKERS)) as executor:
         # check every sub without a report, CHECK_WORKERS at a time across movies
-        checks: dict[Path, Future[ReportScore]] = {sub: executor.submit(check_subtitle, sub, reports[sub]) for sub in subs if scores_current[sub] is None}
+        checks: dict[SubtitleFile, Future[ReportScore]] = {sub: executor.submit(check_subtitle, sub) for sub in subs if sub not in scores_current}
 
-        try:
-            for movie_dir, movie_subs in itertools.groupby(subs, key=parse_movie_dir):
-                batch.log_movie(movie_dir)
+        # report every pending sub of a movie as its check arrives, skipping subs with a report
+        for sub, check in batch.walk_ahead(subs, checks):
+            if check is None:
+                Action.EXISTS.log(scores_current[sub].describe())
+                continue
 
-                # skip subs with a report
-                movie_subs_pending: list[Path] = []
-                for sub in movie_subs:
-                    score = scores_current[sub]
-                    if score is not None:
-                        log_action("exists", Color.BLUE, score.describe())
-                        continue
-                    movie_subs_pending.append(sub)
-                if not movie_subs_pending:
-                    continue
+            with batch.attempt(sub.path):
+                score = check.result()
+                Action.CHECK.log(score.describe())
+                scores.append(score)
 
-                # report every pending sub of the movie as its check arrives, showing progress
-                with progress_bar(MofNCompleteColumn(), TimeElapsedColumn(), TimeRemainingColumn()) as progress:
-                    for sub in progress.track(movie_subs_pending):
-                        try:
-                            score = checks[sub].result()
-                            log_action("check", score.color, score.describe())
-                            scores.append(score)
-                        except Exception as error:
-                            batch.fail(sub, error)
-        except KeyboardInterrupt:
-            executor.shutdown(cancel_futures=True)
-            raise
-
-    log_ranking(scores)
-    batch.finish()
+        log_ranking(scores)

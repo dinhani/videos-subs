@@ -13,10 +13,9 @@ from dataclasses import dataclass, field
 import srt
 from openai import BaseModel
 from openai.types.chat import ChatCompletionContentPartParam
-from rich.progress import MofNCompleteColumn, TimeElapsedColumn, TimeRemainingColumn
 
-from shared.console import Batch, Color, log_action, progress_bar
-from shared.files import IMAGE_EXTENSIONS, SUBS_FOLDER, SubtitleFile, SubtitleFormat, find_files, parse_movie_dir, write_text_replacing
+from shared.console import Action, Batch, track
+from shared.files import SubtitleFormat, find_subtitles, write_text_replacing
 from shared.image_subtitles import SubtitleEntry, parse_image_subtitle
 from shared.llm import LLM_PROPS_URL, Trace, connect_llama
 from shared.subtitles import LANGUAGE_SOURCE, OCR_FAILED_TEXT
@@ -133,18 +132,18 @@ class SubtitleTranscription:
                 self.transcribed.update(transcribed)
                 return
             if attempt < LLM_ATTEMPTS:
-                log_action("retry", Color.YELLOW, f"{entries_label}: {problem} (attempt {attempt}/{LLM_ATTEMPTS})")
+                Action.RETRY.log(f"{entries_label}: {problem} (attempt {attempt}/{LLM_ATTEMPTS})")
 
         # still failing: split in halves down to single entries, then write the entry as failed
         if len(chunk) > 1:
-            log_action("split", Color.YELLOW, f"{entries_label}: failed {LLM_ATTEMPTS} attempts, splitting in halves")
+            Action.SPLIT.log(f"{entries_label}: failed {LLM_ATTEMPTS} attempts, splitting in halves")
             middle = len(chunk) // 2
             self.transcribe(chunk[:middle])
             self.transcribe(chunk[middle:])
             return
         self.transcribed[chunk[0]] = [OCR_FAILED_TEXT]
         self.trace.record_accepted_with_problem([chunk[0] + 1], problem)
-        log_action("accept", Color.YELLOW, f"entry {chunk[0] + 1} written as {OCR_FAILED_TEXT}: {problem}")
+        Action.ACCEPT.log(f"entry {chunk[0] + 1} written as {OCR_FAILED_TEXT}: {problem}")
 
     def compose(self) -> str:
         transcribed_by_image = {self.entries[i].image_key: lines for i, lines in self.transcribed.items()}
@@ -158,45 +157,37 @@ class SubtitleTranscription:
 # Execution
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
-    subs = find_files(argparse.ArgumentParser(description="Transcribes image subtitles to text subtitles with a vision LLM; folders only English ones."), extensions_file=IMAGE_EXTENSIONS, extensions_folder=SubtitleFormat.PGS.to_suffixes(LANGUAGE_SOURCE) + SubtitleFormat.VOBSUB.to_suffixes(LANGUAGE_SOURCE), folder=SUBS_FOLDER)
+    subs = find_subtitles(argparse.ArgumentParser(description="Transcribes image subtitles to text subtitles with a vision LLM; folders only English ones."), formats=(SubtitleFormat.PGS, SubtitleFormat.VOBSUB), language=LANGUAGE_SOURCE)
     llama = connect_llama()
     llama_slots = llama.get(LLM_PROPS_URL, cast_to=LlamaProps).total_slots
-    batch = Batch()
 
-    for sub in subs:
-        movie_dir = parse_movie_dir(sub)
-        batch.log_movie(movie_dir)
-
-        # skip subs already transcribed
-        sub_file = SubtitleFile.from_path(sub)
-        sub_dst = sub_file.to_format(SubtitleFormat.TEXT).path
-        if sub_dst.exists():
-            log_action("exists", Color.BLUE, sub_dst.name)
-            continue
-        log_action("ocr", Color.GREEN, sub_dst.name)
-
-        sub_trace = sub_file.to_trace()
-        try:
-            # read entries
-            sub_entries = parse_image_subtitle(sub)
-            if not sub_entries:
-                log_action("empty", Color.YELLOW, sub.name)
+    with Batch() as batch:
+        for sub in batch.walk(subs):
+            # skip subs already transcribed
+            sub_dst = sub.to_text()
+            if sub_dst.path.exists():
+                Action.EXISTS.log(sub_dst.name)
                 continue
+            Action.OCR.log(sub_dst.name)
 
-            # transcribe each distinct image once, in chunks, one per llama slot at a time, tracing every reply
-            sub_trace.parent.mkdir(exist_ok=True)
-            transcription = SubtitleTranscription(entries=sub_entries, trace=Trace(file=sub_trace))
-            entries_distinct: dict[int, int] = {}
-            for i, entry in enumerate(sub_entries):
-                entries_distinct.setdefault(entry.image_key, i)
-            with progress_bar(MofNCompleteColumn(), TimeElapsedColumn(), TimeRemainingColumn()) as progress, ThreadPoolExecutor(max_workers=llama_slots) as executor:
+            with batch.attempt(sub.path):
+                # read entries
+                sub_entries = parse_image_subtitle(sub.path)
+                if not sub_entries:
+                    Action.EMPTY.log(sub.name)
+                    continue
+
+                # transcribe each distinct image once, in chunks, one per llama slot at a time, tracing every reply
+                sub_trace = sub.to_trace()
+                sub_trace.parent.mkdir(exist_ok=True)
+                transcription = SubtitleTranscription(entries=sub_entries, trace=Trace(file=sub_trace))
+                entries_distinct: dict[int, int] = {}
+                for i, entry in enumerate(sub_entries):
+                    entries_distinct.setdefault(entry.image_key, i)
                 chunks = list(itertools.batched(entries_distinct.values(), CHUNK_SIZE))
-                for _ in progress.track(executor.map(transcription.transcribe, chunks), total=len(chunks)):
-                    pass
+                with ThreadPoolExecutor(max_workers=llama_slots) as executor:
+                    for _ in track(executor.map(transcription.transcribe, chunks), total=len(chunks)):
+                        pass
 
-            # write transcribed
-            write_text_replacing(sub_dst, transcription.compose())
-        except Exception as error:
-            batch.fail(sub, error)
-
-    batch.finish()
+                # write transcribed
+                write_text_replacing(sub_dst.path, transcription.compose())

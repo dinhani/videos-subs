@@ -30,9 +30,9 @@ def test_subtitle_file_round_trip(name: str, track: str, language: str | None, k
 def test_subtitle_file_paths_of_ocr() -> None:
     image = SubtitleFile.from_path(Path("movie") / SUBS_FOLDER / "video.embed.3.sup").to_identified("eng", SubtitleKind.SDH)
     assert image.path == Path("movie") / SUBS_FOLDER / "video.embed.3.eng.sdh.sup"
-    assert image.to_format(SubtitleFormat.TEXT).path == Path("movie") / SUBS_FOLDER / "video.embed.3.eng.sdh.srt"
+    assert image.to_text().path == Path("movie") / SUBS_FOLDER / "video.embed.3.eng.sdh.srt"
     assert image.to_trace() == Path("movie") / TRACES_FOLDER / "video.embed.3.eng.sdh.ocr.json"
-    assert image.to_format(SubtitleFormat.TEXT).to_report() == Path("movie") / CHECKS_FOLDER / "video.embed.3.eng.sdh.ocr.txt"
+    assert image.to_text().to_report() == Path("movie") / CHECKS_FOLDER / "video.embed.3.eng.sdh.ocr.txt"
 
 
 def test_subtitle_file_paths_of_translation() -> None:
@@ -42,6 +42,29 @@ def test_subtitle_file_paths_of_translation() -> None:
     assert translation.to_trace() == Path("movie") / TRACES_FOLDER / "video.embed.2.pob.sdh.translated.json"
     assert translation.to_report() == Path("movie") / CHECKS_FOLDER / "video.embed.2.pob.sdh.translated.txt"
     assert translation.video_name == "video"
+
+
+def test_subtitle_file_from_track() -> None:
+    track = SubtitleFile.from_track(Path("movie") / "video.mkv", 3, SubtitleFormat.PGS)
+    assert track.path == Path("movie") / SUBS_FOLDER / "video.embed.3.sup"
+    assert track.is_image() and not track.is_identified()
+
+
+def test_subtitle_file_movie_title_of_episode() -> None:
+    episode = SubtitleFile.from_path(Path("Show") / "Season 01" / SUBS_FOLDER / "S01E01 - Pilot (2020, Web-DL, 2160p).embed.2.eng.srt")
+    assert episode.movie_title == "Show, S01E01 - Pilot (2020)"
+    assert episode.nfo == Path("Show") / "Season 01" / "S01E01 - Pilot (2020, Web-DL, 2160p).nfo"
+
+
+def test_rename_identified_takes_ocr_output_and_trace(tmp_path: Path) -> None:
+    for folder, name in ((SUBS_FOLDER, "video.embed.3.sup"), (SUBS_FOLDER, "video.embed.3.srt"), (TRACES_FOLDER, "video.embed.3.ocr.json")):
+        (tmp_path / folder).mkdir(exist_ok=True)
+        (tmp_path / folder / name).write_text("", encoding="utf-8")
+
+    image = SubtitleFile.from_path(tmp_path / SUBS_FOLDER / "video.embed.3.sup").rename_identified("eng", SubtitleKind.SDH)
+
+    assert sorted(path.name for path in tmp_path.rglob("*") if path.is_file()) == ["video.embed.3.eng.sdh.ocr.json", "video.embed.3.eng.sdh.srt", "video.embed.3.eng.sdh.sup"]
+    assert image.is_sdh() and image.path.exists()
 
 
 def test_replace_text_drops_ignore_marker() -> None:

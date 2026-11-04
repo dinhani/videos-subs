@@ -12,10 +12,8 @@ import tempfile
 from concurrent.futures import Future, ThreadPoolExecutor
 from pathlib import Path
 
-from rich.progress import MofNCompleteColumn, TimeElapsedColumn, TimeRemainingColumn
-
-from shared.console import Batch, Color, log_action, progress_bar
-from shared.files import IMAGE_EXTENSIONS, SUBS_FOLDER, SubtitleFile, SubtitleFormat, find_files, parse_movie_dir
+from shared.console import Action, Batch, cancel_on_interrupt
+from shared.files import SubtitleFile, SubtitleFormat, find_subtitles
 from shared.image_subtitles import parse_image_subtitle
 from shared.languages import SubtitleLanguage
 from shared.subtitles import SubtitleKind
@@ -32,9 +30,9 @@ TESSERACT_WORKERS = 8
 # ------------------------------------------------------------------------------
 # OCR
 # ------------------------------------------------------------------------------
-def read_sample(sub: Path) -> list[str] | None:
+def read_sample(sub: SubtitleFile) -> list[str] | None:
     # read the first entries
-    entries = parse_image_subtitle(sub, entries_max=SAMPLE_ENTRIES)
+    entries = parse_image_subtitle(sub.path, entries_max=SAMPLE_ENTRIES)
     if not entries:
         return None
 
@@ -69,55 +67,27 @@ def read_sample(sub: Path) -> list[str] | None:
 # Execution
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
-    subs = find_files(argparse.ArgumentParser(description="Identifies the language of image subtitles (PGS .sup, DVD .mks) by reading their first entries with Tesseract, and renames each file with that language code."), extensions_file=IMAGE_EXTENSIONS, extensions_folder=IMAGE_EXTENSIONS, folder=SUBS_FOLDER)
-    batch = Batch()
+    subs = find_subtitles(argparse.ArgumentParser(description="Identifies the language of image subtitles (PGS .sup, DVD .mks) by reading their first entries with Tesseract, and renames each file with that language code."), formats=(SubtitleFormat.PGS, SubtitleFormat.VOBSUB))
 
-    with ThreadPoolExecutor(max_workers=SAMPLE_WORKERS) as executor:
+    with Batch() as batch, cancel_on_interrupt(ThreadPoolExecutor(max_workers=SAMPLE_WORKERS)) as executor:
         # read a sample of every sub not identified yet, SAMPLE_WORKERS at a time across movies
-        samples: dict[Path, Future[list[str] | None]] = {sub: executor.submit(read_sample, sub) for sub in subs if not SubtitleFile.from_path(sub).is_identified()}
+        samples: dict[SubtitleFile, Future[list[str] | None]] = {sub: executor.submit(read_sample, sub) for sub in subs if not sub.is_identified()}
 
-        try:
-            for movie_dir, movie_subs in itertools.groupby(subs, key=parse_movie_dir):
-                batch.log_movie(movie_dir)
+        # identify every pending sub of a movie as its sample arrives, skipping subs already identified
+        for sub, sample_read in batch.walk_ahead(subs, samples):
+            if sample_read is None:
+                Action.EXISTS.log(f"{sub.describe_language()} {sub.name}")
+                continue
 
-                # skip subs already identified
-                subs_pending: list[Path] = []
-                for sub in movie_subs:
-                    sub_file = SubtitleFile.from_path(sub)
-                    if sub_file.is_identified():
-                        log_action("exists", Color.BLUE, f".{sub_file.language:<3} {'':<26} {sub.name}")
-                        continue
-                    subs_pending.append(sub)
-                if not subs_pending:
+            with batch.attempt(sub.path):
+                # identify language and kind from the sample
+                sample = sample_read.result()
+                if sample is None:
+                    Action.EMPTY.log(f"{sub.describe_language()} {sub.name}")
                     continue
+                sub_language = SubtitleLanguage.from_text(" ".join(sample))
+                sub_kind = SubtitleKind.from_texts(sample)
 
-                # identify every pending sub of the movie as its sample arrives, showing progress
-                with progress_bar(MofNCompleteColumn(), TimeElapsedColumn(), TimeRemainingColumn()) as progress:
-                    for sub in progress.track(subs_pending):
-                        try:
-                            # identify language and kind from the sample
-                            sample = samples[sub].result()
-                            if sample is None:
-                                log_action("empty", Color.YELLOW, f"{'':<31} {sub.name}")
-                                continue
-                            sub_language = SubtitleLanguage.from_text(" ".join(sample))
-                            sub_kind = SubtitleKind.from_texts(sample)
-
-                            # rename file with language code and kind, with its ocr output and trace, the file itself last
-                            sub_file = SubtitleFile.from_path(sub)
-                            sub_identified = sub_file.to_identified(sub_language.code, sub_kind)
-                            for companion, companion_new in (
-                                (sub_file.to_format(SubtitleFormat.TEXT).path, sub_identified.to_format(SubtitleFormat.TEXT).path),
-                                (sub_file.to_trace(), sub_identified.to_trace()),
-                            ):
-                                if companion.exists():
-                                    companion.replace(companion_new)
-                            sub.replace(sub_identified.path)
-                            log_action("rename", Color.GREEN, f".{sub_language.code:<3}{sub_kind:<4} {sub_language.name:<22} {sub.name}")
-                        except Exception as error:
-                            batch.fail(sub, error)
-        except KeyboardInterrupt:
-            executor.shutdown(cancel_futures=True)
-            raise
-
-    batch.finish()
+                # rename file with language code and kind, with its ocr output and trace
+                sub_identified = sub.rename_identified(sub_language.code, sub_kind)
+                Action.RENAME.log(f"{sub_identified.describe_language(sub_language.name)} {sub.name}")

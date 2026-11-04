@@ -10,19 +10,18 @@ import re
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, replace
-from pathlib import Path
 from typing import ClassVar
 
 import readchar
 import srt
 from rich.text import Text
 
-from shared.console import Batch, Color, console, log_action
+from shared.console import Action, Batch, Color, console
 from shared.data_lists import FIX_SOUNDS, FIX_SUBJECTS, FIX_WORDS, DataList
 from shared.descriptions import DESCRIPTION_SIMPLE, DescriptionTable, MovieNames
-from shared.files import TRANSLATION_SUFFIXES, Backups, SubtitleFile, find_files, parse_movie_dir, parse_srt, write_text_replacing
+from shared.files import Backups, SubtitleFile, SubtitleFormat, find_subtitles, parse_srt, write_text_replacing
 from shared.languages import WORD
-from shared.subtitles import BRACKETS, FORMATTING_TAGS, QUOTES, replace_text
+from shared.subtitles import BRACKETS, FORMATTING_TAGS, LANGUAGE_TRANSLATION, QUOTES, replace_text
 
 # ------------------------------------------------------------------------------
 # Constants
@@ -323,9 +322,9 @@ class Translation:
     movie_names: MovieNames
 
     @classmethod
-    def from_file(cls, file: Path) -> "Translation":
-        source = SubtitleFile.from_path(file).get_english_source()
-        return cls(entries=parse_srt(file), sources_by_index={entry.index: entry for entry in parse_srt(source.path)}, movie_names=MovieNames.from_subs_folder(source.folder))
+    def from_file(cls, file: SubtitleFile) -> "Translation":
+        source = file.get_english_source()
+        return cls(entries=parse_srt(file.path), sources_by_index={entry.index: entry for entry in parse_srt(source.path)}, movie_names=MovieNames.from_subs_folder(source.folder))
 
     def fix(self, fixes: tuple[TranslationFix, ...]) -> list[EntryChange]:
         # fix every entry that has a source entry; a changed entry loses its marker, so check-translate judges it again
@@ -369,26 +368,22 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Fixes the mistakes of the translations that have a mechanical fix, by comparing each entry with its English source. Shows the changes of each translation and asks before writing it.")
     parser.add_argument("--yes", action="store_true", help="write every translation without showing its changes or asking")
     Backups.add_argument(parser)
-    subs = find_files(parser, extensions_file=TRANSLATION_SUFFIXES, extensions_folder=TRANSLATION_SUFFIXES)
+    subs = find_subtitles(parser, formats=(SubtitleFormat.TRANSLATION,), language=LANGUAGE_TRANSLATION)
     arguments = parser.parse_args()
     backups = Backups.start(arguments.backups)
-    batch = Batch()
 
     # read the subs READ_WORKERS at a time, ahead of the one being fixed
-    with ThreadPoolExecutor(max_workers=READ_WORKERS) as executor:
-        translations_read = [executor.submit(Translation.from_file, sub) for sub in subs]
-        for sub, translation_read in zip(subs, translations_read):
-            movie_dir = parse_movie_dir(sub)
-            batch.log_movie(movie_dir)
-
-            try:
+    with Batch() as batch, ThreadPoolExecutor(max_workers=READ_WORKERS) as executor:
+        translations_read = {sub: executor.submit(Translation.from_file, sub) for sub in subs}
+        for sub in batch.walk(subs):
+            with batch.attempt(sub.path):
                 # fix the entries against the English source
-                translation = translation_read.result()
+                translation = translations_read[sub].result()
                 changes = translation.fix(FIXES)
 
                 # skip subs with nothing to fix
                 if not changes:
-                    log_action("skip", Color.BLUE, sub.name)
+                    Action.SKIP.log(sub.name)
                     continue
 
                 # show every changed entry and ask before writing, unless confirmed beforehand
@@ -396,7 +391,6 @@ if __name__ == "__main__":
                 summary = f"{sub.name} · {len(changes)} entries · {', '.join(f'{name} {count}' for name, count in fixes_applied.items())}"
                 if not arguments.yes:
                     batch.clear_screen()
-                    batch.log_movie(movie_dir)
                     for change in changes:
                         console.print(f"    entry {change.old.index}")
                         for prefix, content, color in (("en ", change.source.content, ""), ("old", change.old.content, Color.RED), ("new", change.new.content, Color.GREEN)):
@@ -407,15 +401,11 @@ if __name__ == "__main__":
                     while answer not in ("y", "n"):
                         answer = readchar.readkey().lower().replace(readchar.key.ENTER, "n")
                     if answer == "n":
-                        log_action("declined", Color.YELLOW, sub.name)
+                        Action.DECLINED.log(sub.name)
                         continue
 
                 # back up the sub, write the fixed sub and delete its report, which no longer matches it
-                backups.save(sub)
-                write_text_replacing(sub, translation.compose(changes))
-                SubtitleFile.from_path(sub).to_report().unlink(missing_ok=True)
-                log_action("fix", Color.GREEN, summary)
-            except Exception as error:
-                batch.fail(sub, error)
-
-    batch.finish()
+                backups.save(sub.path)
+                write_text_replacing(sub.path, translation.compose(changes))
+                sub.to_report().unlink(missing_ok=True)
+                Action.FIX.log(summary)

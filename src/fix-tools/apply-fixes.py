@@ -11,7 +11,7 @@ from typing import Any
 
 import srt
 
-from shared.console import Color, log_action
+from shared.console import Action
 from shared.files import Backups, parse_srt, write_text_replacing
 from shared.reports import IssueKind
 from shared.subtitles import IgnoreMarker, replace_text
@@ -119,4 +119,4 @@ if __name__ == "__main__":
     for fixes, text in texts:
         backups.save(fixes.subtitle)
         write_text_replacing(fixes.subtitle, text)
-        log_action("fix", Color.GREEN, f"{fixes.subtitle.name} · {len(fixes.fixes)} entries")
+        Action.FIX.log(f"{fixes.subtitle.name} · {len(fixes.fixes)} entries")

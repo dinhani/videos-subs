@@ -5,7 +5,7 @@
 # ------------------------------------------------------------------------------
 import argparse
 
-from shared.console import Color, log_action
+from shared.console import Action
 from shared.data_lists import DATA_LISTS
 
 # ------------------------------------------------------------------------------
@@ -19,4 +19,4 @@ if __name__ == "__main__":
     data_list = next(data_list for data_list in DATA_LISTS if data_list.name == arguments.list)
 
     for item, added in data_list.add(arguments.items).items():
-        log_action("add" if added else "exists", Color.GREEN if added else Color.BLUE, item)
+        (Action.ADD if added else Action.EXISTS).log(item)

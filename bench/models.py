@@ -9,7 +9,7 @@ from pathlib import Path
 
 import httpx
 
-from shared.console import Color, log_action
+from shared.console import Action
 
 MODELS_GGUF_DIR = Path("D:/AI-Models-LMStudio")
 MODELS_CTRANSLATE2_DIR = Path("D:/AI-Models-CTranslate2")
@@ -42,11 +42,11 @@ class LlamaModel:
 
     def download(self) -> None:
         if self.is_downloaded():
-            log_action("exists", Color.BLUE, self.name)
+            Action.EXISTS.log(self.name)
             return
         from huggingface_hub import hf_hub_download
 
-        log_action("download", Color.GREEN, f"{self.name}: {self.repo}/{self.file}")
+        Action.DOWNLOAD.log(f"{self.name}: {self.repo}/{self.file}")
         hf_hub_download(repo_id=self.repo, filename=self.file, local_dir=MODELS_GGUF_DIR / self.repo)
 
     @contextmanager
@@ -61,7 +61,7 @@ class LlamaModel:
 
         log.parent.mkdir(parents=True, exist_ok=True)
         with log.open("wb") as output:
-            log_action("start", Color.GREEN, f"llama server for {self.name}, log in {log}")
+            Action.START.log(f"llama server for {self.name}, log in {log}")
             server = subprocess.Popen(
                 [str(LLAMA_SERVER), "--model", str(self.path), "--device", "CUDA0", "--flash-attn", "on", "--port", str(LLAMA_PORT), *self.flags],
                 env={**os.environ, **LLAMA_ENV},
@@ -85,7 +85,7 @@ class LlamaModel:
             finally:
                 server.terminate()
                 server.wait()
-                log_action("stop", Color.GREEN, f"llama server for {self.name}")
+                Action.STOP.log(f"llama server for {self.name}")
 
 
 class NmtFamily(StrEnum):
@@ -112,11 +112,11 @@ class NmtModel:
 
     def download(self) -> None:
         if self.is_downloaded():
-            log_action("exists", Color.BLUE, self.name)
+            Action.EXISTS.log(self.name)
             return
         from huggingface_hub import snapshot_download
 
-        log_action("download", Color.GREEN, f"{self.name}: {self.repo}")
+        Action.DOWNLOAD.log(f"{self.name}: {self.repo}")
         snapshot_download(repo_id=self.repo, local_dir=self.path)
 
 
@@ -132,9 +132,9 @@ class ScoringModel:
 
     def download(self) -> None:
         if self.is_downloaded():
-            log_action("exists", Color.BLUE, self.name)
+            Action.EXISTS.log(self.name)
             return
         from huggingface_hub import snapshot_download
 
-        log_action("download", Color.GREEN, f"{self.name}: {self.repo}")
+        Action.DOWNLOAD.log(f"{self.name}: {self.repo}")
         snapshot_download(repo_id=self.repo, cache_dir=MODELS_PYTORCH_DIR, allow_patterns=list(self.files))

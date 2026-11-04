@@ -11,10 +11,9 @@ from pathlib import Path
 from xml.etree import ElementTree
 
 import srt
-from rich.progress import MofNCompleteColumn, TimeElapsedColumn, TimeRemainingColumn
 
-from shared.console import Batch, Color, log_action, progress_bar
-from shared.files import SUBS_FOLDER, SubtitleFile, SubtitleFormat, find_files, parse_srt, write_text_replacing
+from shared.console import Action, Batch, track
+from shared.files import SubtitleFile, SubtitleFormat, find_subtitles, parse_srt, write_text_replacing
 from shared.languages import WORD, parse_words
 from shared.llm import Trace, connect_llama
 from shared.subtitles import LANGUAGE_SOURCE, replace_text
@@ -105,12 +104,11 @@ class MovieInfo:
     characters: tuple[Character, ...]
 
     @classmethod
-    def find(cls, movie_dir: Path, video_name: str) -> "MovieInfo | None":
-        nfo = movie_dir / f"{video_name}.nfo"
-        if not nfo.exists():
+    def find(cls, sub: SubtitleFile) -> "MovieInfo | None":
+        if not sub.nfo.exists():
             return None
-        root = ElementTree.parse(nfo).getroot()
-        show_nfo = movie_dir.parent / NFO_SHOW
+        root = ElementTree.parse(sub.nfo).getroot()
+        show_nfo = sub.movie_dir.parent / NFO_SHOW
         show = ElementTree.parse(show_nfo).getroot() if root.tag == "episodedetails" and show_nfo.exists() else None
 
         # an episode takes the plot of its season, or of its series when the season has none
@@ -236,11 +234,11 @@ class SubtitleTranslation:
                 self.translated.update(translated)
                 return
             if attempt < len(self.temperatures):
-                log_action("retry", Color.YELLOW, f"{problem} (attempt {attempt}/{len(self.temperatures)})")
+                Action.RETRY.log(f"{problem} (attempt {attempt}/{len(self.temperatures)})")
 
         # still failing: split in halves up to the limit, then accept the last reply as is and record it in the trace
         if splits < LLM_SPLITS and len(chunk) > 1:
-            log_action("split", Color.YELLOW, f"{len(chunk)} entries failed {len(self.temperatures)} attempts, splitting in halves")
+            Action.SPLIT.log(f"{len(chunk)} entries failed {len(self.temperatures)} attempts, splitting in halves")
             middle = (start + end) // 2
             self.translate(start, middle, splits + 1)
             self.translate(middle, end, splits + 1)
@@ -248,7 +246,7 @@ class SubtitleTranslation:
         for i in chunk:
             self.translated[i] = translated[i] if len(translated.get(i, [])) == len(self.lines[i]) else self.lines[i]
         self.trace.record_accepted_with_problem([self.entries[i].index for i in chunk], problem)
-        log_action("accept", Color.YELLOW, f"{len(chunk)} entries accepted with problem: {problem}")
+        Action.ACCEPT.log(f"{len(chunk)} entries accepted with problem: {problem}")
 
     def compose(self) -> str:
         entries = []
@@ -266,55 +264,40 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Translates English subtitles to Brazilian Portuguese; folders only English ones.")
     parser.add_argument("--temperatures", nargs="+", type=float, default=LLM_TEMPERATURES, help=f"temperature of each attempt of a chunk, in order (default: {' '.join(map(str, LLM_TEMPERATURES))})")
     parser.add_argument("--prompt", type=Path, help="text file with the system prompt to use instead of LLM_PROMPT; {movie} in it is replaced by the title of the movie or episode, as in LLM_PROMPT")
-    subs_src = find_files(parser, extensions_file=(".srt",), extensions_folder=SubtitleFormat.TEXT.to_suffixes(LANGUAGE_SOURCE), folder=SUBS_FOLDER)
+    subs_src = find_subtitles(parser, formats=(SubtitleFormat.TEXT,), language=LANGUAGE_SOURCE)
     arguments = parser.parse_args()
     temperatures = tuple(arguments.temperatures)
     prompt = arguments.prompt.read_text(encoding="utf-8") if arguments.prompt else LLM_PROMPT
     llama = connect_llama()
 
-    batch = Batch()
+    with Batch() as batch:
+        for sub_src in batch.walk(subs_src):
+            # prepare files
+            sub_dst = sub_src.to_translation()
+            if sub_dst.path.exists():
+                Action.EXISTS.log(sub_dst.name)
+                continue
+            Action.TRANSLATE.log(sub_dst.name)
 
-    for sub_src in subs_src:
-        sub_file = SubtitleFile.from_path(sub_src)
-        movie_dir = sub_file.movie_dir
-        batch.log_movie(movie_dir)
+            with batch.attempt(sub_src.path):
+                # parse entries and movie info
+                sub_entries = parse_srt(sub_src.path)
+                movie_info = MovieInfo.find(sub_src)
+                if movie_info is None:
+                    Action.NFO.log(f"{sub_src.nfo.name} not found, translating with the title only")
+                movie_info_text = movie_info.to_prompt("\n".join(entry.content for entry in sub_entries)).replace("{movie}", sub_src.movie_title) if movie_info else ""
+                movie_prompt = prompt.replace("{movie_info}", f"\n\n{movie_info_text}" if movie_info_text else "").replace("{movie}", sub_src.movie_title)
 
-        # prepare files
-        sub_translation = sub_file.to_translation()
-        sub_dst = sub_translation.path
-        if sub_dst.exists():
-            log_action("exists", Color.BLUE, sub_dst.name)
-            continue
-        log_action("translate", Color.GREEN, sub_dst.name)
-
-        sub_trace = sub_translation.to_trace()
-        movie_title = re.sub(r"^(.*?) \((\d{4})\b.*$", r"\1 (\2)", sub_file.track)
-        if movie_dir.name.startswith("Season"):
-            movie_title = f"{movie_dir.parent.name}, {movie_title}"
-        try:
-            # parse entries and movie info
-            sub_entries = parse_srt(sub_src)
-            movie_info = MovieInfo.find(movie_dir, sub_file.video_name)
-            if movie_info is None:
-                log_action("nfo", Color.YELLOW, f"{sub_file.video_name}.nfo not found, translating with the title only")
-            movie_info_text = movie_info.to_prompt("\n".join(entry.content for entry in sub_entries)).replace("{movie}", movie_title) if movie_info else ""
-            movie_prompt = prompt.replace("{movie_info}", f"\n\n{movie_info_text}" if movie_info_text else "").replace("{movie}", movie_title)
-
-            # translate in chunks, tracing every request and reply
-            sub_trace.parent.mkdir(exist_ok=True)
-            trace = Trace(file=sub_trace)
-            if movie_info_text:
-                trace.record({"movie_info": movie_info_text})
-            progress = progress_bar(MofNCompleteColumn(), TimeElapsedColumn(), TimeRemainingColumn())
-            with progress:
+                # translate in chunks, tracing every request and reply
+                sub_trace = sub_dst.to_trace()
+                sub_trace.parent.mkdir(exist_ok=True)
+                trace = Trace(file=sub_trace)
+                if movie_info_text:
+                    trace.record({"movie_info": movie_info_text})
                 translation = SubtitleTranslation.from_entries(sub_entries, trace, temperatures, movie_prompt)
                 chunk_starts = range(0, len(translation.pending), CHUNK_SIZE)
-                for chunk_start in progress.track(chunk_starts, total=len(chunk_starts)):
+                for chunk_start in track(chunk_starts):
                     translation.translate(chunk_start, min(chunk_start + CHUNK_SIZE, len(translation.pending)))
 
-            # write translated
-            write_text_replacing(sub_dst, translation.compose())
-        except Exception as error:
-            batch.fail(sub_src, error)
-
-    batch.finish()
+                # write translated
+                write_text_replacing(sub_dst.path, translation.compose())

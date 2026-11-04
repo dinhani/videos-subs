@@ -8,10 +8,10 @@ from datetime import timedelta
 
 import srt
 
-from shared.console import Batch, Color, log_action
-from shared.files import TRANSLATION_SUFFIXES, Backups, SubtitleFile, find_files, parse_movie_dir, parse_srt, write_text_replacing
+from shared.console import Action, Batch
+from shared.files import Backups, SubtitleFormat, find_subtitles, parse_srt, write_text_replacing
 from shared.llm import Trace
-from shared.subtitles import SubtitleKind
+from shared.subtitles import LANGUAGE_TRANSLATION
 
 # ------------------------------------------------------------------------------
 # Constants
@@ -26,39 +26,31 @@ WARNING_DURATION = timedelta(seconds=5)
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Adds warnings at the start of every translation: SDH, and possible errors.")
     Backups.add_argument(parser)
-    subs = find_files(parser, extensions_file=TRANSLATION_SUFFIXES, extensions_folder=TRANSLATION_SUFFIXES)
+    subs = find_subtitles(parser, formats=(SubtitleFormat.TRANSLATION,), language=LANGUAGE_TRANSLATION)
     backups = Backups.start(parser.parse_args().backups)
-    batch = Batch()
 
-    for sub in subs:
-        movie_dir = parse_movie_dir(sub)
-        batch.log_movie(movie_dir)
+    with Batch() as batch:
+        for sub in batch.walk(subs):
+            with batch.attempt(sub.path):
+                # find the warnings the translation needs
+                trace = Trace.find(sub.to_trace())
+                warnings = [warning for warning, needed in (
+                    (WARNING_SDH, sub.is_sdh()),
+                    (WARNING_PROBLEM, trace is not None and bool(trace.find_problems_accepted())),
+                ) if needed]
 
-        try:
-            # find the warnings the translation needs
-            sub_file = SubtitleFile.from_path(sub)
-            trace = Trace.find(sub_file.to_trace())
-            warnings = [warning for warning, needed in (
-                (WARNING_SDH, sub_file.kind == SubtitleKind.SDH),
-                (WARNING_PROBLEM, trace is not None and bool(trace.find_problems_accepted())),
-            ) if needed]
+                # skip subs that need no warning or have every warning
+                if not warnings:
+                    Action.SKIP.log(sub.name)
+                    continue
+                sub_entries = parse_srt(sub.path)
+                warnings_missing = [warning for warning in warnings if all(entry.content != warning for entry in sub_entries)]
+                if not warnings_missing:
+                    Action.EXISTS.log(sub.name)
+                    continue
 
-            # skip subs that need no warning or have every warning
-            if not warnings:
-                log_action("skip", Color.BLUE, sub.name)
-                continue
-            sub_entries = parse_srt(sub)
-            warnings_missing = [warning for warning in warnings if all(entry.content != warning for entry in sub_entries)]
-            if not warnings_missing:
-                log_action("exists", Color.BLUE, sub.name)
-                continue
-
-            # back up the sub and add each warning as entry 0, keeping the numbers of the other entries
-            backups.save(sub)
-            entries_warning = [srt.Subtitle(index=0, start=timedelta(0), end=WARNING_DURATION, content=warning) for warning in warnings_missing]
-            write_text_replacing(sub, srt.compose([*entries_warning, *sub_entries], reindex=False))
-            log_action("warn", Color.GREEN, sub.name)
-        except Exception as error:
-            batch.fail(sub, error)
-
-    batch.finish()
+                # back up the sub and add each warning as entry 0, keeping the numbers of the other entries
+                backups.save(sub.path)
+                entries_warning = [srt.Subtitle(index=0, start=timedelta(0), end=WARNING_DURATION, content=warning) for warning in warnings_missing]
+                write_text_replacing(sub.path, srt.compose([*entries_warning, *sub_entries], reindex=False))
+                Action.WARN.log(sub.name)

@@ -7,7 +7,7 @@ from typing import Any
 
 from openai import OpenAI
 
-from shared.console import Color, log_action
+from shared.console import Action
 from shared.files import write_text_replacing
 
 LLM_URL = "http://127.0.0.1:9931/v1"
@@ -21,7 +21,7 @@ def connect_llama() -> OpenAI:
     try:
         llama.models.list()
     except Exception as error:
-        log_action("failed", Color.RED, f"llama server unreachable at {LLM_URL}: {error}")
+        Action.FAILED.log(f"llama server unreachable at {LLM_URL}: {error}")
         sys.exit(1)
     return llama
 

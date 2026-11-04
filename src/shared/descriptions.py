@@ -7,7 +7,7 @@ import spacy
 
 from shared.data_lists import CHECK_WORDS, DataList
 from shared.files import SubtitleFile, parse_srt
-from shared.subtitles import FORMATTING_TAGS, LANGUAGE_SOURCE, parse_plain_text
+from shared.subtitles import FORMATTING_TAGS, parse_plain_text
 
 DESCRIPTION_SIMPLE = re.compile(r"\[([^\[\]()<>{}]+)\]|\(([^\[\]()<>{}]+)\)")
 DESCRIPTION_SUBJECT_WORDS_MAX = 2
@@ -114,7 +114,7 @@ class MovieNames:
     @functools.cache
     def from_subs_folder(cls, subs_folder: Path) -> "MovieNames":
         # the names of the movie are the words of the speaker labels and of check-words, and the words that NER finds as names in the dialogue of the entries that are not in capitals only, since NER reads names from their case and reads the words of a description as names
-        texts = [parse_plain_text(entry) for file in sorted(subs_folder.glob("*.srt")) if SubtitleFile.from_path(file).language == LANGUAGE_SOURCE for entry in parse_srt(file)]
+        texts = [parse_plain_text(entry) for file in sorted(subs_folder.glob("*.srt")) if SubtitleFile.from_path(file).is_english() for entry in parse_srt(file)]
         labels = {word for text in texts for label in SPEAKER_LABEL.finditer(text) for word in normalize_description(label[1]).split()}
         words_kept = {word for (line,) in CHECK_WORDS.parse() for word in normalize_description(line).split()}
         dialogue = tuple(DESCRIPTION_SIMPLE.sub(" ", text).replace("\n", " ") for text in texts if text != text.upper())

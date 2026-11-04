@@ -16,7 +16,7 @@ from catalog import BASELINE_RUN, MODELS, RUNS, SCORING_MODELS, SOURCES
 from models import PYTORCH_ENV
 from report import Comparison, SourceReport
 from runs import BENCH_DIR, RUNS_DIR, SCORE_JOBS_FILE, SRC_DIR
-from shared.console import Batch, Color, console, log_action
+from shared.console import Action, Batch, console
 from shared.files import write_text_replacing
 
 # ------------------------------------------------------------------------------
@@ -64,37 +64,31 @@ if __name__ == "__main__":
             if not sources:
                 parser.error(f"no source title contains {arguments.movie}")
 
-            batch = Batch()
-            for run in runs_selected:
-                if run.is_translated(sources):
-                    log_action("translated", Color.BLUE, run.name)
-                    continue
-                log_action("translate", Color.GREEN, run.name)
-                try:
-                    run.translate(sources)
-                except Exception as error:
-                    batch.fail(run.dir, error)
-            batch.finish()
+            with Batch() as batch:
+                for run in runs_selected:
+                    if run.is_translated(sources):
+                        Action.EXISTS.log(run.name)
+                        continue
+                    Action.TRANSLATE.log(run.name)
+                    with batch.attempt(run.dir):
+                        run.translate(sources)
 
         case "score":
-            batch = Batch()
-            runs_translated = [run for run in RUNS if run.count_translated(SOURCES)]
-            translations_unchecked = [translation for run in runs_translated for translation in run.find_unchecked(SOURCES)]
-            if translations_unchecked:
-                log_action("check", Color.GREEN, f"{len(translations_unchecked)} translations without a report")
-                try:
-                    subprocess.run([sys.executable, str(SRC_DIR / "8-check-translations.py"), *map(str, translations_unchecked)], check=True)
-                except Exception as error:
-                    batch.fail(RUNS_DIR, error)
+            with Batch() as batch:
+                runs_translated = [run for run in RUNS if run.count_translated(SOURCES)]
+                translations_unchecked = [translation for run in runs_translated for translation in run.find_unchecked(SOURCES)]
+                if translations_unchecked:
+                    Action.CHECK.log(f"{len(translations_unchecked)} translations without a report")
+                    with batch.attempt(RUNS_DIR):
+                        subprocess.run([sys.executable, str(SRC_DIR / "8-check-translations.py"), *map(str, translations_unchecked)], check=True)
 
-            scorings = [scoring for source in SOURCES if (scoring := source.find_scoring_claude())] + [scoring for run in runs_translated for scoring in run.to_scorings(SOURCES)]
-            jobs = [scoring.to_job() for scoring in scorings if not scoring.output.exists()]
-            if jobs:
-                jobs_file = RUNS_DIR / SCORE_JOBS_FILE
-                write_text_replacing(jobs_file, json.dumps(jobs, ensure_ascii=False))
-                subprocess.run(["uv", "run", "--script", str(BENCH_DIR / "score.py"), str(jobs_file)], env={**os.environ, **PYTORCH_ENV}, check=True)
-                jobs_file.unlink()
-            batch.finish()
+                scorings = [scoring for source in SOURCES if (scoring := source.find_scoring_claude())] + [scoring for run in runs_translated for scoring in run.to_scorings(SOURCES)]
+                jobs = [scoring.to_job() for scoring in scorings if not scoring.output.exists()]
+                if jobs:
+                    jobs_file = RUNS_DIR / SCORE_JOBS_FILE
+                    write_text_replacing(jobs_file, json.dumps(jobs, ensure_ascii=False))
+                    subprocess.run(["uv", "run", "--script", str(BENCH_DIR / "score.py"), str(jobs_file)], env={**os.environ, **PYTORCH_ENV}, check=True)
+                    jobs_file.unlink()
 
         case "runs":
             table = Table("run", "model", "translation", "downloaded", "translated", "checked", "scored")
@@ -126,4 +120,4 @@ if __name__ == "__main__":
                 comparison = Comparison.from_runs(source, RUNS)
                 compare = COMPARE_DIR / f"{source.name}.txt"
                 write_text_replacing(compare, comparison.text)
-                log_action("compare", Color.GREEN, f"{compare.name}: {', '.join(comparison.columns)}")
+                Action.COMPARE.log(f"{compare.name}: {', '.join(comparison.columns)}")

@@ -18,15 +18,14 @@ from typing import ClassVar
 
 import language_tool_python
 import srt
-from rich.progress import MofNCompleteColumn, TimeElapsedColumn, TimeRemainingColumn
 
-from shared.console import Batch, Color, log_action, progress_bar
+from shared.console import Action, Batch, cancel_on_interrupt
 from shared.data_lists import CHECK_EXPRESSIONS, CHECK_WORDS, DICTIONARY_HUNSPELL, DataList, load_dictionary
-from shared.files import TRANSLATION_SUFFIXES, SubtitleFile, find_files, parse_movie_dir, parse_srt
+from shared.files import SubtitleFile, SubtitleFormat, find_subtitles, parse_srt
 from shared.languages import WORDS_PT_PT, TextLanguage, parse_words
 from shared.llm import Trace
 from shared.reports import CHECK_WORKERS, Issue, IssueKind, Report, ReportScore, log_ranking
-from shared.subtitles import BRACKETS, FORMATTING_TAGS, parse_plain_text
+from shared.subtitles import BRACKETS, FORMATTING_TAGS, LANGUAGE_TRANSLATION, parse_plain_text
 
 # ------------------------------------------------------------------------------
 # Constants
@@ -282,17 +281,16 @@ class TranslationCheck:
     languagetool_server: str
 
     @classmethod
-    def from_file(cls, subtitle: Path, languagetool_server: str) -> "TranslationCheck":
+    def from_file(cls, subtitle: SubtitleFile, languagetool_server: str) -> "TranslationCheck":
         # find the English source and the trace of the translation
-        subtitle_file = SubtitleFile.from_path(subtitle)
-        source = subtitle_file.get_english_source().path
-        trace = Trace.find(subtitle_file.to_trace())
+        source = subtitle.get_english_source().path
+        trace = Trace.find(subtitle.to_trace())
 
         # pair each translated entry with the source entry of the same index
         sources_by_index = {entry.index: entry for entry in parse_srt(source)}
         return cls(
-            subtitle=subtitle,
-            entries=[TranslationEntry.from_entries(sources_by_index[target.index], target) for target in parse_srt(subtitle) if target.index in sources_by_index],
+            subtitle=subtitle.path,
+            entries=[TranslationEntry.from_entries(sources_by_index[target.index], target) for target in parse_srt(subtitle.path) if target.index in sources_by_index],
             problems_accepted=trace.find_problems_accepted() if trace is not None else {},
             languagetool_server=languagetool_server,
         )
@@ -335,53 +333,33 @@ def connect_languagetool(server: str, rules: frozenset[str]) -> language_tool_py
     return languagetool
 
 
-def check_subtitle(subtitle: Path, report: Path, languagetool_server: str) -> ReportScore:
-    return TranslationCheck.from_file(subtitle, languagetool_server).to_report().write(report)
+def check_subtitle(subtitle: SubtitleFile, languagetool_server: str) -> ReportScore:
+    return TranslationCheck.from_file(subtitle, languagetool_server).to_report().write(subtitle.to_report())
 
 # ------------------------------------------------------------------------------
 # Execution
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
-    subs = find_files(argparse.ArgumentParser(description="Checks translated subtitles against their English source for common translation mistakes."), extensions_file=TRANSLATION_SUFFIXES, extensions_folder=TRANSLATION_SUFFIXES)
-    reports = {sub: SubtitleFile.from_path(sub).to_report() for sub in subs}
-    scores_current = {sub: ReportScore.find(reports[sub]) for sub in subs}
-    batch = Batch()
-    scores = [score for score in scores_current.values() if score is not None]
-    subs_pending = [sub for sub in subs if scores_current[sub] is None]
+    subs = find_subtitles(argparse.ArgumentParser(description="Checks translated subtitles against their English source for common translation mistakes."), formats=(SubtitleFormat.TRANSLATION,), language=LANGUAGE_TRANSLATION)
+    scores_current = {sub: score for sub in subs if (score := ReportScore.find(sub.to_report())) is not None}
+    scores = list(scores_current.values())
+    subs_pending = [sub for sub in subs if sub not in scores_current]
 
     # start one LanguageTool server for all workers, only when there is a sub to check and a LanguageTool rule enabled
-    with (language_tool_python.LanguageTool(GrammarRule.LANGUAGE) if subs_pending and LANGUAGETOOL_RULES else contextlib.nullcontext()) as languagetool, ProcessPoolExecutor(max_workers=CHECK_WORKERS) as executor:
+    with Batch() as batch, (language_tool_python.LanguageTool(GrammarRule.LANGUAGE) if subs_pending and LANGUAGETOOL_RULES else contextlib.nullcontext()) as languagetool, cancel_on_interrupt(ProcessPoolExecutor(max_workers=CHECK_WORKERS)) as executor:
         # check every sub without a report, CHECK_WORKERS at a time across movies
         languagetool_server = f"http://{languagetool.host}:{languagetool.port}" if languagetool is not None else ""
-        checks: dict[Path, Future[ReportScore]] = {sub: executor.submit(check_subtitle, sub, reports[sub], languagetool_server) for sub in subs_pending}
+        checks: dict[SubtitleFile, Future[ReportScore]] = {sub: executor.submit(check_subtitle, sub, languagetool_server) for sub in subs_pending}
 
-        try:
-            for movie_dir, movie_subs in itertools.groupby(subs, key=parse_movie_dir):
-                batch.log_movie(movie_dir)
+        # report every pending sub of a movie as its check arrives, skipping subs with a report
+        for sub, check in batch.walk_ahead(subs, checks):
+            if check is None:
+                Action.EXISTS.log(scores_current[sub].describe())
+                continue
 
-                # skip subs with a report
-                movie_subs_pending: list[Path] = []
-                for sub in movie_subs:
-                    score = scores_current[sub]
-                    if score is not None:
-                        log_action("exists", Color.BLUE, score.describe())
-                        continue
-                    movie_subs_pending.append(sub)
-                if not movie_subs_pending:
-                    continue
+            with batch.attempt(sub.path):
+                score = check.result()
+                Action.CHECK.log(score.describe())
+                scores.append(score)
 
-                # report every pending sub of the movie as its check arrives, showing progress
-                with progress_bar(MofNCompleteColumn(), TimeElapsedColumn(), TimeRemainingColumn()) as progress:
-                    for sub in progress.track(movie_subs_pending):
-                        try:
-                            score = checks[sub].result()
-                            log_action("check", score.color, score.describe())
-                            scores.append(score)
-                        except Exception as error:
-                            batch.fail(sub, error)
-        except KeyboardInterrupt:
-            executor.shutdown(cancel_futures=True)
-            raise
-
-    log_ranking(scores)
-    batch.finish()
+        log_ranking(scores)

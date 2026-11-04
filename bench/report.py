@@ -11,7 +11,6 @@ from runs import Reference, ReferenceName, Run, Source
 from shared.console import Color
 from shared.files import SubtitleFile, parse_srt
 from shared.reports import IssueKind, ReportScore
-from shared.subtitles import SubtitleKind
 
 TRANSLATION_RULES = {kind.label: kind.rule for kind in IssueKind if kind.rule.startswith("2.")}
 
@@ -106,7 +105,7 @@ class SourceReport:
         value_widths = [max((len(metric.to_text(value)) if (value := values[i]) is not None else 1 for values in self.values_by_run.values()), default=1) for i, (metric, _) in enumerate(self.columns)]
         difference_widths = [max((len(differences[i]) for differences in differences_by_run.values()), default=0) for i in range(len(self.columns))]
 
-        subtitle_kind = "SDH" if SubtitleFile.from_path(self.source.english).kind == SubtitleKind.SDH else "base"
+        subtitle_kind = "SDH" if SubtitleFile.from_path(self.source.english).is_sdh() else "base"
         table = Table(
             Column("run", no_wrap=True),
             *(Column(metric.to_header(reference), justify="right", no_wrap=True) for metric, reference in self.columns),

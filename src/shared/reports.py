@@ -10,7 +10,7 @@ import srt
 from rich.style import Style
 from rich.text import Text
 
-from shared.console import Color, console, log_action
+from shared.console import Action, Color, log_heading
 from shared.files import write_text_replacing
 from shared.subtitles import IgnoreMarker
 
@@ -65,10 +65,9 @@ class IssueKind(Enum):
 def log_ranking(scores: list["ReportScore"]) -> None:
     if not scores:
         return
-    console.print()
-    console.print("Worst scores (weighted issues per 100 entries):", style=Color.CYAN)
+    log_heading("Worst scores (weighted issues per 100 entries):", Color.CYAN)
     for score in sorted(scores, key=lambda score: score.score, reverse=True)[:RANKING_SIZE]:
-        log_action("score", score.color, score.describe())
+        Action.SCORE.log(score.describe())
 
 
 @dataclass(frozen=True)
@@ -161,4 +160,4 @@ class ReportScore:
 
     def describe(self) -> Text:
         report = self.report.absolute()
-        return Text.assemble(f"{self.score:5.1f} {self.issues_count:5} issues  ", (report.name, Style(link=report.as_uri())))
+        return Text.assemble((f"{self.score:5.1f}", self.color), f" {self.issues_count:5} issues  ", (report.name, Style(link=report.as_uri())))
