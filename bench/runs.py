@@ -9,7 +9,7 @@ import time
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import timedelta
-from enum import StrEnum
+from enum import Enum, StrEnum
 from pathlib import Path
 from typing import Any, ClassVar, TypedDict
 
@@ -31,6 +31,7 @@ TIMINGS_FILE = "timings.json"
 SCORE_JOBS_FILE = "score-jobs.json"
 NMT_REPLIES_FILE = "nmt-replies.json"
 LLAMA_LOG_FILE = "llama.log"
+RETRANSLATION_FOLDER = "_retranslation"
 
 ALIGNMENT_OVERLAP_MIN = timedelta(milliseconds=200)
 ALIGNMENT_OFFSET_MAX = timedelta(seconds=2)
@@ -93,6 +94,11 @@ class NmtTranslator:
         write_text_replacing(trace, json.dumps(records, ensure_ascii=False, indent=2))
         write_text_replacing(translation, srt.compose(translated_entries, reindex=False))
         Action.RESPLIT.log(f"{sum(record['resplit'] for record in records)} entries replied with another line count")
+
+
+class Existing(Enum):
+    KEEP = "keep"
+    REPLACE = "replace"
 
 
 class ReferenceName(StrEnum):
@@ -267,9 +273,16 @@ class RunTranslation:
         if self.source.nfo.exists() and not nfo.exists():
             shutil.copy2(self.source.nfo, nfo)
 
-    def discard(self) -> None:
-        for file in (self.translation, self.report, *(self.to_score(reference) for reference in self.source.find_references())):
+    def replace_with(self, retranslation: "RunTranslation") -> None:
+        retranslation.translation.replace(self.translation)
+        trace = SubtitleFile.from_path(retranslation.translation).to_trace()
+        if trace.exists():
+            trace_old = SubtitleFile.from_path(self.translation).to_trace()
+            trace_old.parent.mkdir(exist_ok=True)
+            trace.replace(trace_old)
+        for file in (self.report, *(self.to_score(reference) for reference in self.source.find_references())):
             file.unlink(missing_ok=True)
+        shutil.rmtree(retranslation.run_dir)
 
     def to_score(self, reference: Reference) -> Path:
         return self.translation.parent / SCORES_FOLDER / f"{self.translation.stem}.{reference.name}.json"
@@ -320,27 +333,24 @@ class Run:
     def is_translated(self, sources: Sequence[Source]) -> bool:
         return self.count_translated(sources) == len(sources)
 
-    def discard(self, sources: Sequence[Source]) -> None:
-        for source in sources:
-            translation = self.get_translation(source)
-            if translation.is_translated():
-                Action.DISCARD.log(f"{self.name}: {translation.translation.name}")
-            translation.discard()
-
-    def translate(self, sources: Sequence[Source]) -> None:
+    def translate(self, sources: Sequence[Source], existing: Existing) -> None:
         timings = Timings.from_file(self.dir / TIMINGS_FILE)
         with self.translator.serving(log=self.dir / LLAMA_LOG_FILE):
             for source in sources:
                 translation = self.get_translation(source)
-                if translation.is_translated():
+                if translation.is_translated() and existing is Existing.KEEP:
                     Action.EXISTS.log(f"{self.name}: {translation.translation.name}")
                     continue
                 Action.TRANSLATE.log(f"{self.name}: {translation.translation.name}")
-                translation.copy_english()
+                target = RunTranslation(run_dir=self.dir / RETRANSLATION_FOLDER, source=source) if translation.is_translated() else translation
+                target.copy_english()
 
                 started = time.perf_counter()
-                self.translator.translate(translation.english, translation.translation)
-                timings.record(translation.translation, round(time.perf_counter() - started))
+                self.translator.translate(target.english, target.translation)
+                seconds = round(time.perf_counter() - started)
+                if target != translation:
+                    translation.replace_with(target)
+                timings.record(translation.translation, seconds)
 
     def find_unchecked(self, sources: Sequence[Source]) -> list[Path]:
         return [translation.translation for source in sources if (translation := self.get_translation(source)).is_translated() and not translation.is_checked()]

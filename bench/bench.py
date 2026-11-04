@@ -15,7 +15,7 @@ from rich.table import Table
 from catalog import BASELINE_RUN, MODELS, RUNS, SCORING_MODELS, SOURCES
 from models import PYTORCH_ENV
 from report import Comparison, SourceReport
-from runs import BENCH_DIR, RUNS_DIR, SCORE_JOBS_FILE, SRC_DIR
+from runs import BENCH_DIR, RUNS_DIR, SCORE_JOBS_FILE, SRC_DIR, Existing
 from shared.console import Action, Batch, console
 from shared.files import write_text_replacing
 
@@ -37,7 +37,7 @@ if __name__ == "__main__":
     command_run.add_argument("runs", nargs="*", help=f"runs to translate: {', '.join(runs)} (default: all)")
     command_run.add_argument("--pick", action="store_true", help="pick the runs to translate from a list; a picked run that is translated is translated again")
     command_run.add_argument("--movie", default="", help="translate only the sources whose title contains this text, such as fall (default: all)")
-    command_run.add_argument("--force", action="store_true", help="discard the translations, reports and scores of the runs and translate again")
+    command_run.add_argument("--force", action="store_true", help="translate the runs again; each new translation replaces the old one, its report and its scores only when it is done")
     commands.add_parser("score", help="check and score every translation not checked or scored yet, without translating")
     commands.add_parser("runs", help="list the runs and what each one has done")
     command_download = commands.add_parser("download", help="download models from Hugging Face")
@@ -71,14 +71,13 @@ if __name__ == "__main__":
 
             with Batch() as batch:
                 for run in runs_selected:
-                    if arguments.force or (arguments.pick and run.is_translated(sources)):
-                        run.discard(sources)
-                    elif run.is_translated(sources):
+                    existing = Existing.REPLACE if arguments.force or (arguments.pick and run.is_translated(sources)) else Existing.KEEP
+                    if run.is_translated(sources) and existing is Existing.KEEP:
                         Action.EXISTS.log(run.name)
                         continue
                     Action.TRANSLATE.log(run.name)
                     with batch.attempt(run.dir):
-                        run.translate(sources)
+                        run.translate(sources, existing)
 
         case "score":
             with Batch() as batch:
