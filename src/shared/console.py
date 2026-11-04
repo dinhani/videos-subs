@@ -45,6 +45,7 @@ class Action(Enum):
     COPY = ("copy", Color.GREEN)
     ALIGN = ("align", Color.GREEN)
     COMPARE = ("compare", Color.GREEN)
+    PROMPT = ("prompt", Color.GREEN)
 
     UNKNOWN = ("unknown", Color.YELLOW)
     EMPTY = ("empty", Color.YELLOW)

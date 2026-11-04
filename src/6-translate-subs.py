@@ -14,7 +14,7 @@ from xml.etree import ElementTree
 import srt
 from openai import OpenAI
 
-from shared.console import Action, Batch, track
+from shared.console import Action, Batch, console, track
 from shared.files import SubtitleFile, SubtitleFormat, find_subtitles, parse_srt, write_text_replacing
 from shared.languages import WORD, parse_words
 from shared.llm import JsonReply, Trace, connect_llama
@@ -243,20 +243,24 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Translates English subtitles to Brazilian Portuguese; folders only English ones.")
     parser.add_argument("--temperatures", nargs="+", type=float, default=LLM_TEMPERATURES, help=f"temperature of each attempt of a chunk, in order (default: {' '.join(map(str, LLM_TEMPERATURES))})")
     parser.add_argument("--prompt", type=Path, help="text file with the system prompt to use instead of LLM_PROMPT; {movie} in it is replaced by the title of the movie or episode, as in LLM_PROMPT")
+    parser.add_argument("--print-prompt", action="store_true", help="print the system prompt of each subtitle, even one already translated, without translating it")
     subs_src = find_subtitles(parser, formats=(SubtitleFormat.TEXT,), language=LANGUAGE_SOURCE)
     arguments = parser.parse_args()
     temperatures = tuple(arguments.temperatures)
     prompt = arguments.prompt.read_text(encoding="utf-8") if arguments.prompt else LLM_PROMPT
-    llama = connect_llama()
+    llama = None if arguments.print_prompt else connect_llama()
 
     with Batch() as batch:
         for sub_src in batch.walk(subs_src):
             # prepare files
             sub_dst = sub_src.to_translation()
-            if sub_dst.path.exists():
+            if llama is None:
+                Action.PROMPT.log(sub_src.name)
+            elif sub_dst.path.exists():
                 Action.EXISTS.log(sub_dst.name)
                 continue
-            Action.TRANSLATE.log(sub_dst.name)
+            else:
+                Action.TRANSLATE.log(sub_dst.name)
 
             with batch.attempt(sub_src.path):
                 # parse entries and movie info
@@ -266,6 +270,9 @@ if __name__ == "__main__":
                     Action.NFO.log(f"{sub_src.nfo.name} not found, translating with the title only")
                 movie_info_text = movie_info.to_prompt("\n".join(entry.content for entry in sub_entries)).replace("{movie}", sub_src.movie_title) if movie_info else ""
                 movie_prompt = prompt.replace("{movie_info}", f"\n\n{movie_info_text}" if movie_info_text else "").replace("{movie}", sub_src.movie_title)
+                if llama is None:
+                    console.print(movie_prompt, soft_wrap=True)
+                    continue
 
                 # translate in chunks, tracing every request and reply
                 sub_trace = sub_dst.to_trace()
