@@ -33,55 +33,71 @@ LLM_SPLITS = 2 # splits before giving up on chunk
 LLM_TEMPERATURES = (0.0, 0.5, 1.0)
 LLM_PROMPT = """\
 You translate movie and TV subtitles from English to Brazilian Portuguese.
-The subtitles are from {movie}. Use what you know about it and its characters to resolve gender, forms of address and recurring terms.{movie_info}
+The subtitles are from {movie}. Use what you know about it and its characters to work out who speaks to whom, their gender, the forms of address between them and the recurring terms.{movie_info}
 
-The input is a JSON object:
-- "lines": maps an id to one English subtitle entry, given as an array of its lines. Translate every entry.
-- "context_before": earlier entries with their accepted translations. Read-only.
-- "context_after": upcoming English entries. Read-only.
+# Input
 
-Reply with a JSON object that maps every id in "lines" to an object with:
-- "en": the English lines of that id as you read them, with any junk from the source removed.
-- "pt": the translated lines, one array element per English line, same number of elements.
-Use exactly the same ids and nothing else.
+A JSON object with:
+- "context_before": the entries just before, each with its English lines ("en") and its accepted translation ("pt"). Keep the terms and forms of address these translations use.
+- "entries": maps an id to one English entry, given as an array of its lines. These are the entries to translate.
+- "context_after": the English lines of the entries just after.
+Use both contexts to understand the scene, but never translate them or put them in the reply.
 
-Translation rules:
-- Write natural spoken Brazilian Portuguese dialogue. Address people as the scene calls for: "você" in everyday speech, not "tu"; "o senhor" and "a senhora" for formal address, such as to a superior, an elder or a client; "Vossa Majestade" and "Vossa Alteza" for royalty. Keep the same form between the same characters.
-- Write Brazilian Portuguese as people speak it in Brazil today, not as it is written in books. Match the register of the English line: casual stays casual, formal stays formal.
-  - Drop the subject pronoun when the verb shows the subject: "Acho que errei o caminho", not "Eu acho que eu errei o caminho".
-  - In casual speech, use "a gente" for "we", "pra" for "para", "tá" for "está", "cadê" for "where is" and the spoken imperative: "A gente precisa de um barco", "Espera", "Olha", "Vem", not "Nós precisamos de um barco", "Espere", "Olhe", "Venha".
-  - Use "vai" with the infinitive for the future, not the written future tense: "ela vai adorar", not "ela adorará".
-  - Use the words people say, not formal ones: "Consegui os ingressos", not "Obtive os ingressos"; "Tá" or "Tá bom" for a casual "Okay".
-  - Keep each line short and direct, since a subtitle is read in a few seconds: "Give me that." is "Me dá isso.", not "Você poderia me dar isso?".
-  - A character who speaks formally in English, or a formal situation, keeps the written forms: "O senhor deseja mais alguma coisa?".
-- Preserve the original meaning exactly. This is fiction for adults: never soften, censor, euphemize or omit anything. Profanity, insults, slurs, sexual content, violence, drugs and crude humor are translated with the Brazilian Portuguese expressions of the same strength and vulgarity ("fuck" is "porra", "caralho" or "foder" as the sentence requires, never "droga" or "nossa"). Sarcasm stays sarcasm, threats stay threats, rudeness stays rude.
-- Never add warnings, notes or explanations. Never refuse an entry; every id gets its translation.
-- Never mask a word with symbols: "caralho", not "c*ralho"; "merda", not "m*rda".
-- Adjectives and participles agree with the gender of the person they describe. Work out the gender from the context: names, earlier lines, how others address them, the descriptions. A woman says "Estou atrasada"; a female lawyer is "a advogada".
-- Translate what each word means in the scene, not its first dictionary sense: "You got me." after a joke is "Essa me pegou."; "Break a leg." before a show is "Boa sorte.".
-- Translate, do not localize. Units, currencies, measurements, dates, times and cultural references stay as in the original: "30 miles" is "30 milhas", never "48 quilômetros"; "6 feet" is "6 pés"; "90 degrees" is "90 graus". Translate the unit word; the digits stay the same.
-- One translation per id. Never merge, split, move or skip entries. When a sentence continues into the next id, translate each part in its own id, split at the same point.
-- Keep unchanged, in the same position relative to the text:
-  - names of people, places, brands and titles;
-  - digits;
-  - these symbols: ♪ ♫ … - – — " ¿ ¡ # * [ ] ( );
-  - these tag pairs, the opening tag before the text and the closing tag after it, exactly as in the source: <i>text</i>, <b>text</b>, <u>text</u>, <font color="#FFFFFF">text</font>, <font face="Arial">text</font>; if the source has <i> but no </i>, keep that too;
-  - these position tags at the start of the line: {\\an1} {\\an2} {\\an3} {\\an4} {\\an5} {\\an6} {\\an7} {\\an8} {\\an9};
-  - any other <...>, </...> or {\\...} tag not listed above, where it is;
-  - a leading "- " dialogue dash on a line stays a leading "- " on the same line.
-- Keep the same number of lines inside an entry. Two-speaker entries stay two lines, one speaker per line.
-- Translate sound descriptions such as [door creaks] or (sighs), keeping the brackets and the letter case of the English. Name the sound the English describes, with the Portuguese word for that exact sound. Keep the grammatical form of the English:
-  - a verb ending in -s becomes the verb in the third person of the present: "[FAUCET DRIPS]" is "[TORNEIRA PINGA]";
-  - a verb ending in -ing becomes the gerund: "[TYPEWRITER CLACKING]" is "[MÁQUINA DE ESCREVER BATENDO]";
-  - a noun stays a noun: "[FIREWORKS]" is "[FOGOS DE ARTIFÍCIO]", "[APPLAUSE]" is "[APLAUSOS]".
-  Use only words that exist in Portuguese: when no Portuguese verb names the sound, use a noun for it. Never invent a word or use a Spanish one.
-- Words in a language other than English stay in that language, unchanged, since the English subtitle left them untranslated: "Carpe diem." stays "Carpe diem."; in "No habla español, fellas?" only "fellas" is translated: "No habla español, pessoal?".
-- Song lyrics stay in English, unchanged: lines marked with ♪ or ♫, and lines the context shows are sung. A description of the music, such as [song playing] or (singing), is translated.
-- Use the context only to resolve gender, pronouns, formality and recurring terms. Never translate or output the context.
+# Reply
 
-Example. For this input:
-{"context_before": [{"en": ["Where's Victor?"], "pt": ["Cadê o Victor?"]}], "lines": {"1": ["[FAUCET DRIPS]"], "2": ["- We need a boat.", "- Okay."], "3": ["I think he took", "the old highway north,"], "4": ["but he's gonna run out of gas."], "5": ["[TYPEWRITER CLACKING]"], "6": ["<i>Fuck, we're out of gas.</i>"], "7": ["Good afternoon, sir.", "May I see your boarding pass?"], "8": ["♪ Fly me to the moon ♪"]}, "context_after": [["[SIREN WAILING]"]]}
-the reply is:
+A JSON object that maps every id in "entries", and no other id, to an object with:
+- "en": the English lines of that entry, copied unchanged.
+- "pt": the translation, one Portuguese line per English line.
+
+Each id gets its own translation: never merge, split, move, skip or refuse an entry. Keep the number of lines; an entry with two speakers stays two lines, one speaker per line. When a sentence runs across lines or entries, split the Portuguese at the same point, as close as the word order allows.
+
+# Meaning
+
+- Translate the meaning exactly. This is fiction for adults: never soften, censor, euphemize or omit anything. Profanity, insults, slurs, sexual content, violence, drugs and crude humor get Brazilian Portuguese expressions of the same strength and vulgarity: "fuck" is "porra", "caralho" or "foder" as the sentence requires, never "droga" or "nossa". Sarcasm stays sarcasm, threats stay threats, rudeness stays rude.
+- Never mask a word that the English writes in full: "caralho", not "c*ralho". Never add warnings, notes or explanations.
+- Translate what a phrase means in the scene, not its first dictionary sense: "You got me." after a joke is "Essa me pegou."; "Break a leg." before a show is "Boa sorte.".
+- Adjectives and participles agree with the gender of the person they describe. Work it out from the names, earlier lines, how others address the person and the descriptions: a woman says "Estou atrasada"; a female lawyer is "a advogada".
+- Translate, do not localize. Units, currencies, dates, times and cultural references stay as in the English, with only the unit word translated: "30 miles" is "30 milhas", never "48 quilômetros"; "6 feet" is "6 pés".
+
+# Register
+
+Match the register of the English: casual stays casual, formal stays formal. Write dialogue as Brazilians speak it today, not as books write it:
+- Drop the subject pronoun when the verb shows the subject: "Acho que errei o caminho", not "Eu acho que eu errei o caminho".
+- Use "vai" with the infinitive for the future: "ela vai adorar", not "ela adorará".
+- Use everyday words: "Consegui os ingressos", not "Obtive os ingressos".
+- Say it as briefly as the English does, without politeness or filler it does not have: "Give me that." is "Me dá isso.", not "Você poderia me dar isso?".
+- In casual speech, use "a gente" for "we", "pra" for "para", "tá" for "está", "cadê" for "where is", "Tá" or "Tá bom" for "Okay", and the spoken imperative: "A gente precisa de um barco", "Espera", "Olha", "Vem", not "Nós precisamos de um barco", "Espere", "Olhe", "Venha".
+- A character who speaks formally in English, or a formal situation, keeps the written forms: "O senhor deseja mais alguma coisa?".
+
+Address people as the scene calls for, and keep the same form between the same characters:
+- "você" in everyday speech, never "tu";
+- "o senhor" and "a senhora" for formal address, such as to a superior, an elder or a client;
+- "Vossa Majestade" and "Vossa Alteza" for royalty.
+
+# Kept unchanged
+
+These stay exactly as in the English, in the same place relative to the text:
+- names of people, places and brands, and titles of books, films, shows and songs. Ranks and honorifics before a name are translated: "Captain Rex" is "Capitão Rex", "Mr. Smith" is "Sr. Smith";
+- digits;
+- the symbols ♪ ♫ … - – — " ¿ ¡ # * [ ] ( ), and a leading "- " dialogue dash on its line;
+- every tag, around the same words: <i>, <b>, <u> and <font ...> with their closing tags, {\\an1} to {\\an9} at the start of a line, and any other <...>, </...> or {\\...} tag. A tag without its pair stays without it;
+- words in a language other than English, which the English left untranslated: "Carpe diem." stays "Carpe diem."; in "No habla español, fellas?" only "fellas" is translated: "No habla español, pessoal?";
+- song lyrics: lines marked with ♪ or ♫, and lines the context shows are sung. A description of the music, such as [song playing] or (singing), is translated.
+
+# Sound descriptions
+
+Translate sound descriptions such as [door creaks] or (sighs), keeping the brackets and the letter case of the English. Name the exact sound the English describes, in the grammatical form of the English:
+- a verb ending in -s becomes the verb in the third person of the present: "[FAUCET DRIPS]" is "[TORNEIRA PINGA]";
+- a verb ending in -ing becomes the gerund: "[TYPEWRITER CLACKING]" is "[MÁQUINA DE ESCREVER BATENDO]";
+- a noun stays a noun: "[FIREWORKS]" is "[FOGOS DE ARTIFÍCIO]", "[APPLAUSE]" is "[APLAUSOS]".
+Use only words that exist in Portuguese: when no Portuguese verb names the sound, use a noun. Never invent a word or use a Spanish one.
+
+# Example
+
+Input:
+{"context_before": [{"en": ["Where's Victor?"], "pt": ["Cadê o Victor?"]}], "entries": {"1": ["[FAUCET DRIPS]"], "2": ["- We need a boat.", "- Okay."], "3": ["I think he took", "the old highway north,"], "4": ["but he's gonna run out of gas."], "5": ["[TYPEWRITER CLACKING]"], "6": ["<i>Fuck, we're out of gas.</i>"], "7": ["Good afternoon, sir.", "May I see your boarding pass?"], "8": ["♪ Fly me to the moon ♪"]}, "context_after": [["[SIREN WAILING]"]]}
+
+Reply:
 {"1": {"en": ["[FAUCET DRIPS]"], "pt": ["[TORNEIRA PINGA]"]}, "2": {"en": ["- We need a boat.", "- Okay."], "pt": ["- A gente precisa de um barco.", "- Tá."]}, "3": {"en": ["I think he took", "the old highway north,"], "pt": ["Acho que ele pegou", "a rodovia velha pro norte,"]}, "4": {"en": ["but he's gonna run out of gas."], "pt": ["mas vai ficar sem gasolina."]}, "5": {"en": ["[TYPEWRITER CLACKING]"], "pt": ["[MÁQUINA DE ESCREVER BATENDO]"]}, "6": {"en": ["<i>Fuck, we're out of gas.</i>"], "pt": ["<i>Porra, a gasolina acabou.</i>"]}, "7": {"en": ["Good afternoon, sir.", "May I see your boarding pass?"], "pt": ["Boa tarde, senhor.", "Posso ver seu cartão de embarque?"]}, "8": {"en": ["♪ Fly me to the moon ♪"], "pt": ["♪ Fly me to the moon ♪"]}}
 """
 
@@ -162,7 +178,7 @@ class SubtitleTranslation:
         chunk = self.pending[start:end]
         return {
             "context_before": [{"en": self.lines[i], "pt": self.translated[i]} for i in self.pending[max(0, start - CHUNK_CONTEXT_BEFORE):start] if i in self.translated],
-            "lines": {str(n): self.lines[i] for n, i in enumerate(chunk, start=1)},
+            "entries": {str(n): self.lines[i] for n, i in enumerate(chunk, start=1)},
             "context_after": [self.lines[i] for i in self.pending[end:end + CHUNK_CONTEXT_AFTER]],
         }
 
