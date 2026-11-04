@@ -17,7 +17,7 @@ from shared.console import Batch, Color, log_action, progress_bar
 from shared.files import SUBS_FOLDER, SubtitleFile, SubtitleFormat, find_files, parse_srt, write_text_replacing
 from shared.languages import WORD, parse_words
 from shared.llm import Trace, connect_llama
-from shared.subtitles import IGNORE_MARKER, LANGUAGE_SOURCE
+from shared.subtitles import LANGUAGE_SOURCE, replace_text
 
 # ------------------------------------------------------------------------------
 # Constants
@@ -256,7 +256,7 @@ class SubtitleTranslation:
             content = entry.content
             if i in self.translated:
                 content = "\n".join(self.translated[i])
-            entries.append(srt.Subtitle(index=entry.index, start=entry.start, end=entry.end, content=content, proprietary=IGNORE_MARKER.sub("", entry.proprietary).strip()))
+            entries.append(replace_text(entry, content))
         return srt.compose(entries, reindex=False)
 
 # ------------------------------------------------------------------------------

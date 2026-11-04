@@ -1,5 +1,7 @@
 import re
 from collections import Counter
+from collections.abc import Iterable
+from dataclasses import dataclass
 from enum import StrEnum
 
 import srt
@@ -36,6 +38,29 @@ class SubtitleKind(StrEnum):
         descriptions = Counter(" ".join((match[1] or match[2]).lower().split()) for text in texts for match in SOUND_DESCRIPTION.finditer(text))
         descriptions_top = sum(count for _, count in descriptions.most_common(SDH_DESCRIPTIONS_TOP))
         return cls.SDH if descriptions_top < SDH_DESCRIPTIONS_TOP_MAX * descriptions.total() else cls.BASE
+
+
+@dataclass(frozen=True)
+class IgnoreMarker:
+    kinds: tuple[str, ...]
+
+    @classmethod
+    def from_entry(cls, entry: srt.Subtitle) -> "IgnoreMarker":
+        return cls(kinds=tuple(dict.fromkeys(kind for match in IGNORE_MARKER.finditer(entry.proprietary or "") for kind in match[1].split(","))))
+
+    def add(self, kinds: Iterable[str]) -> "IgnoreMarker":
+        return IgnoreMarker(kinds=tuple(dict.fromkeys([*self.kinds, *kinds])))
+
+    def to_entry(self, entry: srt.Subtitle) -> srt.Subtitle:
+        proprietary = IGNORE_MARKER.sub("", entry.proprietary or "").strip()
+        if self.kinds:
+            proprietary = f"{proprietary} ignore:{','.join(self.kinds)}".strip()
+        return srt.Subtitle(index=entry.index, start=entry.start, end=entry.end, content=entry.content, proprietary=proprietary)
+
+
+def replace_text(entry: srt.Subtitle, content: str) -> srt.Subtitle:
+    # an entry whose text changes is judged again, so it loses its marker
+    return srt.Subtitle(index=entry.index, start=entry.start, end=entry.end, content=content, proprietary=IGNORE_MARKER.sub("", entry.proprietary or "").strip())
 
 
 def parse_plain_text(entry: srt.Subtitle) -> str:

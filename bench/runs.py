@@ -19,7 +19,7 @@ import srt
 from models import LlamaModel, NmtModel
 from shared.console import Color, log_action
 from shared.files import SUBS_FOLDER, SubtitleFile, parse_srt, write_text_replacing
-from shared.subtitles import IGNORE_MARKER, parse_plain_text
+from shared.subtitles import parse_plain_text, replace_text
 
 BENCH_DIR = Path(__file__).parent
 SRC_DIR = BENCH_DIR.parent / "src"
@@ -86,7 +86,7 @@ class NmtTranslator:
                 translated_lines = [" ".join(words[start:end]) for start, end in itertools.pairwise(cuts)]
             records.append({"entry": entry.index, "en": entry_lines, "reply": reply, "resplit": resplit})
             content = "\n".join(translated_lines) if entry_lines else entry.content
-            translated_entries.append(srt.Subtitle(index=entry.index, start=entry.start, end=entry.end, content=content, proprietary=IGNORE_MARKER.sub("", entry.proprietary).strip()))
+            translated_entries.append(replace_text(entry, content))
 
         trace = SubtitleFile.from_path(translation).to_trace()
         trace.parent.mkdir(exist_ok=True)

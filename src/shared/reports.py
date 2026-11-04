@@ -11,7 +11,7 @@ from rich.text import Text
 
 from shared.console import Color, console, log_action
 from shared.files import write_text_replacing
-from shared.subtitles import IGNORE_MARKER
+from shared.subtitles import IgnoreMarker
 
 CHECK_WORKERS = 8
 
@@ -58,7 +58,7 @@ class IssueKind(Enum):
         return self.label.replace(" ", "-")
 
     def is_ignored_in(self, entry: srt.Subtitle) -> bool:
-        return any(self.marker in match[1].split(",") for match in IGNORE_MARKER.finditer(entry.proprietary or ""))
+        return self.marker in IgnoreMarker.from_entry(entry).kinds
 
 
 def log_ranking(scores: list["ReportScore"]) -> None:

@@ -6,7 +6,7 @@ import srt
 
 from shared.files import CHECKS_FOLDER, SUBS_FOLDER, TRACES_FOLDER, SubtitleFile, SubtitleFormat
 from shared.reports import Issue, IssueKind, Report, ReportScore
-from shared.subtitles import SubtitleKind
+from shared.subtitles import IgnoreMarker, SubtitleKind, replace_text
 
 
 @pytest.mark.parametrize(("name", "track", "language", "kind", "format"), [
@@ -42,6 +42,17 @@ def test_subtitle_file_paths_of_translation() -> None:
     assert translation.to_trace() == Path("movie") / TRACES_FOLDER / "video.embed.2.pob.sdh.translated.json"
     assert translation.to_report() == Path("movie") / CHECKS_FOLDER / "video.embed.2.pob.sdh.translated.txt"
     assert translation.video_name == "video"
+
+
+def test_replace_text_drops_ignore_marker() -> None:
+    entry = srt.Subtitle(index=1, start=timedelta(0), end=timedelta(seconds=1), content="Linha.", proprietary="X1:0 ignore:untranslated")
+    assert replace_text(entry, "Outra linha.").proprietary == "X1:0"
+
+
+def test_ignore_marker_holds_every_kind_once() -> None:
+    entry = srt.Subtitle(index=1, start=timedelta(0), end=timedelta(seconds=1), content="Linha.", proprietary="ignore:untranslated")
+    marked = IgnoreMarker.from_entry(entry).add(["unknown-word", "untranslated"]).to_entry(entry)
+    assert marked.proprietary == "ignore:untranslated,unknown-word"
 
 
 def test_kind_from_texts_sdh() -> None:

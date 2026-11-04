@@ -14,7 +14,7 @@ import srt
 from shared.console import Color, log_action
 from shared.files import Backups, parse_srt, write_text_replacing
 from shared.reports import IssueKind
-from shared.subtitles import IGNORE_MARKER
+from shared.subtitles import IgnoreMarker, replace_text
 
 # ------------------------------------------------------------------------------
 # Constants
@@ -56,19 +56,12 @@ class EntryFix:
         if subtitle.content != self.text_old:
             raise ValueError(f"entry {self.entry}: the text is not old:\n{subtitle.content}")
 
-        # a new text is judged again, so it loses its marker
-        proprietary = subtitle.proprietary
-        if self.text_new is not None:
-            proprietary = IGNORE_MARKER.sub("", proprietary).strip()
+        entry = subtitle if self.text_new is None else replace_text(subtitle, self.text_new)
+        if not self.ignore:
+            return entry
 
         # one marker holds every kind ignored in the entry
-        if self.ignore:
-            kinds_marked = [kind for match in IGNORE_MARKER.finditer(proprietary) for kind in match[1].split(",")]
-            kinds = list(dict.fromkeys([*kinds_marked, *self.ignore]))
-            proprietary = f"{IGNORE_MARKER.sub('', proprietary).strip()} ignore:{','.join(kinds)}".strip()
-
-        content = subtitle.content if self.text_new is None else self.text_new
-        return srt.Subtitle(index=subtitle.index, start=subtitle.start, end=subtitle.end, content=content, proprietary=proprietary)
+        return IgnoreMarker.from_entry(entry).add(self.ignore).to_entry(entry)
 
 
 @dataclass(frozen=True)

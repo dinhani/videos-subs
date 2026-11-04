@@ -22,7 +22,7 @@ from shared.data_lists import FIX_SOUNDS, FIX_SUBJECTS, FIX_WORDS, DataList
 from shared.descriptions import DESCRIPTION_SIMPLE, DescriptionTable, Movie
 from shared.files import TRANSLATION_SUFFIXES, Backups, SubtitleFile, find_files, parse_movie_dir, parse_srt, write_text_replacing
 from shared.languages import WORD
-from shared.subtitles import BRACKETS, FORMATTING_TAGS, IGNORE_MARKER, QUOTES
+from shared.subtitles import BRACKETS, FORMATTING_TAGS, QUOTES, replace_text
 
 # ------------------------------------------------------------------------------
 # Constants
@@ -338,8 +338,7 @@ class Translation:
             content = "\n".join(translation.target_lines)
             if content == entry.content:
                 continue
-            entry_new = srt.Subtitle(index=entry.index, start=entry.start, end=entry.end, content=content, proprietary=IGNORE_MARKER.sub("", entry.proprietary or "").strip())
-            changes.append(EntryChange(position=position, source=source, old=entry, new=entry_new, fixes=fixes_applied))
+            changes.append(EntryChange(position=position, source=source, old=entry, new=replace_text(entry, content), fixes=fixes_applied))
         return changes
 
     def compose(self, changes: list[EntryChange]) -> str:
