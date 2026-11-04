@@ -79,6 +79,7 @@ RUNS = (
     Run.from_model(MISTRAL_SMALL_3_2_24B),
     Run.from_model(MAGISTRAL_SMALL_24B),
     Run.from_model(GEMMA_4_26B),
+    Run.from_fixes(Run.from_model(GEMMA_4_26B)),
     *(Run.from_prompt(GEMMA_4_26B, prompt) for prompt in sorted(PROMPTS_DIR.glob("*.txt"))),
     Run.from_model(HY_MT2_30B),
     Run.from_model(GEMMA_4_31B),

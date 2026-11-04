@@ -32,6 +32,7 @@ SCORE_JOBS_FILE = "score-jobs.json"
 NMT_REPLIES_FILE = "nmt-replies.json"
 LLAMA_LOG_FILE = "llama.log"
 RETRANSLATION_FOLDER = "_retranslation"
+BACKUPS_FOLDER = "_backups"
 
 ALIGNMENT_OVERLAP_MIN = timedelta(milliseconds=200)
 ALIGNMENT_OFFSET_MAX = timedelta(seconds=2)
@@ -94,6 +95,24 @@ class NmtTranslator:
         write_text_replacing(trace, json.dumps(records, ensure_ascii=False, indent=2))
         write_text_replacing(translation, srt.compose(translated_entries, reindex=False))
         Action.RESPLIT.log(f"{sum(record['resplit'] for record in records)} entries replied with another line count")
+
+
+@dataclass(frozen=True)
+class FixTranslator:
+    mode: ClassVar[str] = "fix"
+    model: LlamaModel | NmtModel
+    base: str
+
+    def serving(self, log: Path) -> contextlib.AbstractContextManager[None]:
+        return contextlib.nullcontext()
+
+    def translate(self, english: Path, translation: Path) -> None:
+        run_name, *path = translation.relative_to(RUNS_DIR).parts
+        base_translation = RUNS_DIR.joinpath(self.base, *path)
+        if not base_translation.exists():
+            raise FileNotFoundError(f"{self.base} has not translated {translation.name} yet")
+        shutil.copy2(base_translation, translation)
+        subprocess.run([sys.executable, str(SRC_DIR / "7-fix-translations.py"), str(translation), "--yes", "--backups", str(RUNS_DIR / run_name / BACKUPS_FOLDER)], check=True)
 
 
 class Existing(Enum):
@@ -311,7 +330,7 @@ class RunTranslation:
 @dataclass(frozen=True)
 class Run:
     name: str
-    translator: PipelineTranslator | NmtTranslator
+    translator: PipelineTranslator | NmtTranslator | FixTranslator
 
     @classmethod
     def from_model(cls, model: LlamaModel | NmtModel) -> "Run":
@@ -324,6 +343,10 @@ class Run:
     @classmethod
     def from_prompt(cls, model: LlamaModel, prompt: Path) -> "Run":
         return cls(name=f"{model.name}+{prompt.stem}", translator=PipelineTranslator(model=model, prompt=prompt))
+
+    @classmethod
+    def from_fixes(cls, base: "Run") -> "Run":
+        return cls(name=f"{base.name}-fix", translator=FixTranslator(model=base.model, base=base.name))
 
     @property
     def model(self) -> LlamaModel | NmtModel:
