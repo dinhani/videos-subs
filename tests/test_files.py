@@ -52,7 +52,7 @@ def test_subtitle_file_from_track() -> None:
 
 def test_subtitle_file_movie_title_of_episode() -> None:
     episode = SubtitleFile.from_path(Path("Show") / "Season 01" / SUBS_FOLDER / "S01E01 - Pilot (2020, Web-DL, 2160p).embed.2.eng.srt")
-    assert episode.movie_title == "Show, S01E01 - Pilot (2020)"
+    assert episode.movie_title == '"Show", episode "S01E01 - Pilot" (2020)'
     assert episode.nfo == Path("Show") / "Season 01" / "S01E01 - Pilot (2020, Web-DL, 2160p).nfo"
 
 

@@ -61,6 +61,11 @@ def parse_movie_dir(file: Path) -> Path:
     return file.parent.parent if file.parent.name == SUBS_FOLDER else file.parent
 
 
+def quote_title(name: str) -> str:
+    match = MOVIE_TITLE.match(name)
+    return f'"{match[1]}" ({match[2]})' if match else f'"{name}"'
+
+
 def parse_srt(file: Path) -> list[srt.Subtitle]:
     return list(srt.parse(file.read_text(encoding="utf-8-sig", errors="replace"), ignore_errors=True))
 
@@ -164,9 +169,9 @@ class SubtitleFile:
 
     @property
     def movie_title(self) -> str:
-        title = MOVIE_TITLE.sub(r"\1 (\2)", self.track)
+        title = quote_title(self.video_name)
         if self.movie_dir.name.startswith(SEASON_PREFIX):
-            return f"{self.movie_dir.parent.name}, {title}"
+            return f"{quote_title(self.movie_dir.parent.name)}, episode {title}"
         return title
 
     def is_identified(self) -> bool:
