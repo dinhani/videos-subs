@@ -1,15 +1,6 @@
 # Bench
 
-`bench` benchmarks translation models on English text subtitles from the library. It has its own `justfile`, loaded as the `bench` module: `just bench` lists its recipes.
-
-## Running
-
-- `just bench models [names]`: downloads the models. It is the only recipe that downloads them.
-- `just bench run`: translates the pending runs. `just bench run --movie <text>` translates only the sources whose title contains the text, for quick numbers.
-- `just bench score`: checks and scores the pending translations.
-- `just bench report`: shows the scores, issues and times of all runs.
-- `just bench compare`: writes the entries of the runs side by side.
-- `just bench runs`: lists the runs and their progress.
+`bench` benchmarks translation models on English text subtitles from the library. It has its own `justfile`, loaded as the `bench` module: `just bench` lists its recipes. Only `just bench models` downloads models, and `just bench run --movie <text>` translates only the sources whose title contains the text, for quick numbers.
 
 ## Folders
 

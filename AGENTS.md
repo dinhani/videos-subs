@@ -24,7 +24,7 @@ Use these terms, and only these, in code, logs, docs and conversation. Do not ro
 - **text subtitle**: a `.srt` file.
 - **image subtitle**: a `.sup` (PGS, Blu-ray) or `.mks` (VobSub, DVD) file: subtitles stored as pictures, which need OCR to become a text subtitle.
 - **entry**: one subtitle on screen, with a start and an end time; one numbered block in a `.srt`. `SubtitleEntry` is an entry of an image subtitle.
-- **language code**: the ISO 639-3 code that identify-text and identify-ocr put in a file name (`eng`, `por`, ...), plus `pob` for Brazilian Portuguese and `und` for undetected. A file whose last name part before the extension, or before `sdh`, is a language code counts as identified.
+- **language code**: the ISO 639-3 code that identify-text and identify-ocr put in a file name (`eng`, `por`, ...), plus `pob` for Brazilian Portuguese and `und` for undetected.
 - **kind**: base or SDH (subtitles for the deaf and hard of hearing, which describe sounds). identify-text and identify-ocr put `sdh` after the language code of an SDH subtitle: `<name>.eng.sdh.srt`. The translation of an SDH subtitle keeps the marker: `<name>.pob.sdh.translated.srt`. In this file, `.eng.srt`, `.eng.sup` and `.pob.translated.srt` also stand for `.eng.sdh.srt`, `.eng.sdh.sup` and `.pob.sdh.translated.srt`.
 - **description**: text in `[...]` or `(...)` that describes a sound or names who speaks, such as `[GRUNTS]` or `(Avi)`; most of them are in SDH subtitles.
 - **trace**: the JSON record in `_traces` of every LLM request and reply for one OCR or translation.
@@ -61,9 +61,9 @@ Z:/midias/filmes/<movie>/                 (series use the same layout under Z:/m
 ```
 
 - `_subs` holds the extracted text subtitles and image subtitles, and the text subtitles made from image subtitles. They stay out of the movie folder because the media server already reads the tracks inside the video and would show them twice.
-- `_traces` holds one trace per OCR and per translation: every request, reply, retry and accepted problem. The file is rewritten after every record, so it is valid and current during a run. Traces are never deleted.
+- `_traces` holds one trace per OCR and per translation: every request, reply, retry and accepted problem. It is valid and current during a run. Traces are never deleted.
 - `_checks` holds one report per checked OCR output and translation.
-- `Z:/midias/_backups/<run>/` holds a copy of every file that fix-translations, warn and `just apply-fixes` overwrite, made before writing it, under its path from `Z:/midias`; their `--backups <folder>` option puts it elsewhere. translate and the other steps write only new files. Each run has its own folder, named by its start time, so no backup is replaced. Backups are never deleted.
+- `Z:/midias/_backups/<run>/` holds a copy of every file that fix-translations, warn and `just apply-fixes` overwrite, made before writing it, under its path from `Z:/midias`. The other steps write only new files. Each run has its own folder, named by its start time. Backups are never deleted.
 
 ## Running
 
@@ -71,22 +71,19 @@ Use the `justfile`; it is the source of truth for how to run things.
 
 ocr and translate need their llama server, `just llama-ocr` and `just llama-translate`. Both servers use port 9931, so run one at a time. The check steps need no llama server; check-translate starts its own LanguageTool server.
 
-Without paths, a step processes both `Z:/midias/filmes` and `Z:/midias/series`. Every step accepts any folder or file as a path:
+Without paths, a step processes both `Z:/midias/filmes` and `Z:/midias/series`. Every step also accepts files and folders. A folder is searched recursively, inside `_subs` folders except for extract, fix-translations and check-translate, and the step applies its filter, such as `.eng.srt` only for translate. A file passed by hand skips the filter, so translate accepts a text subtitle in any language.
 
-- a file is processed wherever it is, as long as the step can process its type: `.mkv`/`.mp4` for extract, `.srt` for identify-text, translate and check-ocr, `.sup`/`.mks` for identify-ocr and ocr, `.pob.translated.srt` for fix-translations, check-translate and warn. A file passed by hand skips the step's folder filter, so ocr accepts an image subtitle in any language and translate accepts a text subtitle in any language. check-ocr still needs the image subtitle next to the file;
-- a folder is searched recursively: extract finds every video, fix-translations and check-translate find every `.pob.translated.srt`, the other steps find files inside `_subs` folders only (passing a `_subs` folder itself also works), and ocr, translate and check-ocr apply their filter there: ocr only picks `.eng` image subtitles, translate only `.eng.srt`, check-ocr only `.eng.srt`.
-
-The virtual environment lives in `uv/envs/videos-subs` under the local data directory (`%LOCALAPPDATA%` on Windows). Running `uv run` or `uv sync` directly, outside `just`, always creates a `.venv` in the project folder; set `UV_PROJECT_ENVIRONMENT` first or go through `just`.
+The virtual environment lives outside the project, under the local data directory. Running uv outside `just` creates a `.venv` in the project folder; go through `just`.
 
 ## Code layout
 
 All code is in `src`: the pipeline scripts, `crosscheck-subs.py`, `shared` and `fix-tools`. The data lists are in `data`, the tests in `tests`.
 
-- `shared/`: code used by more than one script, one module per subject: `files.py` (library folders, `SubtitleFile`: the name of each subtitle and of its related files, trace and report, reading and writing subtitles), `subtitles.py` (language codes, kinds, tags, `ignore:` markers), `image_subtitles.py` (PGS and VobSub decoding), `languages.py` (language detection and word frequency), `descriptions.py` (the description tables of fix-translations and the names of a movie), `data_lists.py` (`DataList`, the one reader, checker and writer of the lists in `data`), `reports.py` (issues, reports and scores), `console.py` (`Action`, the one list of log verbs, each with its color; progress bars; `Batch`), `llm.py` (the llama server, `JsonReply` and traces).
+- `shared/`: code used by more than one script, one module per subject. Use it instead of writing another version: `files.py` (`SubtitleFile`, the names of a subtitle and its related files), `subtitles.py` (language codes, kinds, tags, markers), `image_subtitles.py`, `languages.py`, `descriptions.py`, `data_lists.py` (`DataList`, the one reader and writer of the lists in `data`), `reports.py`, `console.py` (`Action`, the one list of log verbs; `Batch`), `llm.py` (the llama server, `JsonReply` and traces).
 - `fix-tools/`: the tools of the app-fix-ocr and app-fix-translate skills, run through the `data/fix` recipes. `data/fix` holds only recipes a skill uses; a tool no skill mentions is removed.
-- `crosscheck-subs.py`: not a pipeline step; it only reads, and reports the files of one track that do not match each other. The track index (`<video>.embed.<index>`) is the key.
-- Each script has, in order: constants, its own types, then the execution loop. The check scripts put their rules between the constants and the types, and fix-translations its fixes. check-ocr and check-translate run their checks in `CHECK_WORKERS` processes.
-- Every script follows the same per-file pattern: find its files as `SubtitleFile` with `find_subtitles`, loop with `batch.walk` (or `batch.walk_ahead` when the work runs ahead in workers), which logs the movie, skip when already done, do the work inside `with batch.attempt(...)`, which reports failures through `Batch`, log through `Action`, write output through a `.part` file and rename it.
+- `crosscheck-subs.py`: not a pipeline step; it only reads, and reports the files of one track that do not match each other.
+- Each script has, in order: constants, its own types, then the execution loop. The check scripts put their rules between the constants and the types, and fix-translations its fixes.
+- Every script follows the same per-file pattern: find its files with `find_subtitles`, loop with `batch.walk`, skip when already done, do the work inside `with batch.attempt(...)`, log through `Action`, and write output through a `.part` file that is then renamed.
 
 `bench` benchmarks translation models, with its own `justfile`, loaded as the `bench` module. Read [docs/BENCH.md](docs/BENCH.md) before changing the bench.
 
