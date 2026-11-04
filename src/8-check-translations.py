@@ -8,7 +8,6 @@ import bisect
 import contextlib
 import functools
 import itertools
-import json
 import re
 from collections.abc import Iterator
 from concurrent.futures import Future, ProcessPoolExecutor
@@ -25,6 +24,7 @@ from shared.console import Batch, Color, log_action, progress_bar
 from shared.data_lists import CHECK_EXPRESSIONS, CHECK_WORDS, DICTIONARY_HUNSPELL, DataList, load_dictionary
 from shared.files import TRANSLATION_SUFFIXES, SubtitleFile, find_files, parse_movie_dir, parse_srt
 from shared.languages import WORDS_PT_PT, TextLanguage, parse_words
+from shared.llm import Trace
 from shared.reports import CHECK_WORKERS, Issue, IssueKind, Report, ReportScore, log_ranking
 from shared.subtitles import BRACKETS, FORMATTING_TAGS, parse_plain_text
 
@@ -288,15 +288,14 @@ class TranslationCheck:
         # find the English source and the trace of the translation
         subtitle_file = SubtitleFile.from_path(subtitle)
         source = subtitle_file.get_english_source().path
-        trace = subtitle_file.to_trace()
-        records = json.loads(trace.read_text(encoding="utf-8")) if trace.exists() else []
+        trace = Trace.find(subtitle_file.to_trace())
 
         # pair each translated entry with the source entry of the same index
         sources_by_index = {entry.index: entry for entry in parse_srt(source)}
         return cls(
             subtitle=subtitle,
             entries=[TranslationEntry.from_entries(sources_by_index[target.index], target) for target in parse_srt(subtitle) if target.index in sources_by_index],
-            problems_accepted={index: record["accepted_with_problem"] for record in records if "accepted_with_problem" in record for index in record["entries"]},
+            problems_accepted=trace.find_problems_accepted() if trace is not None else {},
             languagetool_server=languagetool_server,
         )
 

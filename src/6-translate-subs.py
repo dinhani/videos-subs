@@ -247,7 +247,7 @@ class SubtitleTranslation:
             return
         for i in chunk:
             self.translated[i] = translated[i] if len(translated.get(i, [])) == len(self.lines[i]) else self.lines[i]
-        self.trace.record({"entries": [self.entries[i].index for i in chunk], "accepted_with_problem": problem})
+        self.trace.record_accepted_with_problem([self.entries[i].index for i in chunk], problem)
         log_action("accept", Color.YELLOW, f"{len(chunk)} entries accepted with problem: {problem}")
 
     def compose(self) -> str:

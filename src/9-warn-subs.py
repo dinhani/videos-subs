@@ -4,13 +4,13 @@
 # Libraries
 # ------------------------------------------------------------------------------
 import argparse
-import json
 from datetime import timedelta
 
 import srt
 
 from shared.console import Batch, Color, log_action
 from shared.files import TRANSLATION_SUFFIXES, Backups, SubtitleFile, find_files, parse_movie_dir, parse_srt, write_text_replacing
+from shared.llm import Trace
 from shared.subtitles import SubtitleKind
 
 # ------------------------------------------------------------------------------
@@ -37,11 +37,10 @@ if __name__ == "__main__":
         try:
             # find the warnings the translation needs
             sub_file = SubtitleFile.from_path(sub)
-            trace = sub_file.to_trace()
-            records = json.loads(trace.read_text(encoding="utf-8")) if trace.exists() else []
+            trace = Trace.find(sub_file.to_trace())
             warnings = [warning for warning, needed in (
                 (WARNING_SDH, sub_file.kind == SubtitleKind.SDH),
-                (WARNING_PROBLEM, any("accepted_with_problem" in record for record in records)),
+                (WARNING_PROBLEM, trace is not None and bool(trace.find_problems_accepted())),
             ) if needed]
 
             # skip subs that need no warning or have every warning

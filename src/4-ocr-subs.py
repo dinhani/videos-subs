@@ -143,7 +143,7 @@ class SubtitleTranscription:
             self.transcribe(chunk[middle:])
             return
         self.transcribed[chunk[0]] = [OCR_FAILED_TEXT]
-        self.trace.record({"entries": [chunk[0] + 1], "accepted_with_problem": problem})
+        self.trace.record_accepted_with_problem([chunk[0] + 1], problem)
         log_action("accept", Color.YELLOW, f"entry {chunk[0] + 1} written as {OCR_FAILED_TEXT}: {problem}")
 
     def compose(self) -> str:
