@@ -9,8 +9,17 @@ export PYTHONPATH := source_directory() / ".." / "src"
 default:
     @just --list --unsorted
 
+[group('project')]
+[doc('Download models')]
+[script]
+[extension('.ps1')]
+[positional-arguments]
+models *names:
+    uv run --with huggingface_hub bench.py download @args
+    exit $LASTEXITCODE
+
 [group('run')]
-[doc('Translate runs not translated yet; pass run names or --pick')]
+[doc('Translate pending runs')]
 [script]
 [extension('.ps1')]
 [positional-arguments]
@@ -19,7 +28,7 @@ run *arguments:
     exit $LASTEXITCODE
 
 [group('run')]
-[doc('Check and score translations not checked or scored yet, without translating')]
+[doc('Check and score pending translations')]
 score:
     uv run bench.py score
 
@@ -37,8 +46,3 @@ compare:
 [doc('List runs and their progress')]
 runs:
     uv run bench.py runs
-
-[group('data')]
-[doc('Download models')]
-models *names:
-    uv run --with huggingface_hub bench.py download {{names}}

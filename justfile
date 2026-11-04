@@ -2,6 +2,7 @@ set windows-shell := ["pwsh.exe", "-NoLogo", "-NoProfile", "-Command"]
 set script-interpreter := ["pwsh.exe", "-NoLogo", "-NoProfile"]
 
 export UV_PROJECT_ENVIRONMENT := data_local_directory() / "uv" / "envs" / "videos-subs"
+export PYTHONPATH := source_directory() / "src"
 dictionary_dir := data_local_directory() / "hunspell"
 
 mod bench
@@ -23,7 +24,7 @@ dictionary:
     Invoke-WebRequest -Uri https://raw.githubusercontent.com/LibreOffice/dictionaries/master/pt_BR/pt_BR.dic -OutFile '{{dictionary_dir}}/pt_BR.dic'
     Invoke-WebRequest -Uri https://raw.githubusercontent.com/LibreOffice/dictionaries/master/pt_BR/pt_BR.aff -OutFile '{{dictionary_dir}}/pt_BR.aff'
 
-[group('project')]
+[group('project/report')]
 [doc('List line counts')]
 cloc:
     cloc --exclude-dir=__pycache__ .
@@ -141,15 +142,6 @@ test *args:
 alias tests := test
 
 [group('data')]
-[doc('Crosscheck subtitles, translations and reports')]
-[script]
-[extension('.ps1')]
-[positional-arguments]
-crosscheck *paths:
-    uv run src/crosscheck-subs.py @args
-    exit $LASTEXITCODE
-
-[group('data')]
 [doc('Delete OCR reports')]
 [confirm('Delete every OCR report in _checks under the given paths, or under Z:/midias/filmes and Z:/midias/series without paths? (y/N)')]
 [script]
@@ -206,7 +198,6 @@ reset-identifier-pt *paths:
 
 [group('data/fix')]
 [doc('Apply fixes decided by hand to subtitles')]
-[env('PYTHONPATH', 'src')]
 [script]
 [extension('.ps1')]
 [positional-arguments]
@@ -216,7 +207,6 @@ apply-fixes fixes *options:
 
 [group('data/fix')]
 [doc('Add right words to check-translate')]
-[env('PYTHONPATH', 'src')]
 [script]
 [extension('.ps1')]
 [positional-arguments]
@@ -226,7 +216,6 @@ add-check-words +words:
 
 [group('data/fix')]
 [doc('Add right expressions to check-translate')]
-[env('PYTHONPATH', 'src')]
 [script]
 [extension('.ps1')]
 [positional-arguments]
@@ -236,7 +225,6 @@ add-check-expressions +expressions:
 
 [group('data/fix')]
 [doc('Add description translations to fix-translations')]
-[env('PYTHONPATH', 'src')]
 [script]
 [extension('.ps1')]
 [positional-arguments]
@@ -246,7 +234,6 @@ add-fix-sounds +pairs:
 
 [group('data/fix')]
 [doc('Add description subjects to fix-translations')]
-[env('PYTHONPATH', 'src')]
 [script]
 [extension('.ps1')]
 [positional-arguments]
@@ -255,8 +242,16 @@ add-fix-subjects +pairs:
     exit $LASTEXITCODE
 
 [group('data/fix')]
-[doc('Add misspelled words to fix-translations, with their English word')]
-[env('PYTHONPATH', 'src')]
+[doc('List descriptions fix-translations cannot translate')]
+[script]
+[extension('.ps1')]
+[positional-arguments]
+list-missing-descriptions *paths:
+    uv run src/fix-tools/list-missing-descriptions.py @args
+    exit $LASTEXITCODE
+
+[group('data/fix')]
+[doc('Add misspellings to fix-translations')]
 [script]
 [extension('.ps1')]
 [positional-arguments]
@@ -264,12 +259,11 @@ add-fix-words +triples:
     uv run src/fix-tools/add-to-dictionary.py fix-words @args
     exit $LASTEXITCODE
 
-[group('data/fix')]
-[doc('List descriptions fix-translations cannot translate')]
-[env('PYTHONPATH', 'src')]
+[group('debug')]
+[doc('Crosscheck subtitles, translations and reports')]
 [script]
 [extension('.ps1')]
 [positional-arguments]
-descriptions-missing *paths:
-    uv run src/fix-tools/list-missing-descriptions.py @args
+crosscheck *paths:
+    uv run src/crosscheck-subs.py @args
     exit $LASTEXITCODE
