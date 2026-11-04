@@ -7,6 +7,7 @@ import argparse
 import json
 import os
 import subprocess
+import sys
 
 import questionary
 from rich.table import Table
@@ -14,7 +15,7 @@ from rich.table import Table
 from catalog import BASELINE_RUN, MODELS, RUNS, SCORING_MODELS, SOURCES
 from models import PYTORCH_ENV
 from report import Comparison, SourceReport
-from runs import BENCH_DIR, RUNS_DIR, SCORE_JOBS_FILE
+from runs import BENCH_DIR, RUNS_DIR, SCORE_JOBS_FILE, SRC_DIR
 from shared.console import Batch, Color, console, log_action
 from shared.files import write_text_replacing
 
@@ -65,7 +66,7 @@ if __name__ == "__main__":
 
             batch = Batch()
             for run in runs_selected:
-                if run.is_translated(SOURCES):
+                if run.is_translated(sources):
                     log_action("translated", Color.BLUE, run.name)
                     continue
                 log_action("translate", Color.GREEN, run.name)
@@ -78,12 +79,13 @@ if __name__ == "__main__":
         case "score":
             batch = Batch()
             runs_translated = [run for run in RUNS if run.count_translated(SOURCES)]
-            for run in runs_translated:
-                log_action("check", Color.GREEN, run.name)
+            translations_unchecked = [translation for run in runs_translated for translation in run.find_unchecked(SOURCES)]
+            if translations_unchecked:
+                log_action("check", Color.GREEN, f"{len(translations_unchecked)} translations without a report")
                 try:
-                    run.check()
+                    subprocess.run([sys.executable, str(SRC_DIR / "8-check-translations.py"), *map(str, translations_unchecked)], check=True)
                 except Exception as error:
-                    batch.fail(run.dir, error)
+                    batch.fail(RUNS_DIR, error)
 
             scorings = [scoring for source in SOURCES if (scoring := source.find_scoring_claude())] + [scoring for run in runs_translated for scoring in run.to_scorings(SOURCES)]
             jobs = [scoring.to_job() for scoring in scorings if not scoring.output.exists()]

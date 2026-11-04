@@ -331,8 +331,8 @@ class Run:
                 self.translator.translate(translation.english, translation.translation)
                 timings.record(translation.translation, round(time.perf_counter() - started))
 
-    def check(self) -> None:
-        subprocess.run([sys.executable, str(SRC_DIR / "8-check-translations.py"), str(self.dir)], check=True)
+    def find_unchecked(self, sources: Sequence[Source]) -> list[Path]:
+        return [translation.translation for source in sources if (translation := self.get_translation(source)).is_translated() and not translation.is_checked()]
 
     def to_scorings(self, sources: Sequence[Source]) -> list[Scoring]:
         return [scoring for source in sources for scoring in self.get_translation(source).to_scorings()]
