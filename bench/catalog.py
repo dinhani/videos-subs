@@ -11,6 +11,10 @@ SOURCES = (
         library_english=Path("Z:/midias/filmes/Hannibal Lecter - 1 - Silence of the Lambs, The (1991)/_subs/The Silence of the Lambs (1991, Web-DL, 2160p, SDR, h265, 5.1, AAC).embed.2.eng.srt"),
         library_official=Path("Z:/midias/filmes/Hannibal Lecter - 1 - Silence of the Lambs, The (1991)/_subs/The Silence of the Lambs (1991, Web-DL, 2160p, SDR, h265, 5.1, AAC).embed.21.pob.srt"),
     ),
+    Source(
+        library_english=Path("Z:/midias/filmes/F1 - 1 - F1 (2025)/_subs/F1 (2025, Web-DL, 2160p, HDR, h265, 5.1, EAC3 Atmos).embed.2.eng.srt"),
+        library_official=Path("Z:/midias/filmes/F1 - 1 - F1 (2025)/_subs/F1 (2025, Web-DL, 2160p, HDR, h265, 5.1, EAC3 Atmos).embed.32.pob.srt"),
+    ),
 )
 
 FLAGS_PIPELINE = ("--jinja", "--ctx-size", "16384", "--parallel", "1")
