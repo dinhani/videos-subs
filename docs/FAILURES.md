@@ -50,6 +50,10 @@ Wrapping the translated lines at 42 characters left orphan words on their own li
 
 Google Translate gave good translations, but it depends on Google. The project translates with local models only.
 
+### Cloud models as translator
+
+Models from OpenRouter or other cloud services cost too much to translate the whole library, and there is no reason to expect them to translate better: Claude's own reference translations lost to Gemma.
+
 ## Reviewing and fixing translations
 
 ### An LLM review pass after translation
