@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 
 from shared.data_lists import FIX_SOUNDS, FIX_SUBJECTS
-from shared.descriptions import DescriptionTable, Movie
+from shared.descriptions import DescriptionTable, MovieNames
 
 TABLE = DescriptionTable.from_lists(FIX_SOUNDS, FIX_SUBJECTS)
 
@@ -44,7 +44,7 @@ def test_find_translation_refused(description: str) -> None:
 def test_is_confirmed_by(model: str, names: frozenset[str], confirmed: bool) -> None:
     translation = TABLE.find_translation("JAKE GRUNTS")
     assert translation is not None
-    assert translation.is_confirmed_by(model, Movie(names_known=names, dialogue=())) == confirmed
+    assert translation.is_confirmed_by(model, MovieNames(names_known=names, dialogue=())) == confirmed
 
 
 @pytest.mark.parametrize(("model", "already"), [
@@ -68,7 +68,7 @@ def test_movie_names(tmp_path: Path) -> None:
     )
     (tmp_path / "movie.embed.3.spa.srt").write_text("1\n00:00:01,000 --> 00:00:02,000\nRAMONA: Hola.\n", encoding="utf-8")
 
-    movie = Movie.from_subs_folder(tmp_path)
+    movie_names = MovieNames.from_subs_folder(tmp_path)
 
-    assert all(movie.is_name(word) for word in ("shuri", "peter", "parker", "tulkun"))
-    assert not any(movie.is_name(word) for word in ("tony", "stark", "ramona"))
+    assert all(movie_names.is_name(word) for word in ("shuri", "peter", "parker", "tulkun"))
+    assert not any(movie_names.is_name(word) for word in ("tony", "stark", "ramona"))

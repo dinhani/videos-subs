@@ -39,12 +39,12 @@ class DescriptionTranslation:
     name: str
     forms: tuple[frozenset[str], ...]
 
-    def is_confirmed_by(self, translation: str, movie: "Movie") -> bool:
+    def is_confirmed_by(self, translation: str, movie_names: "MovieNames") -> bool:
         if not self.name:
             return True
         words = normalize_description(translation)
         name = normalize_description(self.name)
-        return words != normalize_description(self.source) and f" {name} " in f" {words} " and all(movie.is_name(word) for word in name.split())
+        return words != normalize_description(self.source) and f" {name} " in f" {words} " and all(movie_names.is_name(word) for word in name.split())
 
     def is_already_in(self, translation: str) -> bool:
         parts = [DESCRIPTION_ARTICLE.sub("", part.strip()) for part in normalize_description(translation).split(",")]
@@ -104,7 +104,7 @@ class DescriptionTable:
 
 
 @dataclass(frozen=True)
-class Movie:
+class MovieNames:
     names_known: frozenset[str]
     dialogue: tuple[str, ...]
     names_checked: dict[str, bool] = field(default_factory=dict, compare=False)
@@ -112,7 +112,7 @@ class Movie:
 
     @classmethod
     @functools.cache
-    def from_subs_folder(cls, subs_folder: Path) -> "Movie":
+    def from_subs_folder(cls, subs_folder: Path) -> "MovieNames":
         # the names of the movie are the words of the speaker labels and of check-words, and the words that NER finds as names in the dialogue of the entries that are not in capitals only, since NER reads names from their case and reads the words of a description as names
         texts = [parse_plain_text(entry) for file in sorted(subs_folder.glob("*.srt")) if SubtitleFile.from_path(file).language == LANGUAGE_SOURCE for entry in parse_srt(file)]
         labels = {word for text in texts for label in SPEAKER_LABEL.finditer(text) for word in normalize_description(label[1]).split()}

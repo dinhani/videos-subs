@@ -8,7 +8,7 @@ from collections import Counter
 
 from shared.console import Color, console, log_action
 from shared.data_lists import FIX_SOUNDS, FIX_SUBJECTS
-from shared.descriptions import DESCRIPTION_SIMPLE, DescriptionTable, Movie
+from shared.descriptions import DESCRIPTION_SIMPLE, DescriptionTable, MovieNames
 from shared.files import SUBS_FOLDER, SubtitleFile, find_files, parse_srt
 from shared.subtitles import LANGUAGE_SOURCE
 
@@ -28,11 +28,11 @@ if __name__ == "__main__":
     counts: Counter[str] = Counter()
     forms: dict[str, str] = {}
     for source in sources:
-        movie = Movie.from_subs_folder(source.parent)
+        movie_names = MovieNames.from_subs_folder(source.parent)
         for entry in parse_srt(source):
             for match in DESCRIPTION_SIMPLE.finditer(entry.content):
                 description = " ".join((match[1] or match[2]).split())
-                if not any(character.isalpha() for character in description) or movie.has_names_only(description):
+                if not any(character.isalpha() for character in description) or movie_names.has_names_only(description):
                     continue
                 key = description.lower()
                 counts[key] += 1

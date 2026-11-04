@@ -6,7 +6,7 @@ import pytest
 import srt
 
 from shared.data_lists import DataList, DataListFormat
-from shared.descriptions import Movie
+from shared.descriptions import MovieNames
 
 fix_translations = importlib.import_module("7-fix-translations")
 TranslationEntry = fix_translations.TranslationEntry
@@ -22,11 +22,11 @@ def entry(english: str, translated: str) -> TranslationEntry:
 
 
 def fix(fix: TranslationFix, english: str, translated: str, names: frozenset[str] = frozenset()) -> str:
-    return "\n".join(fix.fix(entry(english, translated), Movie(names_known=names, dialogue=())))
+    return "\n".join(fix.fix(entry(english, translated), MovieNames(names_known=names, dialogue=())))
 
 
 def fix_all(english: str, translated: str, names: frozenset[str] = frozenset()) -> str:
-    translation, _ = entry(english, translated).apply_fixes(fix_translations.FIXES, Movie(names_known=names, dialogue=()))
+    translation, _ = entry(english, translated).apply_fixes(fix_translations.FIXES, MovieNames(names_known=names, dialogue=()))
     return "\n".join(translation.target_lines)
 
 

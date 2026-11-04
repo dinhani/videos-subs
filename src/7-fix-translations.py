@@ -19,7 +19,7 @@ from rich.text import Text
 
 from shared.console import Batch, Color, console, log_action
 from shared.data_lists import FIX_SOUNDS, FIX_SUBJECTS, FIX_WORDS, DataList
-from shared.descriptions import DESCRIPTION_SIMPLE, DescriptionTable, Movie
+from shared.descriptions import DESCRIPTION_SIMPLE, DescriptionTable, MovieNames
 from shared.files import TRANSLATION_SUFFIXES, Backups, SubtitleFile, find_files, parse_movie_dir, parse_srt, write_text_replacing
 from shared.languages import WORD
 from shared.subtitles import BRACKETS, FORMATTING_TAGS, QUOTES, replace_text
@@ -45,7 +45,7 @@ class TagsFix:
     ITALIC_LINE: ClassVar[re.Pattern[str]] = re.compile(r"^(?:\{\\an\d\})?<i>(?:(?!</?i>).)*</i>$", re.IGNORECASE)
     enabled: bool
 
-    def fix(self, entry: "TranslationEntry", movie: Movie) -> tuple[str, ...]:
+    def fix(self, entry: "TranslationEntry", movie_names: MovieNames) -> tuple[str, ...]:
         # delete the tags the English entry does not have, leaving a space where a tag joined two words
         tags_source = {self.parse_tag_key(match) for line in entry.source_lines for match in self.TAG.finditer(line)}
 
@@ -89,7 +89,7 @@ class LeftoversFix:
     END: ClassVar[re.Pattern[str]] = re.compile(r"""(?P<quote>["'])?(?P<closers>\]\}?|\}),?\s*$""")
     enabled: bool
 
-    def fix(self, entry: "TranslationEntry", movie: Movie) -> tuple[str, ...]:
+    def fix(self, entry: "TranslationEntry", movie_names: MovieNames) -> tuple[str, ...]:
         if not entry.is_aligned:
             return entry.target_lines
         lines = list(entry.target_lines)
@@ -119,7 +119,7 @@ class BracketsFix:
     LINE_WRAPPED: ClassVar[re.Pattern[str]] = re.compile(r"^(?P<start>(?:\{\\[^{}]*\}|<[^<>]+>|[\s\-–—])*)[\[(](?P<text>[^\[\]()]+)[\])](?P<end>(?:\s*<[^<>]+>)*\s*)$")
     enabled: bool
 
-    def fix(self, entry: "TranslationEntry", movie: Movie) -> tuple[str, ...]:
+    def fix(self, entry: "TranslationEntry", movie_names: MovieNames) -> tuple[str, ...]:
         if not entry.is_aligned:
             return entry.target_lines
         lines = list(entry.target_lines)
@@ -159,7 +159,7 @@ class QuotesFix:
     name: ClassVar[str] = "quotes"
     enabled: bool
 
-    def fix(self, entry: "TranslationEntry", movie: Movie) -> tuple[str, ...]:
+    def fix(self, entry: "TranslationEntry", movie_names: MovieNames) -> tuple[str, ...]:
         # one quote more than the English entry, at the start or end of the only line where the English line has none; curly quotes count as quotes
         if not entry.is_aligned:
             return entry.target_lines
@@ -188,7 +188,7 @@ class DescriptionsFix:
     sounds: DataList
     subjects: DataList
 
-    def fix(self, entry: "TranslationEntry", movie: Movie) -> tuple[str, ...]:
+    def fix(self, entry: "TranslationEntry", movie_names: MovieNames) -> tuple[str, ...]:
         if not entry.is_aligned:
             return entry.target_lines
         table = load_description_table(self.sounds, self.subjects)
@@ -207,7 +207,7 @@ class DescriptionsFix:
             spacings = descriptions_target if paired else descriptions
             texts: list[str | None] = []
             for description, translation, model, spacing in zip(descriptions, translations, models, spacings):
-                if translation is None or not translation.is_confirmed_by(model, movie) or (paired and translation.is_already_in(model)):
+                if translation is None or not translation.is_confirmed_by(model, movie_names) or (paired and translation.is_already_in(model)):
                     texts.append(None)
                     continue
                 inner = spacing[0][1:-1]
@@ -235,7 +235,7 @@ class WordsFix:
     enabled: bool
     words: DataList
 
-    def fix(self, entry: "TranslationEntry", movie: Movie) -> tuple[str, ...]:
+    def fix(self, entry: "TranslationEntry", movie_names: MovieNames) -> tuple[str, ...]:
         words_right, words_wrong = load_words(self.words)
         if words_wrong is None:
             return entry.target_lines
@@ -290,7 +290,7 @@ class TranslationEntry:
         numbers_added = set(NUMBER.findall("\n".join(self.target_lines))) - set(NUMBER.findall("\n".join(self.source_lines)))
         return any(not line.strip() for line in self.target_lines) or lines_without_words > sum(1 for line in self.source_lines if not LINE_WORDS.search(FORMATTING_TAGS.sub("", line))) or bool(numbers_added)
 
-    def apply_fixes(self, fixes: tuple[TranslationFix, ...], movie: Movie) -> tuple["TranslationEntry", tuple[str, ...]]:
+    def apply_fixes(self, fixes: tuple[TranslationFix, ...], movie_names: MovieNames) -> tuple["TranslationEntry", tuple[str, ...]]:
         # a broken entry is left whole for check-translate; a fix that leaves a blank line is not applied
         if self.is_broken:
             return self, ()
@@ -299,7 +299,7 @@ class TranslationEntry:
         for fix in fixes:
             if not fix.enabled:
                 continue
-            lines = fix.fix(entry, movie)
+            lines = fix.fix(entry, movie_names)
             if lines == entry.target_lines or any(not line.strip() for line in lines):
                 continue
             entry = replace(entry, target_lines=lines)
@@ -320,12 +320,12 @@ class EntryChange:
 class Translation:
     entries: list[srt.Subtitle]
     sources_by_index: dict[int, srt.Subtitle]
-    movie: Movie
+    movie_names: MovieNames
 
     @classmethod
     def from_file(cls, file: Path) -> "Translation":
         source = SubtitleFile.from_path(file).get_english_source()
-        return cls(entries=parse_srt(file), sources_by_index={entry.index: entry for entry in parse_srt(source.path)}, movie=Movie.from_subs_folder(source.folder))
+        return cls(entries=parse_srt(file), sources_by_index={entry.index: entry for entry in parse_srt(source.path)}, movie_names=MovieNames.from_subs_folder(source.folder))
 
     def fix(self, fixes: tuple[TranslationFix, ...]) -> list[EntryChange]:
         # fix every entry that has a source entry; a changed entry loses its marker, so check-translate judges it again
@@ -334,7 +334,7 @@ class Translation:
             source = self.sources_by_index.get(entry.index)
             if source is None:
                 continue
-            translation, fixes_applied = TranslationEntry.from_entries(source, entry).apply_fixes(fixes, self.movie)
+            translation, fixes_applied = TranslationEntry.from_entries(source, entry).apply_fixes(fixes, self.movie_names)
             content = "\n".join(translation.target_lines)
             if content == entry.content:
                 continue
