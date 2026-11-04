@@ -10,13 +10,12 @@ from pathlib import Path
 
 from shared.console import Batch, Color, console
 from shared.files import CHECKS_FOLDER, IMAGE_EXTENSIONS, SUBS_FOLDER, find_files, find_language_code
-from shared.subtitles import SubtitleKind
+from shared.subtitles import LANGUAGE_SOURCE, SubtitleKind
 
 # ------------------------------------------------------------------------------
 # Constants
 # ------------------------------------------------------------------------------
 WORK_FOLDERS = (SUBS_FOLDER, CHECKS_FOLDER)
-SOURCE_LANGUAGE = "eng"
 TRACK = re.compile(r"^(.*\.embed\.\d+)\.")
 PART_SUFFIX = ".part"
 
@@ -64,7 +63,7 @@ if __name__ == "__main__":
             sources = [sub for sub in subs_by_track[track[1]] if sub.suffix == ".srt"] if track else []
             if not sources:
                 problems.append((movie_dir / name, "no source in _subs"))
-            elif len(sources) == 1 and find_language_code(sources[0]) != SOURCE_LANGUAGE:
+            elif len(sources) == 1 and find_language_code(sources[0]) != LANGUAGE_SOURCE:
                 problems.append((movie_dir / name, f"source is not English: {sources[0].name}"))
             elif len(sources) == 1 and SubtitleKind.from_file(sources[0]) != SubtitleKind.find_in_translation(movie_dir / name):
                 problems.append((movie_dir / name, f"source of another kind: {sources[0].name}"))

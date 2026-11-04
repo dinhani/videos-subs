@@ -11,7 +11,7 @@ import srt
 from lingua import Language
 from tenacity import Retrying, retry_if_exception_type, stop_after_attempt, wait_fixed
 
-from shared.subtitles import SubtitleKind
+from shared.subtitles import LANGUAGE_SOURCE, LANGUAGE_TRANSLATION, LANGUAGE_UNDETECTED, SubtitleKind
 
 DIR_MIDIAS = Path("Z:/midias")
 DIR_FILMES = DIR_MIDIAS / "filmes"
@@ -28,7 +28,7 @@ REPLACE_WAIT_SECONDS = 0.5
 
 IMAGE_EXTENSIONS = (".sup", ".mks")
 
-LANGUAGE_CODES = {language.iso_code_639_3.name.lower() for language in Language.all()} | {"pob", "und"}
+LANGUAGE_CODES = {language.iso_code_639_3.name.lower() for language in Language.all()} | {LANGUAGE_TRANSLATION, LANGUAGE_UNDETECTED}
 
 
 def find_files(parser: argparse.ArgumentParser, extensions_file: tuple[str, ...], extensions_folder: tuple[str, ...], folder: str | None = None) -> list[Path]:
@@ -97,7 +97,7 @@ def get_english_source(translation: Path) -> Path:
     kind = SubtitleKind.find_in_translation(translation)
     if kind is None:
         raise ValueError(f"not a translation: {translation.name}")
-    source = parse_movie_dir(translation) / SUBS_FOLDER / f"{translation.name.removesuffix(kind.to_translation_suffix())}.eng{kind}.srt"
+    source = parse_movie_dir(translation) / SUBS_FOLDER / f"{translation.name.removesuffix(kind.to_translation_suffix())}.{LANGUAGE_SOURCE}{kind}.srt"
     if not source.exists():
         raise FileNotFoundError(f"English source not found: {source}")
     return source

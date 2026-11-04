@@ -19,16 +19,13 @@ from shared.console import Batch, Color, log_action, progress_bar
 from shared.files import IMAGE_EXTENSIONS, SUBS_FOLDER, TRACES_FOLDER, find_files, parse_movie_dir, write_text_replacing
 from shared.image_subtitles import SubtitleEntry, parse_image_subtitle
 from shared.llm import LLM_PROPS_URL, Trace, connect_llama
-from shared.subtitles import SubtitleKind
+from shared.subtitles import LANGUAGE_SOURCE, OCR_FAILED_TEXT, SubtitleKind
 
 # ------------------------------------------------------------------------------
 # Constants
 # ------------------------------------------------------------------------------
-LANGUAGES = ("eng",)
-
 CHUNK_SIZE = 10
 
-ENTRY_FAILED_TEXT = "[OCR failed]"
 ITALIC_TAG_WITH_ATTRIBUTES = re.compile(r"<i\s[^<>]*>")
 
 LLM_TEMPERATURES = (0.0, 0.5, 1.0)
@@ -145,9 +142,9 @@ class SubtitleTranscription:
             self.transcribe(chunk[:middle])
             self.transcribe(chunk[middle:])
             return
-        self.transcribed[chunk[0]] = [ENTRY_FAILED_TEXT]
+        self.transcribed[chunk[0]] = [OCR_FAILED_TEXT]
         self.trace.record({"entries": [chunk[0] + 1], "accepted_with_problem": problem})
-        log_action("accept", Color.YELLOW, f"entry {chunk[0] + 1} written as {ENTRY_FAILED_TEXT}: {problem}")
+        log_action("accept", Color.YELLOW, f"entry {chunk[0] + 1} written as {OCR_FAILED_TEXT}: {problem}")
 
     def compose(self) -> str:
         transcribed_by_image = {self.entries[i].image_key: lines for i, lines in self.transcribed.items()}
@@ -161,7 +158,7 @@ class SubtitleTranscription:
 # Execution
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
-    subs = find_files(argparse.ArgumentParser(description="Transcribes image subtitles to text subtitles with a vision LLM; folders only in the wanted languages."), extensions_file=IMAGE_EXTENSIONS, extensions_folder=tuple(f".{language}{kind}{extension}" for language in LANGUAGES for kind in SubtitleKind for extension in IMAGE_EXTENSIONS), folder=SUBS_FOLDER)
+    subs = find_files(argparse.ArgumentParser(description="Transcribes image subtitles to text subtitles with a vision LLM; folders only English ones."), extensions_file=IMAGE_EXTENSIONS, extensions_folder=tuple(f".{LANGUAGE_SOURCE}{kind}{extension}" for kind in SubtitleKind for extension in IMAGE_EXTENSIONS), folder=SUBS_FOLDER)
     llama = connect_llama()
     llama_slots = llama.get(LLM_PROPS_URL, cast_to=LlamaProps).total_slots
     batch = Batch()

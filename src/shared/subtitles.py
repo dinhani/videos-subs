@@ -10,7 +10,11 @@ IGNORE_MARKER = re.compile(r"\s*\bignore:(\S+)")
 QUOTES = '"“”'
 BRACKETS = (("(", ")"), ("[", "]"))
 
-TRANSLATION_LANGUAGE_CODE = "pob"
+LANGUAGE_SOURCE = "eng"
+LANGUAGE_TRANSLATION = "pob"
+LANGUAGE_UNDETECTED = "und"
+
+OCR_FAILED_TEXT = "[OCR failed]"
 
 SOUND_DESCRIPTION = re.compile(r"\[([^\]]+)\]|\(([^)]+)\)")
 
@@ -32,7 +36,7 @@ class SubtitleKind(StrEnum):
         return next((kind for kind in cls if file.name.endswith(kind.to_translation_suffix())), None)
 
     def to_translation_suffix(self) -> str:
-        return f".{TRANSLATION_LANGUAGE_CODE}{self}.translated.srt"
+        return f".{LANGUAGE_TRANSLATION}{self}.translated.srt"
 
     @classmethod
     def from_texts(cls, texts: list[str]) -> "SubtitleKind":

@@ -11,7 +11,7 @@ from lingua import Language, LanguageDetector, LanguageDetectorBuilder
 from wordfreq import zipf_frequency
 
 from shared.files import find_language_code
-from shared.subtitles import FORMATTING_TAGS
+from shared.subtitles import FORMATTING_TAGS, LANGUAGE_SOURCE, LANGUAGE_TRANSLATION, LANGUAGE_UNDETECTED
 
 WORD = re.compile(r"[^\W\d_]+(?:['’][^\W\d_]+)*")
 SENTENCE_START = re.compile(r"(?:^|[.!?…\-–—\"“(♪:\n])[ \t]*$")
@@ -45,8 +45,8 @@ def get_language_detector() -> LanguageDetector:
 
 
 class TextLanguage(Enum):
-    ENGLISH = ("eng", "en")
-    PORTUGUESE_BRAZIL = ("pob", "pt")
+    ENGLISH = (LANGUAGE_SOURCE, "en")
+    PORTUGUESE_BRAZIL = (LANGUAGE_TRANSLATION, "pt")
     PORTUGUESE_PORTUGAL = ("por", "pt")
 
     def __init__(self, code: str, wordfreq_code: str) -> None:
@@ -96,7 +96,7 @@ class SubtitleLanguage:
         text = FORMATTING_TAGS.sub(" ", text)
         language = get_language_detector().detect_language_of(text)
         if language is None:
-            return cls(code="und", name="unknown")
+            return cls(code=LANGUAGE_UNDETECTED, name="unknown")
         if language != Language.PORTUGUESE:
             return cls(code=language.iso_code_639_3.name.lower(), name=language.name.lower())
 
@@ -104,7 +104,7 @@ class SubtitleLanguage:
         markers_brazil = len(MARKERS_PT_BR.findall(text))
         if markers_portugal >= MARKERS_PT_PT_MIN and markers_portugal > markers_brazil:
             return cls(code="por", name="portuguese (portugal)")
-        return cls(code="pob", name="portuguese (brazil)")
+        return cls(code=LANGUAGE_TRANSLATION, name="portuguese (brazil)")
 
 
 @dataclass(frozen=True)

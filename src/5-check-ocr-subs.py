@@ -23,14 +23,11 @@ from shared.console import Batch, Color, log_action, progress_bar
 from shared.files import CHECKS_FOLDER, IMAGE_EXTENSIONS, SUBS_FOLDER, find_files, list_folder, parse_movie_dir, parse_srt
 from shared.image_subtitles import SubtitleEntry, parse_image_subtitle
 from shared.reports import CHECK_WORKERS, Issue, IssueKind, Report, ReportScore, log_ranking
-from shared.subtitles import SubtitleKind, parse_plain_text
+from shared.subtitles import LANGUAGE_SOURCE, OCR_FAILED_TEXT, SubtitleKind, parse_plain_text
 
 # ------------------------------------------------------------------------------
 # Constants
 # ------------------------------------------------------------------------------
-LANGUAGES = ("eng",)
-
-OCR_FAILED_TEXT = "[OCR failed]"
 ENTRY_START_TOLERANCE = timedelta(milliseconds=2)
 
 FONT_SIZE = 100
@@ -306,7 +303,7 @@ def check_subtitle(subtitle: Path, report: Path) -> ReportScore:
 if __name__ == "__main__":
     subs = [
         sub
-        for sub in find_files(argparse.ArgumentParser(description="Checks text subtitles made by OCR against their image subtitles; only ones next to an image subtitle, folders only in the wanted languages."), extensions_file=(".srt",), extensions_folder=tuple(f".{language}{kind}.srt" for language in LANGUAGES for kind in SubtitleKind), folder=SUBS_FOLDER)
+        for sub in find_files(argparse.ArgumentParser(description="Checks text subtitles made by OCR against their image subtitles; only ones next to an image subtitle, folders only English ones."), extensions_file=(".srt",), extensions_folder=tuple(f".{LANGUAGE_SOURCE}{kind}.srt" for kind in SubtitleKind), folder=SUBS_FOLDER)
         if any(f"{sub.stem}{extension}" in list_folder(sub.parent) for extension in IMAGE_EXTENSIONS)
     ]
     reports = {sub: parse_movie_dir(sub) / CHECKS_FOLDER / f"{sub.stem}.ocr.txt" for sub in subs}

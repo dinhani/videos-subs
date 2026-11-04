@@ -17,7 +17,7 @@ from shared.console import Batch, Color, log_action, progress_bar
 from shared.files import SUBS_FOLDER, TRACES_FOLDER, find_files, parse_movie_dir, parse_srt, parse_subtitle_name, parse_video_name, write_text_replacing
 from shared.languages import WORD, parse_words
 from shared.llm import Trace, connect_llama
-from shared.subtitles import IGNORE_MARKER, SubtitleKind
+from shared.subtitles import IGNORE_MARKER, LANGUAGE_SOURCE, SubtitleKind
 
 # ------------------------------------------------------------------------------
 # Constants
@@ -266,7 +266,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Translates English subtitles to Brazilian Portuguese; folders only English ones.")
     parser.add_argument("--temperatures", nargs="+", type=float, default=LLM_TEMPERATURES, help=f"temperature of each attempt of a chunk, in order (default: {' '.join(map(str, LLM_TEMPERATURES))})")
     parser.add_argument("--prompt", type=Path, help="text file with the system prompt to use instead of LLM_PROMPT; {movie} in it is replaced by the title of the movie or episode, as in LLM_PROMPT")
-    subs_src = find_files(parser, extensions_file=(".srt",), extensions_folder=tuple(f".eng{kind}.srt" for kind in SubtitleKind), folder=SUBS_FOLDER)
+    subs_src = find_files(parser, extensions_file=(".srt",), extensions_folder=tuple(f".{LANGUAGE_SOURCE}{kind}.srt" for kind in SubtitleKind), folder=SUBS_FOLDER)
     arguments = parser.parse_args()
     temperatures = tuple(arguments.temperatures)
     prompt = arguments.prompt.read_text(encoding="utf-8") if arguments.prompt else LLM_PROMPT
