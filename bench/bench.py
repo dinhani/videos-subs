@@ -98,7 +98,7 @@ if __name__ == "__main__":
 
         case "runs":
             table = Table("run", "model", "translation", "downloaded", "translated", "checked", "scored")
-            for run in RUNS:
+            for run in sorted(RUNS, key=lambda run: (run.model.name, run.name)):
                 table.add_row(*run.to_status_row(SOURCES))
             console.print(table)
 
