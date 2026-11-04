@@ -16,4 +16,9 @@ These tools on the `PATH`:
 
 ## Usage
 
-The `justfile` has a recipe for setup and for each step; `just` lists them. [docs/PIPELINE.md](docs/PIPELINE.md) describes each step, [docs/RULES.md](docs/RULES.md) the check rules, and [AGENTS.md](AGENTS.md) the file layout.
+The `justfile` has a recipe for setup and for each step; `just` lists them. The docs:
+
+- [docs/PIPELINE.md](docs/PIPELINE.md): each step.
+- [docs/RULES.md](docs/RULES.md): the check rules.
+- [docs/BENCH.md](docs/BENCH.md): the bench of translation models, and the models it covers.
+- [AGENTS.md](AGENTS.md): the principle, the terms, the media layout and the code layout.
