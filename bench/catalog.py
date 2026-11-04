@@ -83,5 +83,6 @@ RUNS = (
     *(Run.from_prompt(GEMMA_4_26B, prompt) for prompt in sorted(PROMPTS_DIR.glob("*.txt"))),
     Run.from_model(HY_MT2_30B),
     Run.from_model(GEMMA_4_31B),
+    Run.from_fixes(Run.from_model(GEMMA_4_31B)),
 )
 BASELINE_RUN = GEMMA_4_26B.name
