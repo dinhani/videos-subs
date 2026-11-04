@@ -10,7 +10,7 @@ import statistics
 from collections import Counter, defaultdict
 from collections.abc import Iterator
 from concurrent.futures import Future, ProcessPoolExecutor
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import timedelta
 from pathlib import Path
 from typing import ClassVar
@@ -249,8 +249,6 @@ class OcrEntry:
 class OcrCheck:
     subtitle: Path
     entries: list[OcrEntry]
-    issues: list[Issue] = field(default_factory=list)
-    issues_ignored: int = 0
 
     @classmethod
     def from_file(cls, subtitle: Path) -> "OcrCheck":
@@ -269,16 +267,6 @@ class OcrCheck:
             raise ValueError(f"entry {shifted} starts at a different time than in {image.name}")
         return cls(subtitle=subtitle, entries=[OcrEntry.from_entries(text, entry) for text, entry in zip(texts, images)])
 
-    def check(self) -> None:
-        for rule in RULES:
-            if not rule.enabled:
-                continue
-            for entry, detail in rule.find_issues(self):
-                if rule.kind.is_ignored_in(entry.subtitle):
-                    self.issues_ignored += 1
-                    continue
-                self.issues.append(Issue(entry=entry.subtitle, kind=rule.kind, detail=detail, quote=self.quote(entry)))
-
     def quote(self, entry: "OcrEntry") -> tuple[str, ...]:
         i = self.entries.index(entry)
         quote: list[str] = []
@@ -288,7 +276,12 @@ class OcrCheck:
         return tuple(quote)
 
     def to_report(self) -> Report:
-        return Report(subtitle=self.subtitle, entries_count=len(self.entries), issues=self.issues, issues_ignored=self.issues_ignored)
+        issues: list[Issue] = []
+        for rule in RULES:
+            if not rule.enabled:
+                continue
+            issues += [Issue(entry=entry.subtitle, kind=rule.kind, detail=detail, quote=self.quote(entry)) for entry, detail in rule.find_issues(self)]
+        return Report.from_issues(subtitle=self.subtitle, entries_count=len(self.entries), issues=issues)
 
 
 def measure_em(text: str) -> float:
@@ -296,9 +289,7 @@ def measure_em(text: str) -> float:
 
 
 def check_subtitle(subtitle: Path, report: Path) -> ReportScore:
-    check = OcrCheck.from_file(subtitle)
-    check.check()
-    return check.to_report().write(report)
+    return OcrCheck.from_file(subtitle).to_report().write(report)
 
 # ------------------------------------------------------------------------------
 # Execution

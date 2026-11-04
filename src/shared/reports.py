@@ -1,6 +1,7 @@
 import itertools
 import re
 from collections import Counter
+from collections.abc import Iterable
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
@@ -77,6 +78,9 @@ class Issue:
     detail: str
     quote: tuple[str, ...]
 
+    def is_ignored(self) -> bool:
+        return self.kind.is_ignored_in(self.entry)
+
 
 @dataclass(frozen=True)
 class Report:
@@ -84,6 +88,12 @@ class Report:
     entries_count: int
     issues: list[Issue]
     issues_ignored: int
+
+    @classmethod
+    def from_issues(cls, subtitle: Path, entries_count: int, issues: Iterable[Issue]) -> "Report":
+        issues = list(issues)
+        issues_kept = [issue for issue in issues if not issue.is_ignored()]
+        return cls(subtitle=subtitle, entries_count=entries_count, issues=issues_kept, issues_ignored=len(issues) - len(issues_kept))
 
     @property
     def score(self) -> float:
