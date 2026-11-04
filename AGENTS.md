@@ -12,6 +12,8 @@ Subtitles are written by people, and `♪` follows no fixed format: it may mark 
 
 The English source is the source of truth for every fix. fix-translations changes an entry only when the change cannot be wrong: it never changes an entry that is already right, and never writes text that is right only in some contexts. Everything that needs judgment is left to check-translate and the fix-translate skill, which always run after it and read each flagged entry. So a mechanical fix, or an entry of its data lists, that can be wrong in some case is removed, even when it is right most of the time; a missed fix costs nothing, since the skill handles it, and a wrong fix reaches the viewer unflagged.
 
+No kind of translation error gets special treatment, gender errors included: a wrong gender is one more error, weighed like the others by how often it appears in a sample of real translations.
+
 ## Terms
 
 Use these terms, and only these, in code, logs, docs and conversation. Do not rotate synonyms.
