@@ -54,6 +54,9 @@ if __name__ == "__main__":
             if arguments.pick:
                 name_width = max(len(run.name) for run in runs_selected)
                 choices = [run.to_choice(SOURCES, name_width) for run in sorted(runs_selected, key=lambda run: (run.is_translated(SOURCES), run.name))]
+                if all(choice.disabled for choice in choices):
+                    Action.SKIP.log("every run is translated or not downloaded")
+                    raise SystemExit(0)
                 picked = questionary.checkbox("Runs to translate (space checks, enter starts)", choices=choices).ask()
                 if not picked:
                     raise SystemExit(0)
