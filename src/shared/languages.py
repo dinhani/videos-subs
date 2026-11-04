@@ -7,7 +7,7 @@ from enum import Enum
 from pathlib import Path
 
 import simplemma
-from lingua import Language, LanguageDetectorBuilder
+from lingua import Language, LanguageDetector, LanguageDetectorBuilder
 from wordfreq import zipf_frequency
 
 from shared.files import find_language_code
@@ -38,7 +38,10 @@ MARKERS_PT_BR = re.compile(
 )
 MARKERS_PT_PT_MIN = 3
 
-language_detector = LanguageDetectorBuilder.from_all_languages().build()
+
+@functools.cache
+def get_language_detector() -> LanguageDetector:
+    return LanguageDetectorBuilder.from_all_languages().build()
 
 
 class TextLanguage(Enum):
@@ -91,7 +94,7 @@ class SubtitleLanguage:
     @classmethod
     def from_text(cls, text: str) -> "SubtitleLanguage":
         text = FORMATTING_TAGS.sub(" ", text)
-        language = language_detector.detect_language_of(text)
+        language = get_language_detector().detect_language_of(text)
         if language is None:
             return cls(code="und", name="unknown")
         if language != Language.PORTUGUESE:
