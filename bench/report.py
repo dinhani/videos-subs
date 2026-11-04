@@ -146,7 +146,7 @@ class Comparison:
     @classmethod
     def from_runs(cls, source: Source, runs: tuple[Run, ...]) -> "Comparison":
         lines_by_column: dict[str, dict[int, str]] = {}
-        for run in runs:
+        for run in sorted(runs, key=lambda run: run.name):
             translation = run.get_translation(source)
             if translation.is_translated():
                 lines_by_column[run.name] = {entry.index: to_compare_line(entry) for entry in parse_srt(translation.translation)}
