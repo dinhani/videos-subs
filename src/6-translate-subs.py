@@ -11,11 +11,12 @@ from pathlib import Path
 from xml.etree import ElementTree
 
 import srt
+from openai import OpenAI
 
 from shared.console import Action, Batch, track
 from shared.files import SubtitleFile, SubtitleFormat, find_subtitles, parse_srt, write_text_replacing
 from shared.languages import WORD, parse_words
-from shared.llm import Trace, connect_llama
+from shared.llm import JsonReply, Trace, connect_llama
 from shared.subtitles import LANGUAGE_SOURCE, replace_text
 
 # ------------------------------------------------------------------------------
@@ -147,12 +148,13 @@ class SubtitleTranslation:
     trace: Trace
     temperatures: tuple[float, ...]
     prompt: str
+    llama: OpenAI
     translated: dict[int, list[str]] = field(default_factory=dict)
 
     @classmethod
-    def from_entries(cls, entries: list[srt.Subtitle], trace: Trace, temperatures: tuple[float, ...], prompt: str) -> "SubtitleTranslation":
+    def from_entries(cls, entries: list[srt.Subtitle], trace: Trace, temperatures: tuple[float, ...], prompt: str, llama: OpenAI) -> "SubtitleTranslation":
         lines = [[" ".join(line.split()) for line in entry.content.split("\n") if line.strip()] for entry in entries]
-        return cls(entries=entries, lines=lines, pending=[i for i, entry_lines in enumerate(lines) if entry_lines], trace=trace, temperatures=temperatures, prompt=prompt)
+        return cls(entries=entries, lines=lines, pending=[i for i, entry_lines in enumerate(lines) if entry_lines], trace=trace, temperatures=temperatures, prompt=prompt, llama=llama)
 
     def translate(self, start: int, end: int, splits: int = 0) -> None:
         # build request
@@ -190,44 +192,20 @@ class SubtitleTranslation:
         problem = ""
         translated: dict[int, list[str]] = {}
         for attempt, temperature in enumerate(self.temperatures, start=1):
-            problem = ""
-            translated = {}
-            resp = llama.chat.completions.create(
-                model="local",
-                temperature=temperature,
-                response_format={"type": "json_schema", "json_schema": {"name": "translations", "strict": True, "schema": schema}},
-                messages=[
-                    {"role": "system", "content": self.prompt},
-                    {"role": "user", "content": json.dumps(request, ensure_ascii=False)},
-                ],
-            )
-            choice = resp.choices[0]
-            try:
-                reply = json.loads(choice.message.content or "")
-            except json.JSONDecodeError:
-                reply = None
-
-            if choice.finish_reason == "length":
-                problem = "reply cut off by token limit"
-            elif not isinstance(reply, dict):
-                problem = "reply is not a JSON object"
-            elif set(reply) != set(ids):
-                problem = f"ids mismatch: missing {sorted(set(ids) - set(reply), key=int)}, extra {sorted(set(reply) - set(ids))}"
-            elif bad := [id for id in ids if not isinstance(reply[id], dict) or not isinstance(reply[id].get("pt"), list)]:
+            reply = JsonReply.request(self.llama, schema_name="translations", schema=schema, system=self.prompt, user=json.dumps(request, ensure_ascii=False), temperature=temperature)
+            problem = reply.find_problem(ids)
+            if not problem and (bad := [id for id in ids if not isinstance(reply.data[id], dict) or not isinstance(reply.data[id].get("pt"), list)]):
                 problem = f"reply is not an object with pt lines for ids {bad}"
-            else:
-                translated = {i: [" ".join(line.split()) if isinstance(line, str) else "" for line in reply[id]["pt"]] for id, i in zip(ids, chunk)}
-                if bad := [id for id, i in zip(ids, chunk) if len(translated[i]) != len(self.lines[i])]:
-                    problem = f"line count changed for ids {bad}"
+            translated = {} if problem else {i: [" ".join(line.split()) if isinstance(line, str) else "" for line in reply.data[id]["pt"]] for id, i in zip(ids, chunk)}
+            if not problem and (bad := [id for id, i in zip(ids, chunk) if len(translated[i]) != len(self.lines[i])]):
+                problem = f"line count changed for ids {bad}"
 
             self.trace.record({
                 "entries": [self.entries[i].index for i in chunk],
                 "attempt": attempt,
                 "temperature": temperature,
                 "request": request,
-                "reply": reply if reply is not None else choice.message.content,
-                **({"reasoning": reasoning} if (reasoning := getattr(choice.message, "reasoning_content", None)) else {}),
-                "finish_reason": choice.finish_reason,
+                **reply.to_record(),
                 "problem": problem,
             })
             if not problem:
@@ -294,7 +272,7 @@ if __name__ == "__main__":
                 trace = Trace(file=sub_trace)
                 if movie_info_text:
                     trace.record({"movie_info": movie_info_text})
-                translation = SubtitleTranslation.from_entries(sub_entries, trace, temperatures, movie_prompt)
+                translation = SubtitleTranslation.from_entries(sub_entries, trace=trace, temperatures=temperatures, prompt=movie_prompt, llama=llama)
                 chunk_starts = range(0, len(translation.pending), CHUNK_SIZE)
                 for chunk_start in track(chunk_starts):
                     translation.translate(chunk_start, min(chunk_start + CHUNK_SIZE, len(translation.pending)))

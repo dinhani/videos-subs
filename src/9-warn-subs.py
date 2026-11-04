@@ -33,10 +33,9 @@ if __name__ == "__main__":
         for sub in batch.walk(subs):
             with batch.attempt(sub.path):
                 # find the warnings the translation needs
-                trace = Trace.find(sub.to_trace())
                 warnings = [warning for warning, needed in (
                     (WARNING_SDH, sub.is_sdh()),
-                    (WARNING_PROBLEM, trace is not None and bool(trace.find_problems_accepted())),
+                    (WARNING_PROBLEM, bool(Trace.find_problems_accepted(sub.to_trace()))),
                 ) if needed]
 
                 # skip subs that need no warning or have every warning

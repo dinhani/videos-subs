@@ -282,16 +282,15 @@ class TranslationCheck:
 
     @classmethod
     def from_file(cls, subtitle: SubtitleFile, languagetool_server: str) -> "TranslationCheck":
-        # find the English source and the trace of the translation
+        # find the English source and the problems accepted by the translation
         source = subtitle.get_english_source().path
-        trace = Trace.find(subtitle.to_trace())
 
         # pair each translated entry with the source entry of the same index
         sources_by_index = {entry.index: entry for entry in parse_srt(source)}
         return cls(
             subtitle=subtitle.path,
             entries=[TranslationEntry.from_entries(sources_by_index[target.index], target) for target in parse_srt(subtitle.path) if target.index in sources_by_index],
-            problems_accepted=trace.find_problems_accepted() if trace is not None else {},
+            problems_accepted=Trace.find_problems_accepted(subtitle.to_trace()),
             languagetool_server=languagetool_server,
         )
 

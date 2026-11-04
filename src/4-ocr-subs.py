@@ -5,19 +5,18 @@
 # ------------------------------------------------------------------------------
 import argparse
 import itertools
-import json
 import re
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 
 import srt
-from openai import BaseModel
+from openai import BaseModel, OpenAI
 from openai.types.chat import ChatCompletionContentPartParam
 
 from shared.console import Action, Batch, track
 from shared.files import SubtitleFormat, find_subtitles, write_text_replacing
 from shared.image_subtitles import SubtitleEntry, parse_image_subtitle
-from shared.llm import LLM_PROPS_URL, Trace, connect_llama
+from shared.llm import LLM_PROPS_URL, JsonReply, Trace, connect_llama
 from shared.subtitles import LANGUAGE_SOURCE, OCR_FAILED_TEXT
 
 # ------------------------------------------------------------------------------
@@ -29,6 +28,7 @@ ITALIC_TAG_WITH_ATTRIBUTES = re.compile(r"<i\s[^<>]*>")
 
 LLM_TEMPERATURES = (0.0, 0.5, 1.0)
 LLM_ATTEMPTS = len(LLM_TEMPERATURES)
+LLM_MAX_TOKENS = 4096
 LLM_PROMPT = """\
 You transcribe subtitle images from movies and TV shows.
 
@@ -56,6 +56,7 @@ class LlamaProps(BaseModel):
 class SubtitleTranscription:
     entries: list[SubtitleEntry]
     trace: Trace
+    llama: OpenAI
     transcribed: dict[int, list[str]] = field(default_factory=dict)
 
     def transcribe(self, chunk: tuple[int, ...]) -> None:
@@ -87,45 +88,20 @@ class SubtitleTranscription:
 
         # request and validate, retrying immediately on any problem
         problem = ""
-        transcribed: dict[int, list[str]] = {}
         for attempt, temperature in enumerate(LLM_TEMPERATURES, start=1):
-            problem = ""
-            transcribed = {}
-            resp = llama.chat.completions.create(
-                model="local",
-                temperature=temperature,
-                max_tokens=4096,
-                response_format={"type": "json_schema", "json_schema": {"name": "transcriptions", "strict": True, "schema": schema}},
-                messages=[
-                    {"role": "system", "content": LLM_PROMPT},
-                    {"role": "user", "content": content},
-                ],
-            )
-            choice = resp.choices[0]
-            try:
-                reply = json.loads(choice.message.content or "")
-            except json.JSONDecodeError:
-                reply = None
-
-            if choice.finish_reason == "length":
-                problem = "reply cut off by token limit"
-            elif not isinstance(reply, dict):
-                problem = "reply is not a JSON object"
-            elif set(reply) != set(ids):
-                problem = f"ids mismatch: missing {sorted(set(ids) - set(reply), key=int)}, extra {sorted(set(reply) - set(ids))}"
-            elif bad := [id for id in ids if not isinstance(reply[id], list) or not all(isinstance(line, dict) and isinstance(line.get("text"), str) and isinstance(line.get("italic"), bool) for line in reply[id])]:
+            reply = JsonReply.request(self.llama, schema_name="transcriptions", schema=schema, system=LLM_PROMPT, user=content, temperature=temperature, max_tokens=LLM_MAX_TOKENS)
+            problem = reply.find_problem(ids)
+            if not problem and (bad := [id for id in ids if not isinstance(reply.data[id], list) or not all(isinstance(line, dict) and isinstance(line.get("text"), str) and isinstance(line.get("italic"), bool) for line in reply.data[id])]):
                 problem = f"reply is not a list of lines with text and italic for ids {bad}"
-            else:
-                transcribed = {i: [f"<i>{text.replace('<i>', '').replace('</i>', '')}</i>" if line["italic"] else text for line in reply[id] if (text := ITALIC_TAG_WITH_ATTRIBUTES.sub("<i>", " ".join(line["text"].split())).replace("</em>", "</i>"))] for id, i in zip(ids, chunk)}
-                if bad := [id for id, i in zip(ids, chunk) if not transcribed[i]]:
-                    problem = f"no text for ids {bad}"
+            transcribed: dict[int, list[str]] = {} if problem else {i: [f"<i>{text.replace('<i>', '').replace('</i>', '')}</i>" if line["italic"] else text for line in reply.data[id] if (text := ITALIC_TAG_WITH_ATTRIBUTES.sub("<i>", " ".join(line["text"].split())).replace("</em>", "</i>"))] for id, i in zip(ids, chunk)}
+            if not problem and (bad := [id for id, i in zip(ids, chunk) if not transcribed[i]]):
+                problem = f"no text for ids {bad}"
 
             self.trace.record({
                 "entries": [i + 1 for i in chunk],
                 "attempt": attempt,
                 "temperature": temperature,
-                "reply": reply if reply is not None else choice.message.content,
-                "finish_reason": choice.finish_reason,
+                **reply.to_record(),
                 "problem": problem,
             })
             if not problem:
@@ -180,7 +156,7 @@ if __name__ == "__main__":
                 # transcribe each distinct image once, in chunks, one per llama slot at a time, tracing every reply
                 sub_trace = sub.to_trace()
                 sub_trace.parent.mkdir(exist_ok=True)
-                transcription = SubtitleTranscription(entries=sub_entries, trace=Trace(file=sub_trace))
+                transcription = SubtitleTranscription(entries=sub_entries, trace=Trace(file=sub_trace), llama=llama)
                 entries_distinct: dict[int, int] = {}
                 for i, entry in enumerate(sub_entries):
                     entries_distinct.setdefault(entry.image_key, i)
