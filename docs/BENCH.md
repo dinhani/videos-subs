@@ -63,6 +63,7 @@ Models are stored by type: GGUF in `D:/AI-Models-LMStudio`, CTranslate2 in `D:/A
 | Gemma 3 27B | does not fit the 5080 with context |
 | Qwen3.6 35B A3B | smallest IQ3 is 15.8 GB, does not fit the 5080; IQ2 is too low for 3B active |
 | Qwen3.5 9B | thinks until the token limit even with thinking off, never replies |
+| TranslateGemma 27B | loops on junk tokens at IQ3_XS |
 | Granite 4.0 H-small | fits the 5080 only at Q2 |
 | EuroLLM 9B and 22B | trained for European Portuguese |
 | SalamandraTA 7B | trained for European Portuguese |
