@@ -21,4 +21,5 @@ The `justfile` has a recipe for setup and for each step; `just` lists them. The 
 - [docs/PIPELINE.md](docs/PIPELINE.md): each step.
 - [docs/RULES.md](docs/RULES.md): the check rules.
 - [docs/BENCH.md](docs/BENCH.md): the bench of translation models, and the models it covers.
+- [docs/FAILURES.md](docs/FAILURES.md): the approaches that were tried and dropped, and why.
 - [AGENTS.md](AGENTS.md): the principle, the terms, the media layout and the code layout.

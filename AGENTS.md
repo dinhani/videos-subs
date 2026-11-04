@@ -33,7 +33,7 @@ Use these terms, and only these, in code, logs, docs and conversation. Do not ro
 
 ## Pipeline
 
-Run the steps in order; each step skips files it already processed, so every step can be run again safely. Read [docs/PIPELINE.md](docs/PIPELINE.md) before changing a step, and [docs/RULES.md](docs/RULES.md) before changing a check rule.
+Run the steps in order; each step skips files it already processed, so every step can be run again safely. Read [docs/PIPELINE.md](docs/PIPELINE.md) before changing a step, and [docs/RULES.md](docs/RULES.md) before changing a check rule. Read [docs/FAILURES.md](docs/FAILURES.md) before proposing an improvement, and add to it every approach that is tried and fails.
 
 1. `1-extract-subs.py`: extracts the tracks of each video into `_subs`, as text subtitles and image subtitles.
 2. `2-identify-text-subs.py`: puts the language code and kind in the name of each text subtitle.
