@@ -168,6 +168,12 @@ class SubtitleFile:
         return TRACK_INDEX.sub("", self.track)
 
     @property
+    def title_name(self) -> str:
+        if self.movie_dir.name.startswith(SEASON_PREFIX):
+            return self.movie_dir.parent.name
+        return self.movie_dir.name
+
+    @property
     def nfo(self) -> Path:
         return self.movie_dir / f"{self.video_name}.nfo"
 

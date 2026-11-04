@@ -255,6 +255,15 @@ crosscheck *paths:
     exit $LASTEXITCODE
 
 [group('debug')]
+[doc('Collect English subtitle statistics')]
+[script]
+[extension('.ps1')]
+[positional-arguments]
+stats *paths:
+    uv run src/stats-subs.py @args
+    exit $LASTEXITCODE
+
+[group('debug')]
 [doc('Print system prompt and first chunk of each English subtitle')]
 [script]
 [extension('.ps1')]
