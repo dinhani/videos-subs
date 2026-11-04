@@ -71,7 +71,7 @@ Use the `justfile`; it is the source of truth for how to run things.
 
 ocr and translate need their llama server, `just llama-ocr` and `just llama-translate`. Both servers use port 9931, so run one at a time. The check steps need no llama server; check-translate starts its own LanguageTool server.
 
-Without paths, a step processes both `Z:/midias/filmes` and `Z:/midias/series`. Every step also accepts files and folders. A folder is searched recursively, inside `_subs` folders except for extract, fix-translations and check-translate, and the step applies its filter, such as `.eng.srt` only for translate. A file passed by hand skips the filter, so translate accepts a text subtitle in any language.
+Without paths, a step processes both `Z:/midias/filmes` and `Z:/midias/series`. Every step also accepts files and folders. A folder is searched recursively, inside `_subs` folders except for videos and translations, and the step applies its filter, such as `.eng.srt` only for translate. A file passed by hand skips the filter, so translate accepts a text subtitle in any language.
 
 The virtual environment lives outside the project, under the local data directory. Running uv outside `just` creates a `.venv` in the project folder; go through `just`.
 
