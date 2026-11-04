@@ -8,13 +8,15 @@ import json
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
+from xml.etree import ElementTree
 
 import srt
 from rich.progress import MofNCompleteColumn, TimeElapsedColumn, TimeRemainingColumn
 
 from shared.console import Batch, Color, log_action, progress_bar
-from shared.files import SUBS_FOLDER, TRACES_FOLDER, find_files, parse_movie_dir, parse_srt, parse_subtitle_name, write_text_replacing
-from shared.llm import ReplyFormat, Trace, connect_llama
+from shared.files import SUBS_FOLDER, TRACES_FOLDER, find_files, parse_movie_dir, parse_srt, parse_subtitle_name, parse_video_name, write_text_replacing
+from shared.languages import WORD, parse_words
+from shared.llm import Trace, connect_llama
 from shared.subtitles import IGNORE_MARKER, SubtitleKind
 
 # ------------------------------------------------------------------------------
@@ -28,7 +30,7 @@ LLM_SPLITS = 2 # splits before giving up on chunk
 LLM_TEMPERATURES = (0.0, 0.5, 1.0)
 LLM_PROMPT = """\
 You translate movie and TV subtitles from English to Brazilian Portuguese.
-The subtitles are from {movie}. Use what you know about it and its characters to resolve gender, forms of address and recurring terms.
+The subtitles are from {movie}. Use what you know about it and its characters to resolve gender, forms of address and recurring terms.{movie_info}
 
 The input is a JSON object:
 - "lines": maps an id to one English subtitle entry, given as an array of its lines. Translate every entry.
@@ -36,7 +38,8 @@ The input is a JSON object:
 - "context_after": upcoming English entries. Read-only.
 
 Reply with a JSON object that maps every id in "lines" to an object with:
-{reply_fields}
+- "en": the English lines of that id as you read them, with any junk from the source removed.
+- "pt": the translated lines, one array element per English line, same number of elements.
 Use exactly the same ids and nothing else.
 
 Translation rules:
@@ -74,26 +77,66 @@ Translation rules:
 - Use the context only to resolve gender, pronouns, formality and recurring terms. Never translate or output the context.
 
 Example. For this input:
-{example_request}
+{"context_before": [{"en": ["Where's Victor?"], "pt": ["Cadê o Victor?"]}], "lines": {"1": ["[FAUCET DRIPS]"], "2": ["- We need a boat.", "- Okay."], "3": ["I think he took", "the old highway north,"], "4": ["but he's gonna run out of gas."], "5": ["[TYPEWRITER CLACKING]"], "6": ["<i>Fuck, we're out of gas.</i>"], "7": ["Good afternoon, sir.", "May I see your boarding pass?"], "8": ["♪ Fly me to the moon ♪"]}, "context_after": [["[SIREN WAILING]"]]}
 the reply is:
-{example_reply}
+{"1": {"en": ["[FAUCET DRIPS]"], "pt": ["[TORNEIRA PINGA]"]}, "2": {"en": ["- We need a boat.", "- Okay."], "pt": ["- A gente precisa de um barco.", "- Tá."]}, "3": {"en": ["I think he took", "the old highway north,"], "pt": ["Acho que ele pegou", "a rodovia velha pro norte,"]}, "4": {"en": ["but he's gonna run out of gas."], "pt": ["mas vai ficar sem gasolina."]}, "5": {"en": ["[TYPEWRITER CLACKING]"], "pt": ["[MÁQUINA DE ESCREVER BATENDO]"]}, "6": {"en": ["<i>Fuck, we're out of gas.</i>"], "pt": ["<i>Porra, a gasolina acabou.</i>"]}, "7": {"en": ["Good afternoon, sir.", "May I see your boarding pass?"], "pt": ["Boa tarde, senhor.", "Posso ver seu cartão de embarque?"]}, "8": {"en": ["♪ Fly me to the moon ♪"], "pt": ["♪ Fly me to the moon ♪"]}}
 """
-LLM_REPLY_FIELDS = {
-    "en": "the English lines of that id as you read them, with any junk from the source removed.",
-    "pt": "the translated lines, one array element per English line, same number of elements.",
-}
-LLM_EXAMPLE_CONTEXT_BEFORE = [{"en": ["Where's Victor?"], "pt": ["Cadê o Victor?"]}]
-LLM_EXAMPLE_LINES = {
-    "1": {"en": ["[FAUCET DRIPS]"], "pt": ["[TORNEIRA PINGA]"]},
-    "2": {"en": ["- We need a boat.", "- Okay."], "pt": ["- A gente precisa de um barco.", "- Tá."]},
-    "3": {"en": ["I think he took", "the old highway north,"], "pt": ["Acho que ele pegou", "a rodovia velha pro norte,"]},
-    "4": {"en": ["but he's gonna run out of gas."], "pt": ["mas vai ficar sem gasolina."]},
-    "5": {"en": ["[TYPEWRITER CLACKING]"], "pt": ["[MÁQUINA DE ESCREVER BATENDO]"]},
-    "6": {"en": ["<i>Fuck, we're out of gas.</i>"], "pt": ["<i>Porra, a gasolina acabou.</i>"]},
-    "7": {"en": ["Good afternoon, sir.", "May I see your boarding pass?"], "pt": ["Boa tarde, senhor.", "Posso ver seu cartão de embarque?"]},
-    "8": {"en": ["♪ Fly me to the moon ♪"], "pt": ["♪ Fly me to the moon ♪"]},
-}
-LLM_EXAMPLE_CONTEXT_AFTER = [["[SIREN WAILING]"]]
+
+NFO_CHARACTERS_MAX = 20
+NFO_SHOW = "tvshow.nfo"
+NFO_CREDIT_NOTES = re.compile(r"\s*\((?:voice|archive footage|archive sound)(?:,\s*(?:voice|archive footage|archive sound))*\)", re.IGNORECASE)
+NFO_TITLES = frozenset({"Agent", "Captain", "Chief", "Corporal", "Detective", "Doctor", "Director", "General", "Lieutenant", "Major", "Officer", "Private", "Senator", "Sergeant", "Sheriff", "Young", "Old"})
+
+# ------------------------------------------------------------------------------
+# Movie info
+# ------------------------------------------------------------------------------
+@dataclass(frozen=True)
+class Character:
+    role: str
+    actor: str
+
+    def is_named_in(self, names: set[str]) -> bool:
+        return any(word.upper() in names for word in WORD.findall(self.role) if word[0].isupper() and len(word) >= 3 and word not in NFO_TITLES and not word.endswith(("'s", "’s")))
+
+
+@dataclass(frozen=True)
+class MovieInfo:
+    plots: tuple[tuple[str, str], ...]
+    characters: tuple[Character, ...]
+
+    @classmethod
+    def find(cls, movie_dir: Path, video_name: str) -> "MovieInfo | None":
+        nfo = movie_dir / f"{video_name}.nfo"
+        if not nfo.exists():
+            return None
+        root = ElementTree.parse(nfo).getroot()
+        show_nfo = movie_dir.parent / NFO_SHOW
+        show = ElementTree.parse(show_nfo).getroot() if root.tag == "episodedetails" and show_nfo.exists() else None
+
+        # an episode takes the plot of its season, or of its series when the season has none
+        plots = [("Plot", root.findtext("plot"))]
+        if show is not None:
+            season = root.findtext("season", "")
+            season_plot = next((element.text for element in show.iter("seasonplot") if element.get("number") == season and element.text and element.text.strip()), None)
+            plots = [(f"Season {season}", season_plot) if season_plot else ("Series", show.findtext("plot")), ("Episode", root.findtext("plot"))]
+
+        # credited roles without credit notes, the first billed of each role
+        characters: dict[str, Character] = {}
+        for actor in root.findall("actor") or (show.findall("actor") if show is not None else []):
+            role = " ".join(NFO_CREDIT_NOTES.sub("", actor.findtext("role", "")).split())
+            name = " ".join(actor.findtext("name", "").split())
+            if role and name and "uncredited" not in role.lower():
+                characters.setdefault(role, Character(role=role, actor=name))
+        return cls(plots=tuple((label, " ".join(text.split())) for label, text in plots if text and text.strip()), characters=tuple(characters.values()))
+
+    def to_prompt(self, english: str) -> str:
+        names = {word.text.upper() for word in parse_words(english) if word.name and not word.text.isupper()}
+        characters = [character for character in self.characters if character.is_named_in(names)][:NFO_CHARACTERS_MAX]
+        lines = ["From the metadata of {movie}:", *(f"{label}: {text}" for label, text in self.plots)]
+        if characters:
+            lines.append("Characters named in the subtitles, each with the actor who plays them:")
+            lines += [f"- {character.role} ({character.actor})" for character in characters]
+        return "\n".join(lines)
 
 # ------------------------------------------------------------------------------
 # Translation
@@ -106,13 +149,12 @@ class SubtitleTranslation:
     trace: Trace
     temperatures: tuple[float, ...]
     prompt: str
-    reply: ReplyFormat
     translated: dict[int, list[str]] = field(default_factory=dict)
 
     @classmethod
-    def from_entries(cls, entries: list[srt.Subtitle], trace: Trace, temperatures: tuple[float, ...], prompt: str, reply: ReplyFormat) -> "SubtitleTranslation":
+    def from_entries(cls, entries: list[srt.Subtitle], trace: Trace, temperatures: tuple[float, ...], prompt: str) -> "SubtitleTranslation":
         lines = [[" ".join(line.split()) for line in entry.content.split("\n") if line.strip()] for entry in entries]
-        return cls(entries=entries, lines=lines, pending=[i for i, entry_lines in enumerate(lines) if entry_lines], trace=trace, temperatures=temperatures, prompt=prompt, reply=reply)
+        return cls(entries=entries, lines=lines, pending=[i for i, entry_lines in enumerate(lines) if entry_lines], trace=trace, temperatures=temperatures, prompt=prompt)
 
     def translate(self, start: int, end: int, splits: int = 0) -> None:
         # build request
@@ -123,28 +165,24 @@ class SubtitleTranslation:
             "lines": {id: self.lines[i] for id, i in zip(ids, chunk)},
             "context_after": [self.lines[i] for i in self.pending[end:end + CHUNK_CONTEXT_AFTER]],
         }
-        fields_by_id = {
-            id: {
-                "en": {"type": "array", "items": {"type": "string"}, "minItems": len(self.lines[i]), "maxItems": len(self.lines[i])},
-                "pt": {
-                    "type": "array",
-                    "items": {"type": "string", "minLength": 1, "maxLength": max(60, 3 * max(len(line) for line in self.lines[i]))},
-                    "minItems": len(self.lines[i]),
-                    "maxItems": len(self.lines[i]),
-                },
-            }
-            for id, i in zip(ids, chunk)
-        }
         schema = {
             "type": "object",
             "properties": {
                 id: {
                     "type": "object",
-                    "properties": {name: fields_by_id[id][name] for name in self.reply.fields},
-                    "required": list(self.reply.fields),
+                    "properties": {
+                        "en": {"type": "array", "items": {"type": "string"}, "minItems": len(self.lines[i]), "maxItems": len(self.lines[i])},
+                        "pt": {
+                            "type": "array",
+                            "items": {"type": "string", "minLength": 1, "maxLength": max(60, 3 * max(len(line) for line in self.lines[i]))},
+                            "minItems": len(self.lines[i]),
+                            "maxItems": len(self.lines[i]),
+                        },
+                    },
+                    "required": ["en", "pt"],
                     "additionalProperties": False,
                 }
-                for id in ids
+                for id, i in zip(ids, chunk)
             },
             "required": ids,
             "additionalProperties": False,
@@ -228,19 +266,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Translates English subtitles to Brazilian Portuguese; folders only English ones.")
     parser.add_argument("--temperatures", nargs="+", type=float, default=LLM_TEMPERATURES, help=f"temperature of each attempt of a chunk, in order (default: {' '.join(map(str, LLM_TEMPERATURES))})")
     parser.add_argument("--prompt", type=Path, help="text file with the system prompt to use instead of LLM_PROMPT; {movie} in it is replaced by the title of the movie or episode, as in LLM_PROMPT")
-    parser.add_argument("--reply", type=ReplyFormat, choices=list(ReplyFormat), default=ReplyFormat.ENGLISH_AND_PORTUGUESE, help=f"fields of each id in the reply: {ReplyFormat.ENGLISH_AND_PORTUGUESE} for the English lines and the translated lines, {ReplyFormat.PORTUGUESE} for the translated lines only (default: {ReplyFormat.ENGLISH_AND_PORTUGUESE})")
     subs_src = find_files(parser, extensions_file=(".srt",), extensions_folder=tuple(f".eng{kind}.srt" for kind in SubtitleKind), folder=SUBS_FOLDER)
     arguments = parser.parse_args()
     temperatures = tuple(arguments.temperatures)
-    reply: ReplyFormat = arguments.reply
-    example_request = {"context_before": LLM_EXAMPLE_CONTEXT_BEFORE, "lines": {id: lines["en"] for id, lines in LLM_EXAMPLE_LINES.items()}, "context_after": LLM_EXAMPLE_CONTEXT_AFTER}
-    example_reply = {id: {name: lines[name] for name in reply.fields} for id, lines in LLM_EXAMPLE_LINES.items()}
-    prompt = (
-        (arguments.prompt.read_text(encoding="utf-8") if arguments.prompt else LLM_PROMPT)
-        .replace("{reply_fields}", "\n".join(f'- "{name}": {LLM_REPLY_FIELDS[name]}' for name in reply.fields))
-        .replace("{example_request}", json.dumps(example_request, ensure_ascii=False))
-        .replace("{example_reply}", json.dumps(example_reply, ensure_ascii=False))
-    )
+    prompt = arguments.prompt.read_text(encoding="utf-8") if arguments.prompt else LLM_PROMPT
     llama = connect_llama()
 
     batch = Batch()
@@ -263,14 +292,22 @@ if __name__ == "__main__":
         if movie_dir.name.startswith("Season"):
             movie_title = f"{movie_dir.parent.name}, {movie_title}"
         try:
-            # parse entries
+            # parse entries and movie info
             sub_entries = parse_srt(sub_src)
+            movie_info = MovieInfo.find(movie_dir, parse_video_name(sub_src))
+            if movie_info is None:
+                log_action("nfo", Color.YELLOW, f"{parse_video_name(sub_src)}.nfo not found, translating with the title only")
+            movie_info_text = movie_info.to_prompt("\n".join(entry.content for entry in sub_entries)).replace("{movie}", movie_title) if movie_info else ""
+            movie_prompt = prompt.replace("{movie_info}", f"\n\n{movie_info_text}" if movie_info_text else "").replace("{movie}", movie_title)
 
             # translate in chunks, tracing every request and reply
             sub_trace.parent.mkdir(exist_ok=True)
+            trace = Trace(file=sub_trace)
+            if movie_info_text:
+                trace.record({"movie_info": movie_info_text})
             progress = progress_bar(MofNCompleteColumn(), TimeElapsedColumn(), TimeRemainingColumn())
             with progress:
-                translation = SubtitleTranslation.from_entries(sub_entries, Trace(file=sub_trace), temperatures, prompt.replace("{movie}", movie_title), reply)
+                translation = SubtitleTranslation.from_entries(sub_entries, trace, temperatures, movie_prompt)
                 chunk_starts = range(0, len(translation.pending), CHUNK_SIZE)
                 for chunk_start in progress.track(chunk_starts, total=len(chunk_starts)):
                     translation.translate(chunk_start, min(chunk_start + CHUNK_SIZE, len(translation.pending)))

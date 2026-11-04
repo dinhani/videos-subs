@@ -18,8 +18,7 @@ import srt
 
 from models import LlamaModel, NmtModel
 from shared.console import Color, log_action
-from shared.files import CHECKS_FOLDER, SUBS_FOLDER, TRACES_FOLDER, parse_srt, parse_subtitle_name, write_text_replacing
-from shared.llm import ReplyFormat
+from shared.files import CHECKS_FOLDER, SUBS_FOLDER, TRACES_FOLDER, parse_srt, parse_subtitle_name, parse_video_name, write_text_replacing
 from shared.subtitles import IGNORE_MARKER, SubtitleKind, parse_plain_text
 
 BENCH_DIR = Path(__file__).parent
@@ -43,7 +42,6 @@ class PipelineTranslator:
     model: LlamaModel
     temperatures: tuple[float, ...] = ()
     prompt: Path | None = None
-    reply: ReplyFormat = ReplyFormat.ENGLISH_AND_PORTUGUESE
 
     def serving(self, log: Path) -> contextlib.AbstractContextManager[None]:
         return self.model.serving(log)
@@ -52,7 +50,6 @@ class PipelineTranslator:
         options = [
             *(["--temperatures", *map(str, self.temperatures)] if self.temperatures else []),
             *(["--prompt", str(self.prompt)] if self.prompt else []),
-            "--reply", self.reply,
         ]
         subprocess.run([sys.executable, str(SRC_DIR / "6-translate-subs.py"), str(english), *options], check=True)
 
@@ -127,6 +124,14 @@ class Source:
         return parse_subtitle_name(self.english)
 
     @property
+    def library_nfo(self) -> Path:
+        return self.library_english.parent.parent / f"{parse_video_name(self.library_english)}.nfo"
+
+    @property
+    def nfo(self) -> Path:
+        return ENGLISH_DIR / self.movie / self.library_nfo.name
+
+    @property
     def title(self) -> str:
         return self.name.split(" (")[0]
 
@@ -143,7 +148,7 @@ class Source:
         return REFERENCES_DIR / self.movie / SCORES_FOLDER / f"{self.name}.claude.official.json"
 
     def copy_from_library(self) -> None:
-        for library_file, copy in ((self.library_english, self.english), (self.library_official, self.reference_official.file)):
+        for library_file, copy in ((self.library_english, self.english), (self.library_nfo, self.nfo), (self.library_official, self.reference_official.file)):
             if library_file is None or copy.exists():
                 continue
             copy.parent.mkdir(parents=True, exist_ok=True)
@@ -258,6 +263,9 @@ class RunTranslation:
         self.english.parent.mkdir(parents=True, exist_ok=True)
         if not self.english.exists():
             shutil.copy2(self.source.english, self.english)
+        nfo = self.translation.parent / self.source.nfo.name
+        if self.source.nfo.exists() and not nfo.exists():
+            shutil.copy2(self.source.nfo, nfo)
 
     def to_score(self, reference: Reference) -> Path:
         return self.translation.parent / SCORES_FOLDER / f"{self.translation.stem}.{reference.name}.json"

@@ -1,6 +1,7 @@
 import argparse
 import functools
 import os
+import re
 import shutil
 from dataclasses import dataclass
 from datetime import datetime
@@ -66,6 +67,10 @@ def parse_subtitle_name(file: Path) -> str:
     if stem.suffix == SubtitleKind.SDH:
         stem = Path(stem.stem)
     return stem.stem
+
+
+def parse_video_name(file: Path) -> str:
+    return re.sub(r"\.embed\.\d+$", "", parse_subtitle_name(file))
 
 
 def parse_srt(file: Path) -> list[srt.Subtitle]:
