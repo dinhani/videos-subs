@@ -107,12 +107,17 @@ class FixTranslator:
         return contextlib.nullcontext()
 
     def translate(self, english: Path, translation: Path) -> None:
-        run_name, *path = translation.relative_to(RUNS_DIR).parts
-        base_translation = RUNS_DIR.joinpath(self.base, *path)
+        base_translation = self.find_base(translation)
         if not base_translation.exists():
             raise FileNotFoundError(f"{self.base} has not translated {translation.name} yet")
         shutil.copy2(base_translation, translation)
-        subprocess.run([sys.executable, str(SRC_DIR / "7-fix-translations.py"), str(translation), "--yes", "--backups", str(RUNS_DIR / run_name / BACKUPS_FOLDER)], check=True)
+        subprocess.run([sys.executable, str(SRC_DIR / "7-fix-translations.py"), str(translation), "--yes", "--backups", str(RUNS_DIR / BACKUPS_FOLDER)], check=True)
+
+    def find_base(self, translation: Path) -> Path:
+        return RUNS_DIR / self.base / translation.parent.name / translation.name
+
+    def find_base_seconds(self, translation: Path) -> int | None:
+        return Timings.from_file(RUNS_DIR / self.base / TIMINGS_FILE).find(self.find_base(translation))
 
 
 class Existing(Enum):
@@ -382,6 +387,8 @@ class Run:
                     started = time.perf_counter()
                     self.translator.translate(target.english, target.translation)
                     seconds = round(time.perf_counter() - started)
+                    if isinstance(self.translator, FixTranslator):
+                        seconds = self.translator.find_base_seconds(target.translation) or seconds
                     Timings.from_file(target.run_dir / TIMINGS_FILE).record(target.translation, seconds)
                 else:
                     Action.EXISTS.log(f"{self.name}: {target.translation.name} translated in {RETRANSLATION_FOLDER}")
