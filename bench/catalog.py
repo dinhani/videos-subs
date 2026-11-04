@@ -15,7 +15,6 @@ SOURCES = (
 
 FLAGS_PIPELINE = ("--jinja", "--ctx-size", "16384", "--parallel", "1")
 FLAGS_PIPELINE_8K = ("--jinja", "--ctx-size", "8192", "--parallel", "1")
-FLAGS_PIPELINE_32K = ("--jinja", "--ctx-size", "32768", "--parallel", "1")
 FLAGS_THINKING_OFF = ("--reasoning-budget", "0")
 FLAGS_THINKING_FULL = ("--reasoning-budget", "-1")
 FLAGS_TEMPLATE_THINKING_OFF = ("--chat-template-kwargs", '{"enable_thinking": false}')
@@ -28,7 +27,6 @@ FLAGS_TRANSLATEGEMMA = ("--no-jinja", "--chat-template", "gemma")
 FLAGS_QWEN = ("--no-mmproj", "--top-p", "0.8", "--top-k", "20", "--min-p", "0")
 
 GEMMA_4_26B = LlamaModel(name="gemma-4-26b", repo="lmstudio-community/gemma-4-26B-A4B-it-QAT-GGUF", file="gemma-4-26B-A4B-it-QAT-Q4_0.gguf", flags=(*FLAGS_PIPELINE, *FLAGS_THINKING_OFF, *FLAGS_GPU_ONLY, *FLAGS_GEMMA))
-GEMMA_4_26B_THINKING = LlamaModel(name="gemma-4-26b-thinking", repo="lmstudio-community/gemma-4-26B-A4B-it-QAT-GGUF", file="gemma-4-26B-A4B-it-QAT-Q4_0.gguf", flags=(*FLAGS_PIPELINE_32K, *FLAGS_THINKING_FULL, *FLAGS_GPU_ONLY, *FLAGS_CACHE_Q8, *FLAGS_GEMMA))
 GEMMA_4_12B = LlamaModel(name="gemma-4-12b", repo="lmstudio-community/gemma-4-12B-it-QAT-GGUF", file="gemma-4-12B-it-QAT-Q4_0.gguf", flags=(*FLAGS_PIPELINE, *FLAGS_THINKING_OFF, *FLAGS_GPU_ONLY, *FLAGS_GEMMA))
 MISTRAL_SMALL_3_2_24B = LlamaModel(name="mistral-small-3.2-24b", repo="bartowski/mistralai_Mistral-Small-3.2-24B-Instruct-2506-GGUF", file="mistralai_Mistral-Small-3.2-24B-Instruct-2506-IQ4_XS.gguf", flags=(*FLAGS_PIPELINE, *FLAGS_GPU_ONLY, *FLAGS_CACHE_Q8))
 MINISTRAL_3_14B = LlamaModel(name="ministral-3-14b", repo="bartowski/mistralai_Ministral-3-14B-Instruct-2512-GGUF", file="mistralai_Ministral-3-14B-Instruct-2512-Q6_K.gguf", flags=(*FLAGS_PIPELINE, *FLAGS_GPU_ONLY))
@@ -55,7 +53,7 @@ NLLB_200_600M = NmtModel(name="nllb-200-600m", repo="JustFrederik/nllb-200-disti
 OPUS_MT_EN_PT = NmtModel(name="opus-mt-en-pt", repo="ooeoeo/opus-mt-tc-big-en-pt-ct2-float16", family=NmtFamily.OPUS)
 NMT_MODELS = (MADLAD_400_10B, MADLAD_400_7B, MADLAD_400_3B, NLLB_200_3_3B, NLLB_200_1_3B, NLLB_200_600M, OPUS_MT_EN_PT)
 
-MODELS = (*NMT_MODELS, GEMMA_4_26B, GEMMA_4_26B_THINKING, GEMMA_4_12B, MISTRAL_SMALL_3_2_24B, MINISTRAL_3_14B, QWEN_3_14B, GPT_OSS_20B, ERNIE_4_5_21B, COMMAND_R7B, AYA_EXPANSE_8B, MAGISTRAL_SMALL_24B, GEMMA_3_12B, GEMMA_4_31B, HY_MT2_7B, TOWER_PLUS_9B, TRANSLATEGEMMA_12B, HY_MT2_30B)
+MODELS = (*NMT_MODELS, GEMMA_4_26B, GEMMA_4_12B, MISTRAL_SMALL_3_2_24B, MINISTRAL_3_14B, QWEN_3_14B, GPT_OSS_20B, ERNIE_4_5_21B, COMMAND_R7B, AYA_EXPANSE_8B, MAGISTRAL_SMALL_24B, GEMMA_3_12B, GEMMA_4_31B, HY_MT2_7B, TOWER_PLUS_9B, TRANSLATEGEMMA_12B, HY_MT2_30B)
 
 COMET_WMT22 = ScoringModel(name="comet-wmt22", repo="Unbabel/wmt22-comet-da", files=("checkpoints/model.ckpt", "hparams.yaml"))
 XLM_ROBERTA_LARGE = ScoringModel(name="xlm-roberta-large", repo="xlm-roberta-large", files=("config.json", "sentencepiece.bpe.model", "tokenizer.json", "tokenizer_config.json"))
@@ -78,7 +76,6 @@ RUNS = (
     Run.from_model(MAGISTRAL_SMALL_24B),
     Run.from_model(GEMMA_4_26B),
     *(Run.from_prompt(GEMMA_4_26B, prompt) for prompt in sorted(PROMPTS_DIR.glob("*.txt"))),
-    Run(name=GEMMA_4_26B_THINKING.name, translator=PipelineTranslator(model=GEMMA_4_26B_THINKING, temperatures=(1.0, 1.0, 1.0))),
     Run.from_model(HY_MT2_30B),
     Run.from_model(GEMMA_4_31B),
 )
