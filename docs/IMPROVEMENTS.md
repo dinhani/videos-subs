@@ -1,6 +1,6 @@
 # Improvements
 
-Notes from the fix-translate skill: correct translations that could be better, and errors that no check rule flags. They are input for new check rules and for changes to the translation prompt. Delete a note once it is handled.
+Notes from the app-fix-translate skill: correct translations that could be better, and errors that no check rule flags. They are input for new check rules and for changes to the translation prompt. Delete a note once it is handled.
 
 
 - `Alita - Battle Angel (2019, UHD Blu-ray, 2160p, SDR, h265, 5.1, AAC).embed.3.pob.sdh.translated.srt` entries 1449 and 1450: en `<i>Surrender your weapon.</i>`, pt `<i>Renda-se com sua arma.</i>`. Wrong meaning ("surrender with your weapon"), not flagged. Fixed to `<i>Entregue sua arma.</i>`.

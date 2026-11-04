@@ -1,9 +1,9 @@
 ---
-name: fix-translate
+name: app-fix-translate
 description: Fix the entries that check-translate flagged in the Brazilian Portuguese translations, deciding each entry on its own before changing it. Use after `just translate`, `just fix-translations` and `just check-translate`, when asked to fix translation errors or check-translate issues.
 ---
 
-# fix-translate
+# app-fix-translate
 
 ## Hard rule: decide every entry yourself
 

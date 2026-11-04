@@ -1,9 +1,9 @@
 ---
-name: fix-ocr
+name: app-fix-ocr
 description: Fix the entries that check-ocr flagged in the text subtitles made by ocr, deciding each entry on its own before changing it. Use after `just ocr` and `just check-ocr`, when asked to fix OCR errors or check-ocr issues.
 ---
 
-# fix-ocr
+# app-fix-ocr
 
 ## Hard rule: decide every entry yourself
 
