@@ -35,7 +35,7 @@ if __name__ == "__main__":
     commands = parser.add_subparsers(dest="command", required=True)
     command_run = commands.add_parser("run", help="copy the sources and translate every run not translated yet, each with its own llama server; checks and scores are left to score")
     command_run.add_argument("runs", nargs="*", help=f"runs to translate: {', '.join(runs)} (default: all)")
-    command_run.add_argument("--pick", action="store_true", help="pick the runs to translate from a list")
+    command_run.add_argument("--pick", action="store_true", help="pick the runs to translate from a list; a picked run that is translated is translated again")
     command_run.add_argument("--movie", default="", help="translate only the sources whose title contains this text, such as fall (default: all)")
     command_run.add_argument("--force", action="store_true", help="discard the translations, reports and scores of the runs and translate again")
     commands.add_parser("score", help="check and score every translation not checked or scored yet, without translating")
@@ -71,7 +71,7 @@ if __name__ == "__main__":
 
             with Batch() as batch:
                 for run in runs_selected:
-                    if arguments.force:
+                    if arguments.force or (arguments.pick and run.is_translated(sources)):
                         run.discard(sources)
                     elif run.is_translated(sources):
                         Action.EXISTS.log(run.name)
