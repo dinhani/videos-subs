@@ -135,10 +135,6 @@ class MovieNames:
         self.names_checked[word] = any(word in self.entities_by_entry[n] for n in entries)
         return self.names_checked[word]
 
-    def has_names_only(self, description: str) -> bool:
-        words = normalize_description(description).split()
-        return bool(words) and all(self.is_name(word) for word in words)
-
 
 @functools.cache
 def load_nlp() -> spacy.language.Language:

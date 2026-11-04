@@ -242,15 +242,6 @@ add-fix-subjects +pairs:
     exit $LASTEXITCODE
 
 [group('data/fix')]
-[doc('List descriptions fix-translations cannot translate')]
-[script]
-[extension('.ps1')]
-[positional-arguments]
-list-missing-descriptions *paths:
-    uv run src/fix-tools/list-missing-descriptions.py @args
-    exit $LASTEXITCODE
-
-[group('data/fix')]
 [doc('Add misspellings to fix-translations')]
 [script]
 [extension('.ps1')]
