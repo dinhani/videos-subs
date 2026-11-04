@@ -9,12 +9,14 @@ import re
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 from xml.etree import ElementTree
 
 import srt
 from openai import OpenAI
+from rich.highlighter import JSONHighlighter
 
-from shared.console import Action, Batch, console, track
+from shared.console import Action, Batch, Color, console, log_heading, track
 from shared.files import SubtitleFile, SubtitleFormat, find_subtitles, parse_srt, write_text_replacing
 from shared.languages import WORD, parse_words
 from shared.llm import JsonReply, Trace, connect_llama
@@ -149,23 +151,26 @@ class SubtitleTranslation:
     trace: Trace
     temperatures: tuple[float, ...]
     prompt: str
-    llama: OpenAI
     translated: dict[int, Sequence[str]] = field(default_factory=dict)
 
     @classmethod
-    def from_entries(cls, entries: list[srt.Subtitle], trace: Trace, temperatures: tuple[float, ...], prompt: str, llama: OpenAI) -> "SubtitleTranslation":
+    def from_entries(cls, entries: list[srt.Subtitle], trace: Trace, temperatures: tuple[float, ...], prompt: str) -> "SubtitleTranslation":
         lines = [parse_lines(entry) for entry in entries]
-        return cls(entries=entries, lines=lines, pending=[i for i, entry_lines in enumerate(lines) if entry_lines], trace=trace, temperatures=temperatures, prompt=prompt, llama=llama)
+        return cls(entries=entries, lines=lines, pending=[i for i, entry_lines in enumerate(lines) if entry_lines], trace=trace, temperatures=temperatures, prompt=prompt)
 
-    def translate(self, start: int, end: int, splits: int = 0) -> None:
+    def to_request(self, start: int, end: int) -> dict[str, Any]:
+        chunk = self.pending[start:end]
+        return {
+            "context_before": [{"en": self.lines[i], "pt": self.translated[i]} for i in self.pending[max(0, start - CHUNK_CONTEXT_BEFORE):start] if i in self.translated],
+            "lines": {str(n): self.lines[i] for n, i in enumerate(chunk, start=1)},
+            "context_after": [self.lines[i] for i in self.pending[end:end + CHUNK_CONTEXT_AFTER]],
+        }
+
+    def translate(self, llama: OpenAI, start: int, end: int, splits: int = 0) -> None:
         # build request
         chunk = self.pending[start:end]
         ids = [str(n) for n in range(1, len(chunk) + 1)]
-        request = {
-            "context_before": [{"en": self.lines[i], "pt": self.translated[i]} for i in self.pending[max(0, start - CHUNK_CONTEXT_BEFORE):start] if i in self.translated],
-            "lines": {id: self.lines[i] for id, i in zip(ids, chunk)},
-            "context_after": [self.lines[i] for i in self.pending[end:end + CHUNK_CONTEXT_AFTER]],
-        }
+        request = self.to_request(start, end)
         schema = {
             "type": "object",
             "properties": {
@@ -193,7 +198,7 @@ class SubtitleTranslation:
         problem = ""
         translated: dict[int, list[str]] = {}
         for attempt, temperature in enumerate(self.temperatures, start=1):
-            reply = JsonReply.request(self.llama, schema_name="translations", schema=schema, system=self.prompt, user=json.dumps(request, ensure_ascii=False), temperature=temperature)
+            reply = JsonReply.request(llama, schema_name="translations", schema=schema, system=self.prompt, user=json.dumps(request, ensure_ascii=False), temperature=temperature)
             problem = reply.find_problem(ids)
             if not problem and (bad := [id for id in ids if not isinstance(reply.data[id], dict) or not isinstance(reply.data[id].get("pt"), list)]):
                 problem = f"reply is not an object with pt lines for ids {bad}"
@@ -219,8 +224,8 @@ class SubtitleTranslation:
         if splits < LLM_SPLITS and len(chunk) > 1:
             Action.SPLIT.log(f"{len(chunk)} entries failed {len(self.temperatures)} attempts, splitting in halves")
             middle = (start + end) // 2
-            self.translate(start, middle, splits + 1)
-            self.translate(middle, end, splits + 1)
+            self.translate(llama, start, middle, splits + 1)
+            self.translate(llama, middle, end, splits + 1)
             return
         for i in chunk:
             self.translated[i] = translated[i] if len(translated.get(i, [])) == len(self.lines[i]) else self.lines[i]
@@ -243,7 +248,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Translates English subtitles to Brazilian Portuguese; folders only English ones.")
     parser.add_argument("--temperatures", nargs="+", type=float, default=LLM_TEMPERATURES, help=f"temperature of each attempt of a chunk, in order (default: {' '.join(map(str, LLM_TEMPERATURES))})")
     parser.add_argument("--prompt", type=Path, help="text file with the system prompt to use instead of LLM_PROMPT; {movie} in it is replaced by the title of the movie or episode, as in LLM_PROMPT")
-    parser.add_argument("--print-prompt", action="store_true", help="print the system prompt of each subtitle, even one already translated, without translating it")
+    parser.add_argument("--print-prompt", action="store_true", help="print the system prompt and the first chunk of each subtitle, even one already translated, without translating it")
     subs_src = find_subtitles(parser, formats=(SubtitleFormat.TEXT,), language=LANGUAGE_SOURCE)
     arguments = parser.parse_args()
     temperatures = tuple(arguments.temperatures)
@@ -270,20 +275,35 @@ if __name__ == "__main__":
                     Action.NFO.log(f"{sub_src.nfo.name} not found, translating with the title only")
                 movie_info_text = movie_info.to_prompt("\n".join(entry.content for entry in sub_entries)).replace("{movie}", sub_src.movie_title) if movie_info else ""
                 movie_prompt = prompt.replace("{movie_info}", f"\n\n{movie_info_text}" if movie_info_text else "").replace("{movie}", sub_src.movie_title)
+                translation = SubtitleTranslation.from_entries(sub_entries, trace=Trace(file=sub_dst.to_trace()), temperatures=temperatures, prompt=movie_prompt)
+                chunk_starts = range(0, len(translation.pending), CHUNK_SIZE)
+
+                # print the system prompt, with the movie title and info marked, and the first chunk, without translating
                 if llama is None:
-                    console.print(movie_prompt, soft_wrap=True)
+                    system = JSONHighlighter()(movie_prompt)
+                    system.highlight_words([movie_info_text] if movie_info_text else [], style=Color.GREEN)
+                    system.highlight_words([sub_src.movie_title], style=Color.CYAN)
+                    log_heading("system", Color.YELLOW)
+                    console.print(system, soft_wrap=True)
+
+                    # one entry per line, since the compact JSON the model reads is a single line
+                    chunk_end = min(CHUNK_SIZE, len(translation.pending))
+                    blocks = []
+                    for key, value in translation.to_request(0, chunk_end).items():
+                        opener, closer = ("{", "}") if isinstance(value, dict) else ("[", "]")
+                        items = [f"{json.dumps(id)}: {json.dumps(item, ensure_ascii=False)}" for id, item in value.items()] if isinstance(value, dict) else [json.dumps(item, ensure_ascii=False) for item in value]
+                        body = ",\n".join(f"    {item}" for item in items)
+                        blocks.append(f'  "{key}": {opener}\n{body}\n  {closer}' if items else f'  "{key}": {opener}{closer}')
+                    log_heading(f"user: chunk 1 of {len(chunk_starts)}, entries 1 to {chunk_end} of {len(translation.pending)}", Color.YELLOW)
+                    console.print(JSONHighlighter()("{\n" + ",\n".join(blocks) + "\n}"), soft_wrap=True)
                     continue
 
                 # translate in chunks, tracing every request and reply
-                sub_trace = sub_dst.to_trace()
-                sub_trace.parent.mkdir(exist_ok=True)
-                trace = Trace(file=sub_trace)
+                translation.trace.file.parent.mkdir(exist_ok=True)
                 if movie_info_text:
-                    trace.record({"movie_info": movie_info_text})
-                translation = SubtitleTranslation.from_entries(sub_entries, trace=trace, temperatures=temperatures, prompt=movie_prompt, llama=llama)
-                chunk_starts = range(0, len(translation.pending), CHUNK_SIZE)
+                    translation.trace.record({"movie_info": movie_info_text})
                 for chunk_start in track(chunk_starts):
-                    translation.translate(chunk_start, min(chunk_start + CHUNK_SIZE, len(translation.pending)))
+                    translation.translate(llama, chunk_start, min(chunk_start + CHUNK_SIZE, len(translation.pending)))
 
                 # write translated
                 write_text_replacing(sub_dst.path, translation.compose())

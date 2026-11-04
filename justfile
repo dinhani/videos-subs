@@ -255,10 +255,11 @@ crosscheck *paths:
     exit $LASTEXITCODE
 
 [group('debug')]
-[doc('Print translation prompt of each English subtitle')]
+[doc('Print system prompt and first chunk of each English subtitle')]
 [script]
 [extension('.ps1')]
 [positional-arguments]
 print-prompt *paths:
     uv run src/6-translate-subs.py --print-prompt @args
     exit $LASTEXITCODE
+alias pp := print-prompt
