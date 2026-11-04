@@ -23,15 +23,14 @@ from rich.progress import MofNCompleteColumn, TimeElapsedColumn, TimeRemainingCo
 
 from shared.console import Batch, Color, log_action, progress_bar
 from shared.data_lists import CHECK_EXPRESSIONS, CHECK_WORDS, DICTIONARY_HUNSPELL, DataList, load_dictionary
-from shared.files import CHECKS_FOLDER, TRACES_FOLDER, find_files, get_english_source, parse_movie_dir, parse_srt
+from shared.files import TRANSLATION_SUFFIXES, SubtitleFile, find_files, parse_movie_dir, parse_srt
 from shared.languages import WORDS_PT_PT, TextLanguage, parse_words
 from shared.reports import CHECK_WORKERS, Issue, IssueKind, Report, ReportScore, log_ranking
-from shared.subtitles import BRACKETS, FORMATTING_TAGS, SubtitleKind, parse_plain_text
+from shared.subtitles import BRACKETS, FORMATTING_TAGS, parse_plain_text
 
 # ------------------------------------------------------------------------------
 # Constants
 # ------------------------------------------------------------------------------
-TRANSLATION_SUFFIXES = tuple(kind.to_translation_suffix() for kind in SubtitleKind)
 SOURCE_LANGUAGE = TextLanguage.ENGLISH
 TARGET_LANGUAGE = TextLanguage.PORTUGUESE_BRAZIL
 
@@ -287,8 +286,9 @@ class TranslationCheck:
     @classmethod
     def from_file(cls, subtitle: Path, languagetool_server: str) -> "TranslationCheck":
         # find the English source and the trace of the translation
-        source = get_english_source(subtitle)
-        trace = parse_movie_dir(subtitle) / TRACES_FOLDER / f"{subtitle.stem}.json"
+        subtitle_file = SubtitleFile.from_path(subtitle)
+        source = subtitle_file.get_english_source().path
+        trace = subtitle_file.to_trace()
         records = json.loads(trace.read_text(encoding="utf-8")) if trace.exists() else []
 
         # pair each translated entry with the source entry of the same index
@@ -353,7 +353,7 @@ def check_subtitle(subtitle: Path, report: Path, languagetool_server: str) -> Re
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
     subs = find_files(argparse.ArgumentParser(description="Checks translated subtitles against their English source for common translation mistakes."), extensions_file=TRANSLATION_SUFFIXES, extensions_folder=TRANSLATION_SUFFIXES)
-    reports = {sub: parse_movie_dir(sub) / CHECKS_FOLDER / f"{sub.stem}.txt" for sub in subs}
+    reports = {sub: SubtitleFile.from_path(sub).to_report() for sub in subs}
     scores_current = {sub: ReportScore.find(reports[sub]) for sub in subs}
     batch = Batch()
     scores = [score for score in scores_current.values() if score is not None]

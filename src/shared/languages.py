@@ -4,13 +4,11 @@ import unicodedata
 from collections import Counter
 from dataclasses import dataclass
 from enum import Enum
-from pathlib import Path
 
 import simplemma
 from lingua import Language, LanguageDetector, LanguageDetectorBuilder
 from wordfreq import zipf_frequency
 
-from shared.files import find_language_code
 from shared.subtitles import FORMATTING_TAGS, LANGUAGE_SOURCE, LANGUAGE_TRANSLATION, LANGUAGE_UNDETECTED
 
 WORD = re.compile(r"[^\W\d_]+(?:['’][^\W\d_]+)*")
@@ -52,14 +50,6 @@ class TextLanguage(Enum):
     def __init__(self, code: str, wordfreq_code: str) -> None:
         self.code = code
         self.wordfreq_code = wordfreq_code
-
-    @classmethod
-    def from_file(cls, file: Path) -> "TextLanguage":
-        code = find_language_code(file)
-        language = next((language for language in cls if language.code == code), None)
-        if language is None:
-            raise ValueError(f"language code {code or 'missing'} is not one of {', '.join(language.code for language in cls)}")
-        return language
 
     @property
     def counterpart(self) -> "TextLanguage":

@@ -4,40 +4,44 @@ from pathlib import Path
 import pytest
 import srt
 
-from shared.files import find_language_code, parse_subtitle_name
+from shared.files import CHECKS_FOLDER, SUBS_FOLDER, TRACES_FOLDER, SubtitleFile, SubtitleFormat
 from shared.reports import Issue, IssueKind, Report, ReportScore
 from shared.subtitles import SubtitleKind
 
 
-@pytest.mark.parametrize(("name", "code", "subtitle_name"), [
-    ("movie.embed.2.eng.srt", "eng", "movie.embed.2"),
-    ("movie.embed.2.eng.sdh.srt", "eng", "movie.embed.2"),
-    ("movie.embed.3.und.sup", "und", "movie.embed.3"),
-    ("movie.embed.2.pob.srt", "pob", "movie.embed.2"),
-    ("movie.embed.2.srt", None, "movie.embed.2"),
-    ("movie.embed.2.sdh.srt", None, "movie.embed.2.sdh"),
-    ("movie.embed.2.pob.translated.srt", None, "movie.embed.2.pob.translated"),
+@pytest.mark.parametrize(("name", "track", "language", "kind", "format"), [
+    ("movie.embed.2.eng.srt", "movie.embed.2", "eng", SubtitleKind.BASE, SubtitleFormat.TEXT),
+    ("movie.embed.2.eng.sdh.srt", "movie.embed.2", "eng", SubtitleKind.SDH, SubtitleFormat.TEXT),
+    ("movie.embed.3.eng.sdh.sup", "movie.embed.3", "eng", SubtitleKind.SDH, SubtitleFormat.PGS),
+    ("movie.embed.3.und.mks", "movie.embed.3", "und", SubtitleKind.BASE, SubtitleFormat.VOBSUB),
+    ("movie.embed.2.pob.srt", "movie.embed.2", "pob", SubtitleKind.BASE, SubtitleFormat.TEXT),
+    ("movie.embed.2.srt", "movie.embed.2", None, SubtitleKind.BASE, SubtitleFormat.TEXT),
+    ("movie.embed.2.sdh.srt", "movie.embed.2.sdh", None, SubtitleKind.BASE, SubtitleFormat.TEXT),
+    ("movie.embed.2.pob.translated.srt", "movie.embed.2", "pob", SubtitleKind.BASE, SubtitleFormat.TRANSLATION),
+    ("movie.embed.2.pob.sdh.translated.srt", "movie.embed.2", "pob", SubtitleKind.SDH, SubtitleFormat.TRANSLATION),
+    ("Movie (2019, 2160p, 5.1, AAC).eng.srt", "Movie (2019, 2160p, 5.1, AAC)", "eng", SubtitleKind.BASE, SubtitleFormat.TEXT),
 ])
-def test_language_code_and_name(name: str, code: str | None, subtitle_name: str) -> None:
-    assert (find_language_code(Path(name)), parse_subtitle_name(Path(name))) == (code, subtitle_name)
+def test_subtitle_file_round_trip(name: str, track: str, language: str | None, kind: SubtitleKind, format: SubtitleFormat) -> None:
+    file = SubtitleFile.from_path(Path("movie") / SUBS_FOLDER / name)
+    assert (file.track, file.language, file.kind, file.format) == (track, language, kind, format)
+    assert file.path == Path("movie") / SUBS_FOLDER / name
 
 
-@pytest.mark.parametrize(("name", "kind"), [
-    ("movie.embed.2.eng.srt", SubtitleKind.BASE),
-    ("movie.embed.2.eng.sdh.srt", SubtitleKind.SDH),
-    ("movie.embed.3.eng.sdh.sup", SubtitleKind.SDH),
-])
-def test_kind_from_file(name: str, kind: SubtitleKind) -> None:
-    assert SubtitleKind.from_file(Path(name)) == kind
+def test_subtitle_file_paths_of_ocr() -> None:
+    image = SubtitleFile.from_path(Path("movie") / SUBS_FOLDER / "video.embed.3.sup").to_identified("eng", SubtitleKind.SDH)
+    assert image.path == Path("movie") / SUBS_FOLDER / "video.embed.3.eng.sdh.sup"
+    assert image.to_format(SubtitleFormat.TEXT).path == Path("movie") / SUBS_FOLDER / "video.embed.3.eng.sdh.srt"
+    assert image.to_trace() == Path("movie") / TRACES_FOLDER / "video.embed.3.eng.sdh.ocr.json"
+    assert image.to_format(SubtitleFormat.TEXT).to_report() == Path("movie") / CHECKS_FOLDER / "video.embed.3.eng.sdh.ocr.txt"
 
 
-@pytest.mark.parametrize(("name", "kind"), [
-    ("movie.embed.2.pob.translated.srt", SubtitleKind.BASE),
-    ("movie.embed.2.pob.sdh.translated.srt", SubtitleKind.SDH),
-    ("movie.embed.2.eng.srt", None),
-])
-def test_kind_in_translation(name: str, kind: SubtitleKind | None) -> None:
-    assert SubtitleKind.find_in_translation(Path(name)) == kind
+def test_subtitle_file_paths_of_translation() -> None:
+    source = SubtitleFile.from_path(Path("movie") / SUBS_FOLDER / "video.embed.2.eng.sdh.srt")
+    translation = source.to_translation()
+    assert translation.path == Path("movie") / "video.embed.2.pob.sdh.translated.srt"
+    assert translation.to_trace() == Path("movie") / TRACES_FOLDER / "video.embed.2.pob.sdh.translated.json"
+    assert translation.to_report() == Path("movie") / CHECKS_FOLDER / "video.embed.2.pob.sdh.translated.txt"
+    assert translation.video_name == "video"
 
 
 def test_kind_from_texts_sdh() -> None:

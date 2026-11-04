@@ -3,8 +3,9 @@ import functools
 import os
 import re
 import shutil
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
+from enum import Enum
 from pathlib import Path
 
 import srt
@@ -26,7 +27,7 @@ BACKUPS_FOLDER = DIR_MIDIAS / "_backups"
 REPLACE_ATTEMPTS = 10
 REPLACE_WAIT_SECONDS = 0.5
 
-IMAGE_EXTENSIONS = (".sup", ".mks")
+TRACK_INDEX = re.compile(r"\.embed\.\d+$")
 
 LANGUAGE_CODES = {language.iso_code_639_3.name.lower() for language in Language.all()} | {LANGUAGE_TRANSLATION, LANGUAGE_UNDETECTED}
 
@@ -52,27 +53,6 @@ def parse_movie_dir(file: Path) -> Path:
     return file.parent.parent if file.parent.name == SUBS_FOLDER else file.parent
 
 
-def find_language_code(file: Path) -> str | None:
-    stem = Path(file.stem)
-    if stem.suffix == SubtitleKind.SDH:
-        stem = Path(stem.stem)
-    code = stem.suffix.removeprefix(".")
-    return code if code in LANGUAGE_CODES else None
-
-
-def parse_subtitle_name(file: Path) -> str:
-    stem = Path(file.stem)
-    if find_language_code(file) is None:
-        return stem.name
-    if stem.suffix == SubtitleKind.SDH:
-        stem = Path(stem.stem)
-    return stem.stem
-
-
-def parse_video_name(file: Path) -> str:
-    return re.sub(r"\.embed\.\d+$", "", parse_subtitle_name(file))
-
-
 def parse_srt(file: Path) -> list[srt.Subtitle]:
     return list(srt.parse(file.read_text(encoding="utf-8-sig", errors="replace"), ignore_errors=True))
 
@@ -93,14 +73,99 @@ def write_text_replacing(file: Path, text: str, newline: str | None = None) -> N
         file_part.unlink(missing_ok=True)
 
 
-def get_english_source(translation: Path) -> Path:
-    kind = SubtitleKind.find_in_translation(translation)
-    if kind is None:
-        raise ValueError(f"not a translation: {translation.name}")
-    source = parse_movie_dir(translation) / SUBS_FOLDER / f"{translation.name.removesuffix(kind.to_translation_suffix())}.{LANGUAGE_SOURCE}{kind}.srt"
-    if not source.exists():
-        raise FileNotFoundError(f"English source not found: {source}")
-    return source
+class SubtitleFormat(Enum):
+    TRANSLATION = (".translated.srt", ".translated.json", ".translated.txt")
+    TEXT = (".srt", ".ocr.json", ".ocr.txt")
+    PGS = (".sup", ".ocr.json", ".ocr.txt")
+    VOBSUB = (".mks", ".ocr.json", ".ocr.txt")
+
+    def __init__(self, extension: str, trace_suffix: str, report_suffix: str) -> None:
+        self.extension = extension
+        self.trace_suffix = trace_suffix
+        self.report_suffix = report_suffix
+
+    @classmethod
+    def find(cls, file: Path) -> "SubtitleFormat | None":
+        return next((format for format in cls if file.name.lower().endswith(format.extension)), None)
+
+    def to_suffixes(self, language: str) -> tuple[str, ...]:
+        return tuple(f".{language}{kind}{self.extension}" for kind in SubtitleKind)
+
+
+IMAGE_FORMATS = (SubtitleFormat.PGS, SubtitleFormat.VOBSUB)
+IMAGE_EXTENSIONS = tuple(format.extension for format in IMAGE_FORMATS)
+TRANSLATION_SUFFIXES = SubtitleFormat.TRANSLATION.to_suffixes(LANGUAGE_TRANSLATION)
+
+
+@dataclass(frozen=True)
+class SubtitleFile:
+    folder: Path
+    track: str
+    language: str | None
+    kind: SubtitleKind
+    format: SubtitleFormat
+
+    @classmethod
+    def from_path(cls, file: Path) -> "SubtitleFile":
+        format = SubtitleFormat.find(file)
+        if format is None:
+            raise ValueError(f"not a subtitle: {file.name}")
+        stem = Path(file.name[:-len(format.extension)])
+        kind = SubtitleKind.SDH if stem.suffix == SubtitleKind.SDH else SubtitleKind.BASE
+        stem_language = Path(stem.stem) if kind == SubtitleKind.SDH else stem
+        language = stem_language.suffix.removeprefix(".")
+        if language not in LANGUAGE_CODES:
+            return cls(folder=file.parent, track=stem.name, language=None, kind=SubtitleKind.BASE, format=format)
+        return cls(folder=file.parent, track=stem_language.stem, language=language, kind=kind, format=format)
+
+    @property
+    def stem(self) -> str:
+        return self.track if self.language is None else f"{self.track}.{self.language}{self.kind}"
+
+    @property
+    def name(self) -> str:
+        return f"{self.stem}{self.format.extension}"
+
+    @property
+    def path(self) -> Path:
+        return self.folder / self.name
+
+    @property
+    def movie_dir(self) -> Path:
+        return parse_movie_dir(self.path)
+
+    @property
+    def video_name(self) -> str:
+        return TRACK_INDEX.sub("", self.track)
+
+    def is_identified(self) -> bool:
+        return self.language is not None
+
+    def to_identified(self, language: str, kind: SubtitleKind) -> "SubtitleFile":
+        return replace(self, language=language, kind=kind)
+
+    def to_format(self, format: SubtitleFormat) -> "SubtitleFile":
+        return replace(self, format=format)
+
+    def find_image_subtitle(self) -> "SubtitleFile | None":
+        return next((image for image in (self.to_format(format) for format in IMAGE_FORMATS) if image.name in list_folder(self.folder)), None)
+
+    def to_translation(self) -> "SubtitleFile":
+        return SubtitleFile(folder=self.movie_dir, track=self.track, language=LANGUAGE_TRANSLATION, kind=self.kind, format=SubtitleFormat.TRANSLATION)
+
+    def get_english_source(self) -> "SubtitleFile":
+        if self.format != SubtitleFormat.TRANSLATION:
+            raise ValueError(f"not a translation: {self.name}")
+        source = SubtitleFile(folder=self.movie_dir / SUBS_FOLDER, track=self.track, language=LANGUAGE_SOURCE, kind=self.kind, format=SubtitleFormat.TEXT)
+        if not source.path.exists():
+            raise FileNotFoundError(f"English source not found: {source.path}")
+        return source
+
+    def to_trace(self) -> Path:
+        return self.movie_dir / TRACES_FOLDER / f"{self.stem}{self.format.trace_suffix}"
+
+    def to_report(self) -> Path:
+        return self.movie_dir / CHECKS_FOLDER / f"{self.stem}{self.format.report_suffix}"
 
 
 @dataclass(frozen=True)

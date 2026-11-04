@@ -20,15 +20,13 @@ from rich.text import Text
 from shared.console import Batch, Color, console, log_action
 from shared.data_lists import FIX_SOUNDS, FIX_SUBJECTS, FIX_WORDS, DataList
 from shared.descriptions import DESCRIPTION_SIMPLE, DescriptionTable, Movie
-from shared.files import CHECKS_FOLDER, Backups, find_files, get_english_source, parse_movie_dir, parse_srt, write_text_replacing
+from shared.files import TRANSLATION_SUFFIXES, Backups, SubtitleFile, find_files, parse_movie_dir, parse_srt, write_text_replacing
 from shared.languages import WORD
-from shared.subtitles import BRACKETS, FORMATTING_TAGS, IGNORE_MARKER, QUOTES, SubtitleKind
+from shared.subtitles import BRACKETS, FORMATTING_TAGS, IGNORE_MARKER, QUOTES
 
 # ------------------------------------------------------------------------------
 # Constants
 # ------------------------------------------------------------------------------
-TRANSLATION_SUFFIXES = tuple(kind.to_translation_suffix() for kind in SubtitleKind)
-
 LINE_WORDS = re.compile(r"[^\W\d_]|[♪♫]")
 NUMBER = re.compile(r"\d+")
 
@@ -326,8 +324,8 @@ class Translation:
 
     @classmethod
     def from_file(cls, file: Path) -> "Translation":
-        source = get_english_source(file)
-        return cls(entries=parse_srt(file), sources_by_index={entry.index: entry for entry in parse_srt(source)}, movie=Movie.from_subs_folder(source.parent))
+        source = SubtitleFile.from_path(file).get_english_source()
+        return cls(entries=parse_srt(file), sources_by_index={entry.index: entry for entry in parse_srt(source.path)}, movie=Movie.from_subs_folder(source.folder))
 
     def fix(self, fixes: tuple[TranslationFix, ...]) -> list[EntryChange]:
         # fix every entry that has a source entry; a changed entry loses its marker, so check-translate judges it again
@@ -416,7 +414,7 @@ if __name__ == "__main__":
                 # back up the sub, write the fixed sub and delete its report, which no longer matches it
                 backups.save(sub)
                 write_text_replacing(sub, translation.compose(changes))
-                (movie_dir / CHECKS_FOLDER / f"{sub.stem}.txt").unlink(missing_ok=True)
+                SubtitleFile.from_path(sub).to_report().unlink(missing_ok=True)
                 log_action("fix", Color.GREEN, summary)
             except Exception as error:
                 batch.fail(sub, error)

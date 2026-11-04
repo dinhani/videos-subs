@@ -16,10 +16,10 @@ from openai.types.chat import ChatCompletionContentPartParam
 from rich.progress import MofNCompleteColumn, TimeElapsedColumn, TimeRemainingColumn
 
 from shared.console import Batch, Color, log_action, progress_bar
-from shared.files import IMAGE_EXTENSIONS, SUBS_FOLDER, TRACES_FOLDER, find_files, parse_movie_dir, write_text_replacing
+from shared.files import IMAGE_EXTENSIONS, SUBS_FOLDER, SubtitleFile, SubtitleFormat, find_files, parse_movie_dir, write_text_replacing
 from shared.image_subtitles import SubtitleEntry, parse_image_subtitle
 from shared.llm import LLM_PROPS_URL, Trace, connect_llama
-from shared.subtitles import LANGUAGE_SOURCE, OCR_FAILED_TEXT, SubtitleKind
+from shared.subtitles import LANGUAGE_SOURCE, OCR_FAILED_TEXT
 
 # ------------------------------------------------------------------------------
 # Constants
@@ -158,7 +158,7 @@ class SubtitleTranscription:
 # Execution
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
-    subs = find_files(argparse.ArgumentParser(description="Transcribes image subtitles to text subtitles with a vision LLM; folders only English ones."), extensions_file=IMAGE_EXTENSIONS, extensions_folder=tuple(f".{LANGUAGE_SOURCE}{kind}{extension}" for kind in SubtitleKind for extension in IMAGE_EXTENSIONS), folder=SUBS_FOLDER)
+    subs = find_files(argparse.ArgumentParser(description="Transcribes image subtitles to text subtitles with a vision LLM; folders only English ones."), extensions_file=IMAGE_EXTENSIONS, extensions_folder=SubtitleFormat.PGS.to_suffixes(LANGUAGE_SOURCE) + SubtitleFormat.VOBSUB.to_suffixes(LANGUAGE_SOURCE), folder=SUBS_FOLDER)
     llama = connect_llama()
     llama_slots = llama.get(LLM_PROPS_URL, cast_to=LlamaProps).total_slots
     batch = Batch()
@@ -168,13 +168,14 @@ if __name__ == "__main__":
         batch.log_movie(movie_dir)
 
         # skip subs already transcribed
-        sub_dst = sub.with_suffix(".srt")
+        sub_file = SubtitleFile.from_path(sub)
+        sub_dst = sub_file.to_format(SubtitleFormat.TEXT).path
         if sub_dst.exists():
             log_action("exists", Color.BLUE, sub_dst.name)
             continue
         log_action("ocr", Color.GREEN, sub_dst.name)
 
-        sub_trace = movie_dir / TRACES_FOLDER / f"{sub.stem}.ocr.json"
+        sub_trace = sub_file.to_trace()
         try:
             # read entries
             sub_entries = parse_image_subtitle(sub)

@@ -1,7 +1,6 @@
 import re
 from collections import Counter
 from enum import StrEnum
-from pathlib import Path
 
 import srt
 
@@ -26,17 +25,6 @@ SDH_DESCRIPTIONS_TOP_MAX = 0.60
 class SubtitleKind(StrEnum):
     BASE = ""
     SDH = ".sdh"
-
-    @classmethod
-    def from_file(cls, file: Path) -> "SubtitleKind":
-        return cls.SDH if Path(file.stem).suffix == cls.SDH else cls.BASE
-
-    @classmethod
-    def find_in_translation(cls, file: Path) -> "SubtitleKind | None":
-        return next((kind for kind in cls if file.name.endswith(kind.to_translation_suffix())), None)
-
-    def to_translation_suffix(self) -> str:
-        return f".{LANGUAGE_TRANSLATION}{self}.translated.srt"
 
     @classmethod
     def from_texts(cls, texts: list[str]) -> "SubtitleKind":

@@ -4,23 +4,18 @@
 # Libraries
 # ------------------------------------------------------------------------------
 import argparse
-import re
 from collections import defaultdict
 from pathlib import Path
 
 from shared.console import Batch, Color, console
-from shared.files import CHECKS_FOLDER, IMAGE_EXTENSIONS, SUBS_FOLDER, find_files, find_language_code
-from shared.subtitles import LANGUAGE_SOURCE, SubtitleKind
+from shared.files import CHECKS_FOLDER, IMAGE_EXTENSIONS, IMAGE_FORMATS, SUBS_FOLDER, TRANSLATION_SUFFIXES, SubtitleFile, SubtitleFormat, find_files
+from shared.subtitles import LANGUAGE_SOURCE
 
 # ------------------------------------------------------------------------------
 # Constants
 # ------------------------------------------------------------------------------
 WORK_FOLDERS = (SUBS_FOLDER, CHECKS_FOLDER)
-TRACK = re.compile(r"^(.*\.embed\.\d+)\.")
 PART_SUFFIX = ".part"
-
-OCR_REPORT_SUFFIX = ".ocr.txt"
-TRANSLATION_REPORT_SUFFIX = ".translated.txt"
 
 # ------------------------------------------------------------------------------
 # Execution
@@ -34,45 +29,44 @@ if __name__ == "__main__":
         # list the files of the movie folder and its work folders
         files_by_folder = {folder: sorted(path for path in (movie_dir / folder).iterdir() if path.is_file()) if (movie_dir / folder).is_dir() else [] for folder in WORK_FOLDERS}
         movie_files = sorted(path for path in movie_dir.iterdir() if path.is_file())
-        subs = files_by_folder[SUBS_FOLDER]
-        subs_names = {sub.name for sub in subs}
-        translations_names = {file.name for file in movie_files if SubtitleKind.find_in_translation(file) is not None}
-        subs_by_track: defaultdict[str, list[Path]] = defaultdict(list)
+        subs = [SubtitleFile.from_path(file) for file in files_by_folder[SUBS_FOLDER] if SubtitleFormat.find(file) is not None]
+        translations = [SubtitleFile.from_path(file) for file in movie_files if file.name.endswith(TRANSLATION_SUFFIXES)]
+        texts_by_track: defaultdict[str, list[SubtitleFile]] = defaultdict(list)
         for sub in subs:
-            if track := TRACK.match(sub.name):
-                subs_by_track[track[1]].append(sub)
+            if sub.format == SubtitleFormat.TEXT:
+                texts_by_track[sub.track].append(sub)
         problems: list[tuple[Path, str]] = []
 
         # a text subtitle made by ocr has the language code and kind of its image subtitle
         for sub in subs:
-            if sub.suffix not in IMAGE_EXTENSIONS or not (track := TRACK.match(sub.name)):
+            if sub.format not in IMAGE_FORMATS:
                 continue
-            texts_different = [text for text in subs_by_track[track[1]] if text.suffix == ".srt" and (find_language_code(text), SubtitleKind.from_file(text)) != (find_language_code(sub), SubtitleKind.from_file(sub))]
+            texts_different = [text for text in texts_by_track[sub.track] if (text.language, text.kind) != (sub.language, sub.kind)]
             if texts_different:
-                problems.append((sub, f"text subtitle with another language code or kind: {', '.join(text.name for text in texts_different)}"))
+                problems.append((sub.path, f"text subtitle with another language code or kind: {', '.join(text.name for text in texts_different)}"))
 
         # a track has at most one text subtitle
-        for track_subs in subs_by_track.values():
-            texts = [sub for sub in track_subs if sub.suffix == ".srt"]
+        for texts in texts_by_track.values():
             if len(texts) > 1:
-                problems.append((texts[0], f"{len(texts)} text subtitles for one track: {', '.join(text.name for text in texts)}"))
+                problems.append((texts[0].path, f"{len(texts)} text subtitles for one track: {', '.join(text.name for text in texts)}"))
 
         # a translation has one English source of its kind
-        for name in sorted(translations_names):
-            track = TRACK.match(name)
-            sources = [sub for sub in subs_by_track[track[1]] if sub.suffix == ".srt"] if track else []
+        for translation in sorted(translations, key=lambda translation: translation.name):
+            sources = texts_by_track[translation.track]
             if not sources:
-                problems.append((movie_dir / name, "no source in _subs"))
-            elif len(sources) == 1 and find_language_code(sources[0]) != LANGUAGE_SOURCE:
-                problems.append((movie_dir / name, f"source is not English: {sources[0].name}"))
-            elif len(sources) == 1 and SubtitleKind.from_file(sources[0]) != SubtitleKind.find_in_translation(movie_dir / name):
-                problems.append((movie_dir / name, f"source of another kind: {sources[0].name}"))
+                problems.append((translation.path, "no source in _subs"))
+            elif len(sources) == 1 and sources[0].language != LANGUAGE_SOURCE:
+                problems.append((translation.path, f"source is not English: {sources[0].name}"))
+            elif len(sources) == 1 and sources[0].kind != translation.kind:
+                problems.append((translation.path, f"source of another kind: {sources[0].name}"))
 
         # reports belong to a subtitle that exists
+        reports_ocr = {text.to_report() for texts in texts_by_track.values() for text in texts}
+        reports_translation = {translation.to_report() for translation in translations}
         for report in files_by_folder[CHECKS_FOLDER]:
-            if report.name.endswith(OCR_REPORT_SUFFIX) and f"{report.name.removesuffix(OCR_REPORT_SUFFIX)}.srt" not in subs_names:
+            if report.name.endswith(SubtitleFormat.TEXT.report_suffix) and report not in reports_ocr:
                 problems.append((report, "OCR report without its text subtitle"))
-            elif report.name.endswith(TRANSLATION_REPORT_SUFFIX) and f"{report.name.removesuffix(TRANSLATION_REPORT_SUFFIX)}.translated.srt" not in translations_names:
+            elif report.name.endswith(SubtitleFormat.TRANSLATION.report_suffix) and report not in reports_translation:
                 problems.append((report, "translation report without its translation"))
 
         # no write was left half done

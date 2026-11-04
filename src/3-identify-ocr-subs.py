@@ -15,7 +15,7 @@ from pathlib import Path
 from rich.progress import MofNCompleteColumn, TimeElapsedColumn, TimeRemainingColumn
 
 from shared.console import Batch, Color, log_action, progress_bar
-from shared.files import IMAGE_EXTENSIONS, SUBS_FOLDER, TRACES_FOLDER, find_files, find_language_code, parse_movie_dir
+from shared.files import IMAGE_EXTENSIONS, SUBS_FOLDER, SubtitleFile, SubtitleFormat, find_files, parse_movie_dir
 from shared.image_subtitles import parse_image_subtitle
 from shared.languages import SubtitleLanguage
 from shared.subtitles import SubtitleKind
@@ -74,7 +74,7 @@ if __name__ == "__main__":
 
     with ThreadPoolExecutor(max_workers=SAMPLE_WORKERS) as executor:
         # read a sample of every sub not identified yet, SAMPLE_WORKERS at a time across movies
-        samples: dict[Path, Future[list[str] | None]] = {sub: executor.submit(read_sample, sub) for sub in subs if find_language_code(sub) is None}
+        samples: dict[Path, Future[list[str] | None]] = {sub: executor.submit(read_sample, sub) for sub in subs if not SubtitleFile.from_path(sub).is_identified()}
 
         try:
             for movie_dir, movie_subs in itertools.groupby(subs, key=parse_movie_dir):
@@ -83,9 +83,9 @@ if __name__ == "__main__":
                 # skip subs already identified
                 subs_pending: list[Path] = []
                 for sub in movie_subs:
-                    sub_language_code = find_language_code(sub)
-                    if sub_language_code is not None:
-                        log_action("exists", Color.BLUE, f".{sub_language_code:<3} {'':<26} {sub.name}")
+                    sub_file = SubtitleFile.from_path(sub)
+                    if sub_file.is_identified():
+                        log_action("exists", Color.BLUE, f".{sub_file.language:<3} {'':<26} {sub.name}")
                         continue
                     subs_pending.append(sub)
                 if not subs_pending:
@@ -104,14 +104,15 @@ if __name__ == "__main__":
                             sub_kind = SubtitleKind.from_texts(sample)
 
                             # rename file with language code and kind, with its ocr output and trace, the file itself last
-                            sub_stem = f"{sub.stem}.{sub_language.code}{sub_kind}"
+                            sub_file = SubtitleFile.from_path(sub)
+                            sub_identified = sub_file.to_identified(sub_language.code, sub_kind)
                             for companion, companion_new in (
-                                (sub.with_suffix(".srt"), sub.with_name(f"{sub_stem}.srt")),
-                                (movie_dir / TRACES_FOLDER / f"{sub.stem}.ocr.json", movie_dir / TRACES_FOLDER / f"{sub_stem}.ocr.json"),
+                                (sub_file.to_format(SubtitleFormat.TEXT).path, sub_identified.to_format(SubtitleFormat.TEXT).path),
+                                (sub_file.to_trace(), sub_identified.to_trace()),
                             ):
                                 if companion.exists():
                                     companion.replace(companion_new)
-                            sub.replace(sub.with_name(f"{sub_stem}{sub.suffix}"))
+                            sub.replace(sub_identified.path)
                             log_action("rename", Color.GREEN, f".{sub_language.code:<3}{sub_kind:<4} {sub_language.name:<22} {sub.name}")
                         except Exception as error:
                             batch.fail(sub, error)

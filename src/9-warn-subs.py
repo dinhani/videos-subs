@@ -10,14 +10,12 @@ from datetime import timedelta
 import srt
 
 from shared.console import Batch, Color, log_action
-from shared.files import TRACES_FOLDER, Backups, find_files, parse_movie_dir, parse_srt, write_text_replacing
+from shared.files import TRANSLATION_SUFFIXES, Backups, SubtitleFile, find_files, parse_movie_dir, parse_srt, write_text_replacing
 from shared.subtitles import SubtitleKind
 
 # ------------------------------------------------------------------------------
 # Constants
 # ------------------------------------------------------------------------------
-TRANSLATION_SUFFIXES = tuple(kind.to_translation_suffix() for kind in SubtitleKind)
-
 WARNING_SDH = "[Legenda SDH: descreve sons, músicas e quem fala.]"
 WARNING_PROBLEM = "[Legenda traduzida automaticamente. Alguns trechos podem estar errados ou em inglês.]"
 WARNING_DURATION = timedelta(seconds=5)
@@ -38,10 +36,11 @@ if __name__ == "__main__":
 
         try:
             # find the warnings the translation needs
-            trace = movie_dir / TRACES_FOLDER / f"{sub.stem}.json"
+            sub_file = SubtitleFile.from_path(sub)
+            trace = sub_file.to_trace()
             records = json.loads(trace.read_text(encoding="utf-8")) if trace.exists() else []
             warnings = [warning for warning, needed in (
-                (WARNING_SDH, SubtitleKind.find_in_translation(sub) == SubtitleKind.SDH),
+                (WARNING_SDH, sub_file.kind == SubtitleKind.SDH),
                 (WARNING_PROBLEM, any("accepted_with_problem" in record for record in records)),
             ) if needed]
 

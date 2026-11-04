@@ -9,7 +9,7 @@ from collections import Counter
 from shared.console import Color, console, log_action
 from shared.data_lists import FIX_SOUNDS, FIX_SUBJECTS
 from shared.descriptions import DESCRIPTION_SIMPLE, DescriptionTable, Movie
-from shared.files import SUBS_FOLDER, find_files, find_language_code, parse_srt
+from shared.files import SUBS_FOLDER, SubtitleFile, find_files, parse_srt
 from shared.subtitles import LANGUAGE_SOURCE
 
 # ------------------------------------------------------------------------------
@@ -21,7 +21,7 @@ DESCRIPTIONS_LISTED = 100
 # Execution
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
-    sources = [file for file in find_files(argparse.ArgumentParser(description="Lists the descriptions of the English sources that fix-translations cannot translate, the most common first."), extensions_file=(".srt",), extensions_folder=(".srt",), folder=SUBS_FOLDER) if find_language_code(file) == LANGUAGE_SOURCE]
+    sources = [file for file in find_files(argparse.ArgumentParser(description="Lists the descriptions of the English sources that fix-translations cannot translate, the most common first."), extensions_file=(".srt",), extensions_folder=(".srt",), folder=SUBS_FOLDER) if SubtitleFile.from_path(file).language == LANGUAGE_SOURCE]
     table = DescriptionTable.from_lists(FIX_SOUNDS, FIX_SUBJECTS)
 
     # count every description with letters by its words in lowercase, keeping the first form seen to translate it; a description that is only names of the movie, such as a speaker, is left out

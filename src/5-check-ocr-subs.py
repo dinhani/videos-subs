@@ -20,10 +20,10 @@ from PIL import ImageFont, ImageOps
 from rich.progress import MofNCompleteColumn, TimeElapsedColumn, TimeRemainingColumn
 
 from shared.console import Batch, Color, log_action, progress_bar
-from shared.files import CHECKS_FOLDER, IMAGE_EXTENSIONS, SUBS_FOLDER, find_files, list_folder, parse_movie_dir, parse_srt
+from shared.files import SUBS_FOLDER, SubtitleFile, SubtitleFormat, find_files, parse_movie_dir, parse_srt
 from shared.image_subtitles import SubtitleEntry, parse_image_subtitle
 from shared.reports import CHECK_WORKERS, Issue, IssueKind, Report, ReportScore, log_ranking
-from shared.subtitles import LANGUAGE_SOURCE, OCR_FAILED_TEXT, SubtitleKind, parse_plain_text
+from shared.subtitles import LANGUAGE_SOURCE, OCR_FAILED_TEXT, parse_plain_text
 
 # ------------------------------------------------------------------------------
 # Constants
@@ -254,7 +254,10 @@ class OcrCheck:
 
     @classmethod
     def from_file(cls, subtitle: Path) -> "OcrCheck":
-        image = next(subtitle.with_suffix(extension) for extension in IMAGE_EXTENSIONS if subtitle.with_suffix(extension).exists())
+        image_file = SubtitleFile.from_path(subtitle).find_image_subtitle()
+        if image_file is None:
+            raise FileNotFoundError(f"image subtitle not found next to {subtitle.name}")
+        image = image_file.path
         texts = parse_srt(subtitle)
 
         # srt drops entries without duration when it writes a subtitle, so they are dropped here too
@@ -303,10 +306,10 @@ def check_subtitle(subtitle: Path, report: Path) -> ReportScore:
 if __name__ == "__main__":
     subs = [
         sub
-        for sub in find_files(argparse.ArgumentParser(description="Checks text subtitles made by OCR against their image subtitles; only ones next to an image subtitle, folders only English ones."), extensions_file=(".srt",), extensions_folder=tuple(f".{LANGUAGE_SOURCE}{kind}.srt" for kind in SubtitleKind), folder=SUBS_FOLDER)
-        if any(f"{sub.stem}{extension}" in list_folder(sub.parent) for extension in IMAGE_EXTENSIONS)
+        for sub in find_files(argparse.ArgumentParser(description="Checks text subtitles made by OCR against their image subtitles; only ones next to an image subtitle, folders only English ones."), extensions_file=(".srt",), extensions_folder=SubtitleFormat.TEXT.to_suffixes(LANGUAGE_SOURCE), folder=SUBS_FOLDER)
+        if SubtitleFile.from_path(sub).find_image_subtitle() is not None
     ]
-    reports = {sub: parse_movie_dir(sub) / CHECKS_FOLDER / f"{sub.stem}.ocr.txt" for sub in subs}
+    reports = {sub: SubtitleFile.from_path(sub).to_report() for sub in subs}
     scores_current = {sub: ReportScore.find(reports[sub]) for sub in subs}
     batch = Batch()
     scores = [score for score in scores_current.values() if score is not None]

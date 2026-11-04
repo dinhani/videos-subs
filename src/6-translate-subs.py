@@ -14,10 +14,10 @@ import srt
 from rich.progress import MofNCompleteColumn, TimeElapsedColumn, TimeRemainingColumn
 
 from shared.console import Batch, Color, log_action, progress_bar
-from shared.files import SUBS_FOLDER, TRACES_FOLDER, find_files, parse_movie_dir, parse_srt, parse_subtitle_name, parse_video_name, write_text_replacing
+from shared.files import SUBS_FOLDER, SubtitleFile, SubtitleFormat, find_files, parse_srt, write_text_replacing
 from shared.languages import WORD, parse_words
 from shared.llm import Trace, connect_llama
-from shared.subtitles import IGNORE_MARKER, LANGUAGE_SOURCE, SubtitleKind
+from shared.subtitles import IGNORE_MARKER, LANGUAGE_SOURCE
 
 # ------------------------------------------------------------------------------
 # Constants
@@ -266,7 +266,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Translates English subtitles to Brazilian Portuguese; folders only English ones.")
     parser.add_argument("--temperatures", nargs="+", type=float, default=LLM_TEMPERATURES, help=f"temperature of each attempt of a chunk, in order (default: {' '.join(map(str, LLM_TEMPERATURES))})")
     parser.add_argument("--prompt", type=Path, help="text file with the system prompt to use instead of LLM_PROMPT; {movie} in it is replaced by the title of the movie or episode, as in LLM_PROMPT")
-    subs_src = find_files(parser, extensions_file=(".srt",), extensions_folder=tuple(f".{LANGUAGE_SOURCE}{kind}.srt" for kind in SubtitleKind), folder=SUBS_FOLDER)
+    subs_src = find_files(parser, extensions_file=(".srt",), extensions_folder=SubtitleFormat.TEXT.to_suffixes(LANGUAGE_SOURCE), folder=SUBS_FOLDER)
     arguments = parser.parse_args()
     temperatures = tuple(arguments.temperatures)
     prompt = arguments.prompt.read_text(encoding="utf-8") if arguments.prompt else LLM_PROMPT
@@ -275,28 +275,28 @@ if __name__ == "__main__":
     batch = Batch()
 
     for sub_src in subs_src:
-        movie_dir = parse_movie_dir(sub_src)
+        sub_file = SubtitleFile.from_path(sub_src)
+        movie_dir = sub_file.movie_dir
         batch.log_movie(movie_dir)
 
         # prepare files
-        sub_name = parse_subtitle_name(sub_src)
-        sub_kind = SubtitleKind.from_file(sub_src)
-        sub_dst = movie_dir / f"{sub_name}{sub_kind.to_translation_suffix()}"
+        sub_translation = sub_file.to_translation()
+        sub_dst = sub_translation.path
         if sub_dst.exists():
             log_action("exists", Color.BLUE, sub_dst.name)
             continue
         log_action("translate", Color.GREEN, sub_dst.name)
 
-        sub_trace = movie_dir / TRACES_FOLDER / f"{sub_dst.stem}.json"
-        movie_title = re.sub(r"^(.*?) \((\d{4})\b.*$", r"\1 (\2)", sub_name)
+        sub_trace = sub_translation.to_trace()
+        movie_title = re.sub(r"^(.*?) \((\d{4})\b.*$", r"\1 (\2)", sub_file.track)
         if movie_dir.name.startswith("Season"):
             movie_title = f"{movie_dir.parent.name}, {movie_title}"
         try:
             # parse entries and movie info
             sub_entries = parse_srt(sub_src)
-            movie_info = MovieInfo.find(movie_dir, parse_video_name(sub_src))
+            movie_info = MovieInfo.find(movie_dir, sub_file.video_name)
             if movie_info is None:
-                log_action("nfo", Color.YELLOW, f"{parse_video_name(sub_src)}.nfo not found, translating with the title only")
+                log_action("nfo", Color.YELLOW, f"{sub_file.video_name}.nfo not found, translating with the title only")
             movie_info_text = movie_info.to_prompt("\n".join(entry.content for entry in sub_entries)).replace("{movie}", movie_title) if movie_info else ""
             movie_prompt = prompt.replace("{movie_info}", f"\n\n{movie_info_text}" if movie_info_text else "").replace("{movie}", movie_title)
 

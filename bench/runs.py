@@ -18,8 +18,8 @@ import srt
 
 from models import LlamaModel, NmtModel
 from shared.console import Color, log_action
-from shared.files import CHECKS_FOLDER, SUBS_FOLDER, TRACES_FOLDER, parse_srt, parse_subtitle_name, parse_video_name, write_text_replacing
-from shared.subtitles import IGNORE_MARKER, SubtitleKind, parse_plain_text
+from shared.files import SUBS_FOLDER, SubtitleFile, parse_srt, write_text_replacing
+from shared.subtitles import IGNORE_MARKER, parse_plain_text
 
 BENCH_DIR = Path(__file__).parent
 SRC_DIR = BENCH_DIR.parent / "src"
@@ -88,7 +88,7 @@ class NmtTranslator:
             content = "\n".join(translated_lines) if entry_lines else entry.content
             translated_entries.append(srt.Subtitle(index=entry.index, start=entry.start, end=entry.end, content=content, proprietary=IGNORE_MARKER.sub("", entry.proprietary).strip()))
 
-        trace = translation.parent / TRACES_FOLDER / f"{translation.stem}.json"
+        trace = SubtitleFile.from_path(translation).to_trace()
         trace.parent.mkdir(exist_ok=True)
         write_text_replacing(trace, json.dumps(records, ensure_ascii=False, indent=2))
         write_text_replacing(translation, srt.compose(translated_entries, reindex=False))
@@ -121,11 +121,11 @@ class Source:
 
     @property
     def name(self) -> str:
-        return parse_subtitle_name(self.english)
+        return SubtitleFile.from_path(self.english).track
 
     @property
     def library_nfo(self) -> Path:
-        return self.library_english.parent.parent / f"{parse_video_name(self.library_english)}.nfo"
+        return self.library_english.parent.parent / f"{SubtitleFile.from_path(self.library_english).video_name}.nfo"
 
     @property
     def nfo(self) -> Path:
@@ -247,11 +247,11 @@ class RunTranslation:
 
     @property
     def translation(self) -> Path:
-        return self.run_dir / self.source.movie / f"{self.source.name}{SubtitleKind.from_file(self.english).to_translation_suffix()}"
+        return SubtitleFile.from_path(self.english).to_translation().path
 
     @property
     def report(self) -> Path:
-        return self.translation.parent / CHECKS_FOLDER / f"{self.translation.stem}.txt"
+        return SubtitleFile.from_path(self.translation).to_report()
 
     def is_translated(self) -> bool:
         return self.translation.exists()
