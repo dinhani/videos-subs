@@ -66,7 +66,7 @@ fix-translations is deterministic and changes only what the English source decid
 Its fixes, in the order they run, are in `FIXES`:
 
 - tags: deletes the tags the English entry does not have and restores the English `{\anN}` and whole-line italics.
-- leftovers: deletes a JSON ending of the model reply, such as `"]},`, at the end of a line.
+- leftovers: deletes a JSON ending of the model reply, such as `"]},`, at the end of a line whose English line does not end that way.
 - brackets: completes or swaps the brackets of a description to match the English line, and removes brackets the English line does not have.
 - quotes: removes a quote the English line does not have, when it is the only extra one.
 - descriptions: writes each description from `data/fix-sounds.txt` and `data/fix-subjects.txt`, keeping a name only when the English shows it is a name and the model kept it. A form the model already wrote that the table lists as right is left as it is.
