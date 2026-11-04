@@ -145,24 +145,24 @@ class Comparison:
 
     @classmethod
     def from_runs(cls, source: Source, runs: tuple[Run, ...]) -> "Comparison":
+        english = parse_srt(source.english)
         lines_by_column: dict[str, dict[int, str]] = {}
+        if source.reference_claude.file.exists():
+            lines_by_column[ReferenceName.CLAUDE] = {entry.index: to_compare_line(entry) for entry in parse_srt(source.reference_claude.file)}
+        if source.reference_official.file.exists():
+            official = parse_srt(source.reference_official.file)
+            lines_by_column[ReferenceName.OFFICIAL] = {entry.index: " | ".join(to_compare_line(other) for other in official if entry.start <= other.start + (other.end - other.start) / 2 < entry.end) for entry in english}
         for run in sorted(runs, key=lambda run: run.name):
             translation = run.get_translation(source)
             if translation.is_translated():
                 lines_by_column[run.name] = {entry.index: to_compare_line(entry) for entry in parse_srt(translation.translation)}
-        if source.reference_claude.file.exists():
-            lines_by_column[ReferenceName.CLAUDE] = {entry.index: to_compare_line(entry) for entry in parse_srt(source.reference_claude.file)}
-        official = parse_srt(source.reference_official.file) if source.reference_official.file.exists() else []
 
         width = max(len(name) for name in [*(run.name for run in runs), *ReferenceName])
         lines = []
-        for entry in parse_srt(source.english):
+        for entry in english:
             lines += ["", f"{entry.index}  {srt.timedelta_to_srt_timestamp(entry.start)}", f"  {'en':<{width}}  {to_compare_line(entry)}"]
-            if official:
-                lines.append(f"  {ReferenceName.OFFICIAL:<{width}}  {' | '.join(to_compare_line(other) for other in official if entry.start <= other.start + (other.end - other.start) / 2 < entry.end)}")
-            lines += [f"  {name:<{width}}  {lines_by_run.get(entry.index, '')}" for name, lines_by_run in lines_by_column.items()]
-        columns = (*([ReferenceName.OFFICIAL] if official else []), *lines_by_column)
-        return cls(columns=columns, text="\n".join(lines).lstrip() + "\n")
+            lines += [f"  {name:<{width}}  {lines_by_entry.get(entry.index, '')}" for name, lines_by_entry in lines_by_column.items()]
+        return cls(columns=tuple(lines_by_column), text="\n".join(lines).lstrip() + "\n")
 
 
 def to_compare_line(entry: srt.Subtitle) -> str:
