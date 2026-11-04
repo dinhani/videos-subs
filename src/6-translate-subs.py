@@ -150,7 +150,7 @@ class MovieInfo:
     def to_prompt(self, english: str) -> str:
         names = {word.text.upper() for word in parse_words(english) if word.name and not word.text.isupper()}
         characters = [character for character in self.characters if character.is_named_in(names)][:NFO_CHARACTERS_MAX]
-        lines = ["From the metadata of {movie}:", *(f"{label}: {text}" for label, text in self.plots)]
+        lines = [f"{label}: {text}" for label, text in self.plots]
         if characters:
             lines.append("Characters named in the subtitles, each with the actor who plays them:")
             lines += [f"- {character.role} ({character.actor})" for character in characters]
@@ -289,7 +289,7 @@ if __name__ == "__main__":
                 movie_info = MovieInfo.find(sub_src)
                 if movie_info is None:
                     Action.NFO.log(f"{sub_src.nfo.name} not found, translating with the title only")
-                movie_info_text = movie_info.to_prompt("\n".join(entry.content for entry in sub_entries)).replace("{movie}", sub_src.movie_title) if movie_info else ""
+                movie_info_text = movie_info.to_prompt("\n".join(entry.content for entry in sub_entries)) if movie_info else ""
                 movie_prompt = prompt.replace("{movie_info}", f"\n\n{movie_info_text}" if movie_info_text else "").replace("{movie}", sub_src.movie_title)
                 translation = SubtitleTranslation.from_entries(sub_entries, trace=Trace(file=sub_dst.to_trace()), temperatures=temperatures, prompt=movie_prompt)
                 chunk_starts = range(0, len(translation.pending), CHUNK_SIZE)
