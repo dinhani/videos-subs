@@ -42,7 +42,8 @@ if __name__ == "__main__":
     command_download = commands.add_parser("download", help="download models from Hugging Face")
     command_download.add_argument("models", nargs="*", help=f"models to download: {', '.join(models)} (default: all)")
     commands.add_parser("report", help="show the scores, issues and time of every run")
-    commands.add_parser("compare", help="write the entries of every run side by side")
+    command_compare = commands.add_parser("compare", help="write the entries of every run side by side")
+    command_compare.add_argument("runs", nargs="*", help=f"runs to compare: {', '.join(runs)} (default: all)")
     arguments = parser.parse_args()
 
     match arguments.command:
@@ -115,9 +116,12 @@ if __name__ == "__main__":
                 console.print(report.to_issue_legend())
 
         case "compare":
+            if unknown := set(arguments.runs) - set(runs):
+                parser.error(f"unknown runs: {', '.join(sorted(unknown))}")
+            runs_selected = tuple(runs[name] for name in arguments.runs) or RUNS
             COMPARE_DIR.mkdir(exist_ok=True)
             for source in SOURCES:
-                comparison = Comparison.from_runs(source, RUNS)
+                comparison = Comparison.from_runs(source, runs_selected)
                 compare = COMPARE_DIR / f"{source.name}.txt"
                 write_text_replacing(compare, comparison.text)
                 Action.COMPARE.log(f"{compare.name}: {', '.join(comparison.columns)}")

@@ -38,9 +38,13 @@ report:
     uv run bench.py report
 
 [group('run')]
-[doc('Write entries of all runs side by side')]
-compare:
-    uv run bench.py compare
+[doc('Write entries of runs side by side')]
+[script]
+[extension('.ps1')]
+[positional-arguments]
+compare *arguments:
+    uv run bench.py compare @args
+    exit $LASTEXITCODE
 
 [group('run')]
 [doc('List runs and their progress')]
