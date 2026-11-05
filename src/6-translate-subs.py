@@ -40,16 +40,16 @@ The subtitles are from {movie}. Use what you know about it and its characters to
 # Input
 
 A JSON object with:
-- "context_before": the entries just before, each with its English lines ("en") and its accepted translation ("pt"). Keep the terms and forms of address these translations use.
-- "entries": maps an id to one English entry, given as an array of its lines. These are the entries to translate.
-- "context_after": the English lines of the entries just after.
+- "context_before": the entries just before, each with its English lines ("en") and its accepted translation ("pt-BR"). Keep the terms and forms of address these translations use.
+- "entries": maps an id to one entry to translate, with its English lines ("en").
+- "context_after": the entries just after, each with its English lines ("en").
 Use both contexts to understand the scene, but never translate them or put them in the reply.{second_language}
 
 # Reply
 
 A JSON object that maps every id in "entries", and no other id, to an object with:
 - "en": the English lines of that entry, copied unchanged.
-- "pt": the translation, one Portuguese line per English line.
+- "pt-BR": the translation, one Brazilian Portuguese line per English line.
 
 Each id gets its own translation: never merge, split, move, skip or refuse an entry. Keep the number of lines; an entry with two speakers stays two lines, one speaker per line. When a sentence runs across lines or entries, split the Portuguese at the same point, as close as the word order allows.
 
@@ -97,18 +97,28 @@ Use only words that exist in Portuguese: when no Portuguese verb names the sound
 # Example
 
 Input:
-{"context_before": [{"en": ["Where's Victor?"], "pt": ["Cadê o Victor?"]}], "entries": {"1": ["[FAUCET DRIPS]"], "2": ["- We need a boat.", "- Okay."], "3": ["I think he took", "the old highway north,"], "4": ["but he's gonna run out of gas."], "5": ["[TYPEWRITER CLACKING]"], "6": ["<i>Fuck, we're out of gas.</i>"], "7": ["Good afternoon, sir.", "May I see your boarding pass?"], "8": ["♪ Fly me to the moon ♪"]}, "context_after": [["[SIREN WAILING]"]]}
+{"context_before": [{"en": ["Where's Victor?"], "pt-BR": ["Cadê o Victor?"]}], "entries": {"1": {"en": ["[FAUCET DRIPS]"]}, "2": {"en": ["- We need a boat.", "- Okay."]}, "3": {"en": ["I think he took", "the old highway north,"]}, "4": {"en": ["but he's gonna run out of gas."]}, "5": {"en": ["[TYPEWRITER CLACKING]"]}, "6": {"en": ["<i>Fuck, we're out of gas.</i>"]}, "7": {"en": ["Good afternoon, sir.", "May I see your boarding pass?"]}, "8": {"en": ["♪ Fly me to the moon ♪"]}}, "context_after": [{"en": ["[SIREN WAILING]"]}]}
 
 Reply:
-{"1": {"en": ["[FAUCET DRIPS]"], "pt": ["[TORNEIRA PINGA]"]}, "2": {"en": ["- We need a boat.", "- Okay."], "pt": ["- A gente precisa de um barco.", "- Tá."]}, "3": {"en": ["I think he took", "the old highway north,"], "pt": ["Acho que ele pegou", "a rodovia velha pro norte,"]}, "4": {"en": ["but he's gonna run out of gas."], "pt": ["mas vai ficar sem gasolina."]}, "5": {"en": ["[TYPEWRITER CLACKING]"], "pt": ["[MÁQUINA DE ESCREVER BATENDO]"]}, "6": {"en": ["<i>Fuck, we're out of gas.</i>"], "pt": ["<i>Porra, a gasolina acabou.</i>"]}, "7": {"en": ["Good afternoon, sir.", "May I see your boarding pass?"], "pt": ["Boa tarde, senhor.", "Posso ver seu cartão de embarque?"]}, "8": {"en": ["♪ Fly me to the moon ♪"], "pt": ["♪ Fly me to the moon ♪"]}}
+{"1": {"en": ["[FAUCET DRIPS]"], "pt-BR": ["[TORNEIRA PINGA]"]}, "2": {"en": ["- We need a boat.", "- Okay."], "pt-BR": ["- A gente precisa de um barco.", "- Tá."]}, "3": {"en": ["I think he took", "the old highway north,"], "pt-BR": ["Acho que ele pegou", "a rodovia velha pro norte,"]}, "4": {"en": ["but he's gonna run out of gas."], "pt-BR": ["mas vai ficar sem gasolina."]}, "5": {"en": ["[TYPEWRITER CLACKING]"], "pt-BR": ["[MÁQUINA DE ESCREVER BATENDO]"]}, "6": {"en": ["<i>Fuck, we're out of gas.</i>"], "pt-BR": ["<i>Porra, a gasolina acabou.</i>"]}, "7": {"en": ["Good afternoon, sir.", "May I see your boarding pass?"], "pt-BR": ["Boa tarde, senhor.", "Posso ver seu cartão de embarque?"]}, "8": {"en": ["♪ Fly me to the moon ♪"], "pt-BR": ["♪ Fly me to the moon ♪"]}}
 """
 
 SECOND_LANGUAGE_MATCHED_MIN = 0.9
 SECOND_LANGUAGE_PROMPT = """
 
-"second_language" maps ids in "entries" to the lines of the {language} subtitle of the same movie that are on screen at the same time. People translated it from the same dialogue, so it shows what the English means in the scene: the sense of an idiom or of a word with several meanings, whether "you" is one person or several, gender and tense. Address people as the Register section says, never as the {language} does: it uses formal address far more often than Brazilian Portuguese. Use it only to understand the English, and translate the English: when the {language} leaves something out or adds something, follow the English. Never copy {language} words, spellings or sentence structure; write Brazilian Portuguese.{forms}"""
+An entry in "entries" or "context_after" can also have "{tag}": the lines of the {language} subtitle of the same movie that are on screen at the same time. An entry with no such lines has no "{tag}". People translated it from the same dialogue, so it shows what the English means in the scene: the sense of an idiom or of a word with several meanings, whether "you" is one person or several, gender and tense. Address people as the Register section says, never as the {language} does: it uses formal address far more often than Brazilian Portuguese. What the Kept unchanged section keeps, such as song lyrics, stays as in the English even when the {language} translates it. Use the {language} only to understand the English, and translate the English: when the {language} leaves something out or adds something, follow the English. Never copy {language} words, spellings, idioms or sentence structure; write Brazilian Portuguese.{forms}
+
+Example with "{tag}":
+Input: {example_request}
+Reply: {example_reply}"""
 SECOND_LANGUAGE_FORMS = {
     SecondLanguage.EUROPEAN_PORTUGUESE: 'European Portuguese forms are not Brazilian: never write "tu" and its verb forms, "consigo" for "com você", "estar a" with the infinitive for the gerund ("está a fazer" is "está fazendo"), or spellings such as "facto", "equipa" and "tentámos".',
+}
+SECOND_LANGUAGE_EXAMPLES = {
+    SecondLanguage.EUROPEAN_PORTUGUESE: (("I'm ready.", "Estou pronta.", "Estou pronta."), ("Take the bus.", "Apanha o autocarro.", "Pega o ônibus.")),
+    SecondLanguage.SPANISH: (("I'm ready.", "Estoy lista.", "Estou pronta."), ("It's a piece of cake.", "Es pan comido.", "É moleza.")),
+    SecondLanguage.FRENCH: (("I'm ready.", "Je suis prête.", "Estou pronta."), ("It's a piece of cake.", "C'est du gâteau.", "É moleza.")),
+    SecondLanguage.ITALIAN: (("I'm ready.", "Sono pronta.", "Estou pronta."), ("It's a piece of cake.", "È un gioco da ragazzi.", "É moleza.")),
 }
 
 NFO_CHARACTERS_MAX = 20
@@ -196,7 +206,16 @@ class SecondLanguageSubtitle:
 
     def to_prompt(self) -> str:
         forms = SECOND_LANGUAGE_FORMS.get(self.language)
-        return SECOND_LANGUAGE_PROMPT.replace("{language}", self.language.label).replace("{forms}", f" {forms}" if forms else "")
+        examples = SECOND_LANGUAGE_EXAMPLES[self.language]
+        example_request = {"context_before": [], "entries": {str(n): {"en": [english], self.language.tag: [second]} for n, (english, second, _) in enumerate(examples, start=1)}, "context_after": []}
+        example_reply = {str(n): {"en": [english], "pt-BR": [translation]} for n, (english, _, translation) in enumerate(examples, start=1)}
+        return (
+            SECOND_LANGUAGE_PROMPT.replace("{language}", self.language.label)
+            .replace("{tag}", self.language.tag)
+            .replace("{forms}", f" {forms}" if forms else "")
+            .replace("{example_request}", json.dumps(example_request, ensure_ascii=False))
+            .replace("{example_reply}", json.dumps(example_reply, ensure_ascii=False))
+        )
 
     def to_record(self) -> dict[str, Any]:
         return {"second_language": self.file.name, "offset_seconds": self.offset.total_seconds(), "matched": len(self.lines), "entries": self.entries_english}
@@ -212,22 +231,26 @@ class SubtitleTranslation:
     trace: Trace
     temperatures: tuple[float, ...]
     prompt: str
-    second_lines: dict[int, tuple[str, ...]]
+    second: SecondLanguageSubtitle | None
     translated: dict[int, Sequence[str]] = field(default_factory=dict)
 
     @classmethod
-    def from_entries(cls, entries: list[srt.Subtitle], trace: Trace, temperatures: tuple[float, ...], prompt: str, second_lines: dict[int, tuple[str, ...]]) -> "SubtitleTranslation":
+    def from_entries(cls, entries: list[srt.Subtitle], trace: Trace, temperatures: tuple[float, ...], prompt: str, second: SecondLanguageSubtitle | None) -> "SubtitleTranslation":
         lines = [parse_lines(entry) for entry in entries]
-        return cls(entries=entries, lines=lines, pending=[i for i, entry_lines in enumerate(lines) if entry_lines], trace=trace, temperatures=temperatures, prompt=prompt, second_lines=second_lines)
+        return cls(entries=entries, lines=lines, pending=[i for i, entry_lines in enumerate(lines) if entry_lines], trace=trace, temperatures=temperatures, prompt=prompt, second=second)
 
     def to_request(self, start: int, end: int) -> dict[str, Any]:
         chunk = self.pending[start:end]
         return {
-            "context_before": [{"en": self.lines[i], "pt": self.translated[i]} for i in self.pending[max(0, start - CHUNK_CONTEXT_BEFORE):start] if i in self.translated],
-            "entries": {str(n): self.lines[i] for n, i in enumerate(chunk, start=1)},
-            **({"second_language": {str(n): self.second_lines[i] for n, i in enumerate(chunk, start=1) if i in self.second_lines}} if self.second_lines else {}),
-            "context_after": [self.lines[i] for i in self.pending[end:end + CHUNK_CONTEXT_AFTER]],
+            "context_before": [{"en": self.lines[i], "pt-BR": self.translated[i]} for i in self.pending[max(0, start - CHUNK_CONTEXT_BEFORE):start] if i in self.translated],
+            "entries": {str(n): self.to_source(i) for n, i in enumerate(chunk, start=1)},
+            "context_after": [self.to_source(i) for i in self.pending[end:end + CHUNK_CONTEXT_AFTER]],
         }
+
+    def to_source(self, i: int) -> dict[str, tuple[str, ...]]:
+        if self.second is None or i not in self.second.lines:
+            return {"en": self.lines[i]}
+        return {"en": self.lines[i], self.second.language.tag: self.second.lines[i]}
 
     def translate(self, llama: OpenAI, start: int, end: int, splits: int = 0) -> None:
         # build request
@@ -241,14 +264,14 @@ class SubtitleTranslation:
                     "type": "object",
                     "properties": {
                         "en": {"type": "array", "items": {"type": "string"}, "minItems": len(self.lines[i]), "maxItems": len(self.lines[i])},
-                        "pt": {
+                        "pt-BR": {
                             "type": "array",
                             "items": {"type": "string", "minLength": 1, "maxLength": max(60, 3 * max(len(line) for line in self.lines[i]))},
                             "minItems": len(self.lines[i]),
                             "maxItems": len(self.lines[i]),
                         },
                     },
-                    "required": ["en", "pt"],
+                    "required": ["en", "pt-BR"],
                     "additionalProperties": False,
                 }
                 for id, i in zip(ids, chunk)
@@ -263,9 +286,9 @@ class SubtitleTranslation:
         for attempt, temperature in enumerate(self.temperatures, start=1):
             reply = JsonReply.request(llama, schema_name="translations", schema=schema, system=self.prompt, user=json.dumps(request, ensure_ascii=False), temperature=temperature)
             problem = reply.find_problem(ids)
-            if not problem and (bad := [id for id in ids if not isinstance(reply.data[id], dict) or not isinstance(reply.data[id].get("pt"), list)]):
-                problem = f"reply is not an object with pt lines for ids {bad}"
-            translated = {} if problem else {i: [" ".join(line.split()) if isinstance(line, str) else "" for line in reply.data[id]["pt"]] for id, i in zip(ids, chunk)}
+            if not problem and (bad := [id for id in ids if not isinstance(reply.data[id], dict) or not isinstance(reply.data[id].get("pt-BR"), list)]):
+                problem = f"reply is not an object with pt-BR lines for ids {bad}"
+            translated = {} if problem else {i: [" ".join(line.split()) if isinstance(line, str) else "" for line in reply.data[id]["pt-BR"]] for id, i in zip(ids, chunk)}
             if not problem and (bad := [id for id, i in zip(ids, chunk) if len(translated[i]) != len(self.lines[i])]):
                 problem = f"line count changed for ids {bad}"
 
@@ -362,7 +385,7 @@ if __name__ == "__main__":
 
                 # build translation
                 movie_prompt = prompt.replace("{movie_info}", f"\n\n{movie_info_text}" if movie_info_text else "").replace("{second_language}", second_prompt).replace("{movie}", sub_src.movie_title)
-                translation = SubtitleTranslation.from_entries(sub_entries, trace=Trace(file=sub_dst.to_trace()), temperatures=temperatures, prompt=movie_prompt, second_lines=second_subtitle.lines if second_subtitle else {})
+                translation = SubtitleTranslation.from_entries(sub_entries, trace=Trace(file=sub_dst.to_trace()), temperatures=temperatures, prompt=movie_prompt, second=second_subtitle)
                 chunk_starts = range(0, len(translation.pending), CHUNK_SIZE)
 
                 # print the system prompt, with the movie title and info marked, and the first chunk, without translating

@@ -43,14 +43,15 @@ def get_language_detector() -> LanguageDetector:
 
 
 class SecondLanguage(Enum):
-    EUROPEAN_PORTUGUESE = ("por", "European Portuguese")
-    SPANISH = ("spa", "Spanish")
-    FRENCH = ("fra", "French")
-    ITALIAN = ("ita", "Italian")
+    EUROPEAN_PORTUGUESE = ("por", "European Portuguese", "pt-PT")
+    SPANISH = ("spa", "Spanish", "es")
+    FRENCH = ("fra", "French", "fr")
+    ITALIAN = ("ita", "Italian", "it")
 
-    def __init__(self, code: str, label: str) -> None:
+    def __init__(self, code: str, label: str, tag: str) -> None:
         self.code = code
         self.label = label
+        self.tag = tag
 
 
 LANGUAGES_OCR = (LANGUAGE_SOURCE, *(language.code for language in SecondLanguage))
