@@ -1,4 +1,3 @@
-all = todo mundo | todos | todas
 audience = plateia | público
 baby = bebê
 bird = pássaro | passarinho | ave
@@ -13,8 +12,6 @@ crew = tripulação | equipe
 crowd = multidão | público
 dog = cachorro | cão
 dogs = cachorros | cães
-everybody = todo mundo | todos | todas
-everyone = todo mundo | todos | todas
 girl = garota | menina | moça
 girls = garotas | meninas | moças
 group = grupo

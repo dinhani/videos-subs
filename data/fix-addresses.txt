@@ -1,5 +1,4 @@
 dad = pai
-daddy = papai
 gentlemen = senhores
 grandma = vovó
 grandpa = vovô

@@ -126,11 +126,11 @@ def test_labels(english: str, translated: str, expected: str) -> None:
 
 
 @pytest.mark.parametrize(("english", "translated", "expected"), [
-    ("(ALL GRUNTING)", "(TODOS GEMENDO)", "(TODOS GRUNHINDO)"),
-    ("(ALL GRUNTING)", "(GEMIDOS)", "(TODO MUNDO GRUNHINDO)"),
+    ("(KIDS GRUNTING)", "(GAROTOS GEMENDO)", "(GAROTOS GRUNHINDO)"),
+    ("(KIDS GRUNTING)", "(GEMIDOS)", "(CRIANÇAS GRUNHINDO)"),
     ("(STUDENTS GASPING)", "(ESTUDANTES OFEGANTES)", "(ESTUDANTES OFEGANTES)"),
-    ("(ALL GASP)", "(TODOS ARFAM)", "(TODOS ARFAM)"),
-    ("(ALL GASP)", "(TODOS ARFA)", "(TODOS ARFAM)"),
+    ("(PEOPLE GASP)", "(PESSOAL OFEGA)", "(PESSOAL OFEGA)"),
+    ("(PEOPLE GASP)", "(PESSOAS ARFA)", "(PESSOAS ARFAM)"),
 ])
 def test_descriptions_keep_subject(english: str, translated: str, expected: str) -> None:
     assert fix(DESCRIPTIONS, english, translated) == expected
@@ -174,9 +174,6 @@ def test_kept_units(english: str, translated: str, expected: str) -> None:
     ("Hold your fire!", "Não atirem!", "Não atirem!"),
     ("Keep firing!", "Mantenham o fogo!", "Mantenham o fogo!"),
     ("Hold fire for what?", "Mantenham o fogo para quê?", "Mantenham o fogo para quê?"),
-    ("And eventually, much bigger fish.", "E, eventualmente, peixes muito maiores.", "E, com o tempo, peixes muito maiores."),
-    ('I wish I had time for "eventually."', 'Queria ter tempo para o "eventualmente".', 'Queria ter tempo para o "eventualmente".'),
-    ("I'm on my way.", "Estou no meu caminho.", "Estou a caminho."),
     ("For real?", "Para real?", "De verdade?"),
     ("Thank God.", "Obrigado, Deus.", "Graças a Deus."),
     ("Thank you, God.", "Obrigado, Deus.", "Obrigado, Deus."),

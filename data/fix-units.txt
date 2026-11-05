@@ -12,5 +12,3 @@ mile = milha
 miles = milhas
 ounce = onça
 ounces = onças
-pound = libra
-pounds = libras

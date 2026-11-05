@@ -57,7 +57,3 @@ records = registo = registro
 records = registos = registros
 registration = registo = registro
 registration = registos = registros
-team = equipa = equipe
-team = equipas = equipes
-teams = equipa = equipe
-teams = equipas = equipes
