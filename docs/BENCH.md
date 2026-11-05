@@ -14,6 +14,7 @@
 - A run of a model translates with `LLM_PROMPT` and scores the raw model output, without fix-translations.
 - Each `prompts/<name>.txt` adds a run `gemma-4-26b+<name>`, which translates with that file as the system prompt instead of `LLM_PROMPT`.
 - A run `<run>-fix` copies the translations of its base run, applies fix-translations and scores the result. It keeps the translation time of the base run.
+- `catalog.py` splits the runs into `RUNS_ACTIVE` and `RUNS_DISABLED`. Only the `gemma-4-26b` runs are active. `just bench run` translates only active runs and refuses a disabled one; `just bench compare` and `just bench models` default to the active runs. A disabled run keeps its translations, reports and scores: `just bench score`, `just bench report` and `just bench runs` still cover every run.
 
 ## Code
 

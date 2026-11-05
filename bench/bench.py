@@ -12,7 +12,7 @@ import sys
 import questionary
 from rich.table import Table
 
-from catalog import BASELINE_RUN, MODELS, RUNS, SCORING_MODELS, SOURCES
+from catalog import BASELINE_RUN, MODELS, RUNS, RUNS_ACTIVE, SCORING_MODELS, SOURCES
 from models import PYTORCH_ENV
 from report import Comparison, SourceReport
 from runs import BENCH_DIR, RUNS_DIR, SCORE_JOBS_FILE, SRC_DIR, Existing
@@ -30,28 +30,32 @@ COMPARE_DIR = BENCH_DIR / "4-compare"
 if __name__ == "__main__":
     models = {model.name: model for model in (*MODELS, *SCORING_MODELS)}
     runs = {run.name: run for run in RUNS}
+    runs_active = {run.name: run for run in RUNS_ACTIVE}
+    models_active = {model.name: model for model in (*(run.model for run in RUNS_ACTIVE), *SCORING_MODELS)}
 
     parser = argparse.ArgumentParser(description="Benchmarks translation models on the same English sources.")
     commands = parser.add_subparsers(dest="command", required=True)
     command_run = commands.add_parser("run", help="copy the sources and translate every run not translated yet, each with its own llama server; checks and scores are left to score")
-    command_run.add_argument("runs", nargs="*", help=f"runs to translate: {', '.join(runs)} (default: all)")
+    command_run.add_argument("runs", nargs="*", help=f"runs to translate: {', '.join(runs_active)} (default: all active runs; disabled runs are kept in the report but never translated)")
     command_run.add_argument("--pick", action="store_true", help="pick the runs to translate from a list; a picked run that is translated is translated again")
     command_run.add_argument("--movie", default="", help="translate only the sources whose title contains this text, such as fall (default: all)")
     command_run.add_argument("--force", action="store_true", help="translate the runs again; each new translation replaces the old one, its report and its scores only when it is done")
     commands.add_parser("score", help="check and score every translation not checked or scored yet, without translating")
     commands.add_parser("runs", help="list the runs and what each one has done")
     command_download = commands.add_parser("download", help="download models from Hugging Face")
-    command_download.add_argument("models", nargs="*", help=f"models to download: {', '.join(models)} (default: all)")
+    command_download.add_argument("models", nargs="*", help=f"models to download: {', '.join(models)} (default: the models of the active runs)")
     commands.add_parser("report", help="show the scores, issues and time of every run")
     command_compare = commands.add_parser("compare", help="write the entries of every run side by side")
-    command_compare.add_argument("runs", nargs="*", help=f"runs to compare: {', '.join(runs)} (default: all)")
+    command_compare.add_argument("runs", nargs="*", help=f"runs to compare: {', '.join(runs)} (default: all active runs)")
     arguments = parser.parse_args()
 
     match arguments.command:
         case "run":
             if unknown := set(arguments.runs) - set(runs):
                 parser.error(f"unknown runs: {', '.join(sorted(unknown))}")
-            runs_selected = [runs[name] for name in arguments.runs] or list(RUNS)
+            if disabled := set(arguments.runs) - set(runs_active):
+                parser.error(f"disabled runs: {', '.join(sorted(disabled))}")
+            runs_selected = [runs[name] for name in arguments.runs] or list(RUNS_ACTIVE)
             if arguments.pick:
                 name_width = max(len(run.name) for run in runs_selected)
                 runs_sorted = sorted(runs_selected, key=lambda run: run.name)
@@ -100,15 +104,16 @@ if __name__ == "__main__":
                     jobs_file.unlink()
 
         case "runs":
-            table = Table("run", "model", "translation", "downloaded", "translated", "checked", "scored")
-            for run in sorted(RUNS, key=lambda run: (run.model.name, run.name)):
-                table.add_row(*run.to_status_row(SOURCES))
+            table = Table("run", "state", "model", "translation", "downloaded", "translated", "checked", "scored")
+            for run in sorted(RUNS, key=lambda run: (run.name not in runs_active, run.model.name, run.name)):
+                name, *status = run.to_status_row(SOURCES)
+                table.add_row(name, "active" if run.name in runs_active else "disabled", *status)
             console.print(table)
 
         case "download":
             if unknown := set(arguments.models) - set(models):
                 parser.error(f"unknown models: {', '.join(sorted(unknown))}")
-            for name in arguments.models or models:
+            for name in arguments.models or models_active:
                 models[name].download()
 
         case "report":
@@ -126,7 +131,7 @@ if __name__ == "__main__":
         case "compare":
             if unknown := set(arguments.runs) - set(runs):
                 parser.error(f"unknown runs: {', '.join(sorted(unknown))}")
-            runs_selected = tuple(runs[name] for name in arguments.runs) or RUNS
+            runs_selected = tuple(runs[name] for name in arguments.runs) or RUNS_ACTIVE
             COMPARE_DIR.mkdir(exist_ok=True)
             for source in SOURCES:
                 source.copy_from_library()

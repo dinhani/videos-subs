@@ -63,7 +63,12 @@ COMET_WMT22 = ScoringModel(name="comet-wmt22", repo="Unbabel/wmt22-comet-da", fi
 XLM_ROBERTA_LARGE = ScoringModel(name="xlm-roberta-large", repo="xlm-roberta-large", files=("config.json", "sentencepiece.bpe.model", "tokenizer.json", "tokenizer_config.json"))
 SCORING_MODELS = (COMET_WMT22, XLM_ROBERTA_LARGE)
 
-RUNS = (
+RUNS_ACTIVE = (
+    Run.from_model(GEMMA_4_26B),
+    Run.from_fixes(Run.from_model(GEMMA_4_26B)),
+    *(Run.from_prompt(GEMMA_4_26B, prompt) for prompt in sorted(PROMPTS_DIR.glob("*.txt"))),
+)
+RUNS_DISABLED = (
     *(Run.from_model(model) for model in NMT_MODELS),
     Run.from_model(HY_MT2_7B),
     Run.from_model(COMMAND_R7B),
@@ -78,11 +83,9 @@ RUNS = (
     Run.from_model(ERNIE_4_5_21B),
     Run.from_model(MISTRAL_SMALL_3_2_24B),
     Run.from_model(MAGISTRAL_SMALL_24B),
-    Run.from_model(GEMMA_4_26B),
-    Run.from_fixes(Run.from_model(GEMMA_4_26B)),
-    *(Run.from_prompt(GEMMA_4_26B, prompt) for prompt in sorted(PROMPTS_DIR.glob("*.txt"))),
     Run.from_model(HY_MT2_30B),
     Run.from_model(GEMMA_4_31B),
     Run.from_fixes(Run.from_model(GEMMA_4_31B)),
 )
+RUNS = (*RUNS_ACTIVE, *RUNS_DISABLED)
 BASELINE_RUN = GEMMA_4_26B.name
