@@ -1,16 +1,36 @@
+beats me = bate-me = sei lá
+beats me = me bate = sei lá
+bottoms up = fundos para cima = saúde
 break a leg = quebre a perna = boa sorte
 break a leg = quebre uma perna = boa sorte
 break a leg = quebrem a perna = boa sorte
 break a leg = quebrem uma perna = boa sorte
+chill out = esfrie = calma
+chill out = esfriem = calma
+copy that = cópia isso = entendido
 copy that = copiar isso = entendido
 copy that = copie isso = entendido
 copy that = copio isso = entendido
-copy that = cópia isso = entendido
+easy does it = fácil faz isso = com calma
 eventually = eventualmente = com o tempo
 fair enough = justo o bastante = justo
 fair enough = justo o suficiente = justo
+for crying out loud = por chorar alto = pelo amor de Deus
 for real = para real = de verdade
 for real = por real = de verdade
+get real = fique real = cai na real
+get real = seja real = cai na real
+give me five = me dá cinco = toca aqui
+give me five = me dê cinco = toca aqui
+good grief = boa tristeza = minha nossa
+good grief = bom luto = minha nossa
+good riddance = boa libertação = já vai tarde
+hang tight = segure apertado = aguenta aí
+heads up = cabeça para cima = atenção
+heads up = cabeças para cima = atenção
+here we go = aqui vamos nós = lá vamos nós
+hit the deck = acerte o convés = abaixe-se
+hit the deck = acertem o convés = abaixem-se
 hold fire = mantenha o fogo = não atire
 hold fire = mantenha o fogo retido = não atire
 hold fire = mantenha o fogo suspenso = não atire
@@ -26,14 +46,22 @@ hold your fire = mantenham o fogo suspenso = não atirem
 holy shit = merda santa = puta merda
 holy shit = santa merda = puta merda
 how come = como vem = como assim
+i mean it = eu quero dizer isso = estou falando sério
+i mean it = quero dizer isso = estou falando sério
+it's up to you = está acima de você = depende de você
+keep it up = mantenha isso para cima = continue assim
+keep it up = mantenha-o para cima = continue assim
 knock it off = derrube isso = para com isso
 knock it off = derrubem isso = parem com isso
 let's roll = vamos rolar = vamos nessa
 let’s roll = vamos rolar = vamos nessa
+long story short = história longa curta = resumindo
+long story short = longa história curta = resumindo
 long time no see = muito tempo sem ver = quanto tempo
 my bad = meu mal = foi mal
 my bad = meu ruim = foi mal
 never mind = nunca se importe = deixa pra lá
+no hard feelings = sem sentimentos duros = sem ressentimentos
 on her way = está no caminho dela = está a caminho
 on her way = está no seu caminho = está a caminho
 on his way = está no caminho dele = está a caminho
@@ -50,14 +78,26 @@ over and out = sobre e fora = câmbio, desligo
 over my dead body = sobre meu cadáver = só por cima do meu cadáver
 over my dead body = sobre o meu cadáver = só por cima do meu cadáver
 piss off = mije fora = vai se ferrar
+rise and shine = levante e brilhe = hora de acordar
+rise and shine = levante-se e brilhe = hora de acordar
+rise and shine = levantem-se e brilhem = hora de acordar
 roger that = roger isso = entendido
 screw you = aparafuse você = vai se ferrar
 screw you = parafuso você = vai se ferrar
+sleep tight = durma apertado = durma bem
 son of a bitch = filho de uma cadela = filho da puta
+speak of the devil = fale do diabo = falando no diabo
+suck it up = chupe isso = aguenta firme
 suit yourself = adapte-se = você que sabe
 suit yourself = sirva-se = você que sabe
 suit yourself = vista-se = você que sabe
+take a seat = pegue um assento = sente-se
+take a seat = peguem um assento = sentem-se
+take a seat = tome um assento = sente-se
+take a seat = tomem um assento = sentem-se
 thank god = obrigada deus = graças a Deus
 thank god = obrigada, deus = graças a Deus
 thank god = obrigado deus = graças a Deus
 thank god = obrigado, deus = graças a Deus
+watch your step = observe seu passo = cuidado onde pisa
+watch your step = olhe seu passo = cuidado onde pisa
