@@ -11,6 +11,7 @@ from runs import Reference, ReferenceName, Run, Source
 from shared.console import Color
 from shared.files import SubtitleFile, parse_srt
 from shared.reports import IssueKind, ReportScore
+from shared.subtitles import LANGUAGE_TRANSLATION
 
 TRANSLATION_RULES = {kind.label: kind.rule for kind in IssueKind if kind.rule.startswith("2.")}
 
@@ -148,7 +149,7 @@ class Comparison:
         english = parse_srt(source.english)
         files_by_source = {SubtitleFile.from_path(file).language or file.name: file for file in source.second_languages if file.exists()}
         if source.reference_official.file.exists():
-            files_by_source[ReferenceName.OFFICIAL] = source.reference_official.file
+            files_by_source[LANGUAGE_TRANSLATION] = source.reference_official.file
         lines_by_source: dict[str, dict[int, str]] = {}
         for name, file in files_by_source.items():
             entries = parse_srt(file)
