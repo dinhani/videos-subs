@@ -227,13 +227,29 @@ class DashesFix:
 class SymbolsFix:
     name: ClassVar[str] = "symbols"
     SPANISH: ClassVar[re.Pattern[str]] = re.compile(r"[¿¡]")
+    NOTES: ClassVar[str] = "♪♫"
     enabled: bool
 
     def fix(self, entry: "TranslationEntry", movie_names: MovieNames) -> tuple[str, ...]:
         # the Spanish opening marks, when the English entry has none
-        if any(self.SPANISH.search(line) for line in entry.source_lines):
-            return entry.target_lines
-        return tuple(self.SPANISH.sub("", line) for line in entry.target_lines)
+        lines = list(entry.target_lines)
+        if not any(self.SPANISH.search(line) for line in entry.source_lines):
+            lines = [self.SPANISH.sub("", line) for line in lines]
+
+        # the note at the start or end of an English line, when the translated line lost it
+        if not entry.is_aligned:
+            return tuple(lines)
+        for n, source_line in enumerate(entry.source_lines):
+            source_plain, plain = FORMATTING_TAGS.sub("", source_line).strip(" -–—"), FORMATTING_TAGS.sub("", lines[n]).strip(" -–—")
+            if not plain or any(note in plain for note in self.NOTES):
+                continue
+            if source_plain[:1] in self.NOTES:
+                position = BracketsFix.TAGS_START.match(lines[n]).end()
+                lines[n] = f"{lines[n][:position]}{source_plain[0]} {lines[n][position:]}"
+            if source_plain[-1:] in self.NOTES and source_plain != source_plain[:1]:
+                position = BracketsFix.TAGS_END.search(lines[n]).start()
+                lines[n] = f"{lines[n][:position]} {source_plain[-1]}{lines[n][position:]}"
+        return tuple(lines)
 
 
 @dataclass(frozen=True)

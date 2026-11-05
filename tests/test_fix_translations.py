@@ -278,3 +278,12 @@ def test_regressions(english: str, translated: str, names: frozenset[str], expec
 def test_second_run_changes_nothing(english: str, translated: str, names: frozenset[str], expected: str) -> None:
     fixed = fix_all(english, translated, names)
     assert fix_all(english, fixed, names) == fixed
+
+
+@pytest.mark.parametrize(("english", "translated", "expected"), [
+    ("♪ Fly me to the moon ♪", "Me leve para a lua", "♪ Me leve para a lua ♪"),
+    ("<i>♪ Fly me to the moon</i>", "<i>Me leve para a lua</i>", "<i>♪ Me leve para a lua</i>"),
+    ("♪ Fly me to the moon ♪", "♪ Fly me to the moon ♪", "♪ Fly me to the moon ♪"),
+])
+def test_notes(english: str, translated: str, expected: str) -> None:
+    assert fix(SYMBOLS, english, translated) == expected
