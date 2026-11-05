@@ -147,6 +147,9 @@ class Batch:
 
     def clear_screen(self) -> None:
         os.system("cls")
+        if console.is_terminal and not console.legacy_windows:
+            console.file.write("\x1b[3J")
+            console.file.flush()
         movie_dir, self.movie_dir_logged = self.movie_dir_logged, None
         if movie_dir is not None:
             self.log_movie(movie_dir)
