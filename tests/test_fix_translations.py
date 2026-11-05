@@ -106,6 +106,10 @@ def test_interjections(english: str, translated: str, expected: str) -> None:
     ("Hold fire for what?", "Mantenham o fogo para quê?", "Mantenham o fogo para quê?"),
     ("And eventually, much bigger fish.", "E, eventualmente, peixes muito maiores.", "E, com o tempo, peixes muito maiores."),
     ('I wish I had time for "eventually."', 'Queria ter tempo para o "eventualmente".', 'Queria ter tempo para o "eventualmente".'),
+    ("I'm on my way.", "Estou no meu caminho.", "Estou a caminho."),
+    ("For real?", "Para real?", "De verdade?"),
+    ("Thank God.", "Obrigado, Deus.", "Graças a Deus."),
+    ("Thank you, God.", "Obrigado, Deus.", "Obrigado, Deus."),
 ])
 def test_expressions(english: str, translated: str, expected: str) -> None:
     assert fix(EXPRESSIONS, english, translated) == expected

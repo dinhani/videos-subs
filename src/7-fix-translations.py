@@ -420,7 +420,7 @@ def load_expressions(file: DataList) -> tuple[dict[str, list[tuple[str, str]]], 
     if not expressions:
         return expressions, None
     alternatives = "|".join(r"\s+".join(re.escape(word) for word in wrong.split()) for wrong in sorted(expressions, key=len, reverse=True))
-    return expressions, re.compile(rf"(?<!\w)(?:{alternatives})(?=\s*(?:[.!,;…]|$))", re.IGNORECASE)
+    return expressions, re.compile(rf"(?<!\w)(?:{alternatives})(?=\s*(?:[.!?,;…]|$))", re.IGNORECASE)
 
 
 @functools.cache
