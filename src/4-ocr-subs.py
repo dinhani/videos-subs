@@ -39,7 +39,7 @@ Reply with a JSON object that maps every image id to an array with the text line
 
 Transcription rules:
 - Copy the text exactly as written, in its original language. Never translate, correct, complete or summarize it.
-- Keep capitalization, punctuation, digits and symbols such as ♪ ♫ … - – — " ¿ ¡ [ ] ( ) as they appear.
+- Keep capitalization, punctuation, digits and symbols such as ♪ ♫ … - – — " « » ’ ¿ ¡ [ ] ( ) as they appear.
 - A dialogue dash at the start of a line stays at the start of that line.
 - Set "italic" for every line by looking at its letters: true when they are slanted (italic type), false when they are upright. Judge each line on its own; lines in the same image can differ.
 - When only some words of a line are slanted, set "italic" to false and wrap those words in <i> and </i>. Never mark italics with * or _.
