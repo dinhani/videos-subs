@@ -41,7 +41,7 @@ class PipelineTranslator:
     model: LlamaModel
     temperatures: tuple[float, ...] = ()
     prompt: Path | None = None
-    second_language: str | None = None
+    second_languages: tuple[str, ...] = ()
 
     def serving(self, log: Path) -> contextlib.AbstractContextManager[None]:
         return self.model.serving(log)
@@ -50,7 +50,7 @@ class PipelineTranslator:
         options = [
             *(["--temperatures", *map(str, self.temperatures)] if self.temperatures else []),
             *(["--prompt", str(self.prompt)] if self.prompt else []),
-            *(["--second-language", self.second_language] if self.second_language else []),
+            "--second-languages", *self.second_languages,
         ]
         subprocess.run([sys.executable, str(SRC_DIR / "6-translate-subs.py"), str(english), *options], check=True)
 
@@ -354,7 +354,7 @@ class Run:
 
     @classmethod
     def from_second_language(cls, model: LlamaModel, language: str) -> "Run":
-        return cls(name=f"{model.name}+{language}", translator=PipelineTranslator(model=model, second_language=language))
+        return cls(name=f"{model.name}+{language}", translator=PipelineTranslator(model=model, second_languages=(language,)))
 
     @classmethod
     def from_fixes(cls, base: "Run") -> "Run":

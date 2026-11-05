@@ -102,6 +102,7 @@ Reply:
 {"1": {"en": ["[FAUCET DRIPS]"], "pt": ["[TORNEIRA PINGA]"]}, "2": {"en": ["- We need a boat.", "- Okay."], "pt": ["- A gente precisa de um barco.", "- Tá."]}, "3": {"en": ["I think he took", "the old highway north,"], "pt": ["Acho que ele pegou", "a rodovia velha pro norte,"]}, "4": {"en": ["but he's gonna run out of gas."], "pt": ["mas vai ficar sem gasolina."]}, "5": {"en": ["[TYPEWRITER CLACKING]"], "pt": ["[MÁQUINA DE ESCREVER BATENDO]"]}, "6": {"en": ["<i>Fuck, we're out of gas.</i>"], "pt": ["<i>Porra, a gasolina acabou.</i>"]}, "7": {"en": ["Good afternoon, sir.", "May I see your boarding pass?"], "pt": ["Boa tarde, senhor.", "Posso ver seu cartão de embarque?"]}, "8": {"en": ["♪ Fly me to the moon ♪"], "pt": ["♪ Fly me to the moon ♪"]}}
 """
 
+SECOND_LANGUAGES = (SecondLanguage.EUROPEAN_PORTUGUESE, SecondLanguage.SPANISH)
 SECOND_LANGUAGE_MATCHED_MIN = 0.9
 SECOND_LANGUAGE_PROMPT = """
 
@@ -303,15 +304,15 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Translates English subtitles to Brazilian Portuguese; folders only English ones.")
     parser.add_argument("--temperatures", nargs="+", type=float, default=LLM_TEMPERATURES, help=f"temperature of each attempt of a chunk, in order (default: {' '.join(map(str, LLM_TEMPERATURES))})")
     parser.add_argument("--prompt", type=Path, help="text file with the system prompt to use instead of LLM_PROMPT; {movie} in it is replaced by the title of the movie or episode, as in LLM_PROMPT")
-    parser.add_argument("--second-language", choices=[language.code for language in SecondLanguage], help="language code of a text subtitle of the same video, in its _subs folder, whose lines on screen with each English entry are sent with it; without one, or when it matches too few entries, the English is sent alone")
+    parser.add_argument("--second-languages", nargs="*", choices=[language.code for language in SecondLanguage], default=[language.code for language in SECOND_LANGUAGES], help=f"language codes of text subtitles of the same video, in its _subs folder, in order of preference; the first one that matches enough entries has its lines on screen with each English entry sent with it; with no codes, or when none matches, the English is sent alone (default: {' '.join(language.code for language in SECOND_LANGUAGES)})")
     parser.add_argument("--print-prompt", action="store_true", help="print the system prompt and the first chunk of each subtitle, even one already translated, without translating it")
     subs_src = find_subtitles(parser, formats=(SubtitleFormat.TEXT,), languages=(LANGUAGE_SOURCE,))
     arguments = parser.parse_args()
     temperatures = tuple(arguments.temperatures)
     prompt = arguments.prompt.read_text(encoding="utf-8") if arguments.prompt else LLM_PROMPT
-    second_language = next((language for language in SecondLanguage if language.code == arguments.second_language), None)
-    if second_language and "{second_language}" not in prompt:
-        parser.error("--second-language needs {second_language} in the prompt")
+    second_languages = tuple(next(language for language in SecondLanguage if language.code == code) for code in arguments.second_languages)
+    if second_languages and "{second_language}" not in prompt:
+        parser.error("--second-languages needs {second_language} in the prompt; pass --second-languages with no codes to send the English alone")
     llama = None if arguments.print_prompt else connect_llama()
 
     with Batch() as batch:
@@ -335,14 +336,20 @@ if __name__ == "__main__":
                 movie_info_text = movie_info.to_prompt("\n".join(entry.content for entry in sub_entries)) if movie_info else ""
 
                 # match second language
-                second_subtitle = SecondSubtitle.find(second_language, english=sub_src, english_entries=sub_entries) if second_language else None
-                if second_language and second_subtitle is None:
-                    Action.SKIP.log(f"no {second_language.label} text subtitle, translating from the English alone")
-                if second_subtitle:
-                    Action.ALIGN.log(f"{second_subtitle.file.name}: {len(second_subtitle.lines)} of {second_subtitle.entries_english} entries matched, offset {second_subtitle.offset_seconds:.2f}s")
-                    if not second_subtitle.is_matched():
-                        Action.DISCARD.log(f"{second_subtitle.file.name} matches under {SECOND_LANGUAGE_MATCHED_MIN:.0%} of the entries, translating from the English alone")
-                        second_subtitle = None
+                second_subtitle = None
+                for second_language in second_languages:
+                    candidate = SecondSubtitle.find(second_language, english=sub_src, english_entries=sub_entries)
+                    if candidate is None:
+                        Action.SKIP.log(f"no {second_language.label} text subtitle")
+                        continue
+                    Action.ALIGN.log(f"{candidate.file.name}: {len(candidate.lines)} of {candidate.entries_english} entries matched, offset {candidate.offset_seconds:.2f}s")
+                    if not candidate.is_matched():
+                        Action.DISCARD.log(f"{candidate.file.name} matches under {SECOND_LANGUAGE_MATCHED_MIN:.0%} of the entries")
+                        continue
+                    second_subtitle = candidate
+                    break
+                if second_languages and second_subtitle is None:
+                    Action.SKIP.log("no second language, translating from the English alone")
                 second_prompt = second_subtitle.language.to_prompt(SECOND_LANGUAGE_PROMPT) if second_subtitle else ""
 
                 # build translation
