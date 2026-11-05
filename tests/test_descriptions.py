@@ -2,10 +2,10 @@ from pathlib import Path
 
 import pytest
 
-from shared.data_lists import FIX_CHANNELS, FIX_LANGUAGES, FIX_MUSIC_MOODS, FIX_SOUND_LISTS, FIX_SUBJECTS, FIX_VOICE_MOODS
+from shared.data_lists import FIX_CHANNELS, FIX_LANGUAGES, FIX_MUSIC_MOODS, FIX_SOUND_LISTS, FIX_SUBJECTS, FIX_VERBS, FIX_VOICE_MOODS
 from shared.descriptions import DescriptionTable, MovieNames
 
-TABLE = DescriptionTable.from_lists(sounds=FIX_SOUND_LISTS, subjects=FIX_SUBJECTS, music_moods=FIX_MUSIC_MOODS, voice_moods=FIX_VOICE_MOODS, languages=FIX_LANGUAGES, channels=FIX_CHANNELS)
+TABLE = DescriptionTable.from_lists(sounds=FIX_SOUND_LISTS, subjects=FIX_SUBJECTS, verbs=FIX_VERBS, music_moods=FIX_MUSIC_MOODS, voice_moods=FIX_VOICE_MOODS, languages=FIX_LANGUAGES, channels=FIX_CHANNELS)
 
 
 @pytest.mark.parametrize(("description", "text", "name"), [
@@ -30,6 +30,8 @@ TABLE = DescriptionTable.from_lists(sounds=FIX_SOUND_LISTS, subjects=FIX_SUBJECT
     ("IN A DEEP VOICE", "COM UMA VOZ GRAVE", ""),
     ("GROANS IN PAIN", "GEME DE DOR", ""),
     ("ALL LAUGHING", "TODO MUNDO RINDO", ""),
+    ("ALL LAUGH", "TODO MUNDO RI", ""),
+    ("PEOPLE SCREAM", "PESSOAS GRITAM", ""),
     ("crowd", "multidão", ""),
     ("Sighs in relief", "Suspira de alívio", ""),
     ("IN SIGN LANGUAGE", "EM LÍNGUA DE SINAIS", ""),

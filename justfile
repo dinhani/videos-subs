@@ -354,6 +354,15 @@ add-fix-portugal +triples:
     exit $LASTEXITCODE
 
 [group('data/fix')]
+[doc('Add bare verbs to fix-translations')]
+[script]
+[extension('.ps1')]
+[positional-arguments]
+add-fix-verbs +triples:
+    uv run src/fix-tools/add-to-dictionary.py fix-verbs @args
+    exit $LASTEXITCODE
+
+[group('data/fix')]
 [doc('Add misspellings to fix-translations')]
 [script]
 [extension('.ps1')]

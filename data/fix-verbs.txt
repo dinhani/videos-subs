@@ -1,0 +1,27 @@
+applaud = aplaude | bate palmas = aplaudem | batem palmas
+boo = vaia = vaiam
+chant = entoa | canta = entoam | cantam
+cheer = comemora | vibra = comemoram | vibram
+chuckle = ri | dá risadinhas | dá risada = riem | dão risadinhas | dão risada
+clap = bate palmas | aplaude = batem palmas | aplaudem
+cough = tosse = tossem
+exclaim = exclama = exclamam
+exhale = expira | exala = expiram | exalam
+gasp = arfa | ofega | arqueja = arfam | ofegam | arquejam
+giggle = dá risadinhas | ri = dão risadinhas | riem
+groan = geme = gemem
+grunt = grunhe = grunhem
+inhale = inspira | inala = inspiram | inalam
+laugh = ri | gargalha = riem | gargalham
+moan = geme = gemem
+murmur = murmura = murmuram
+pant = ofega | arfa = ofegam | arfam
+scoff = zomba | desdenha = zombam | desdenham
+scream = grita | berra = gritam | berram
+shout = grita | berra = gritam | berram
+sigh = suspira = suspiram
+sing = canta = cantam
+sniffle = funga = fungam
+sob = soluça = soluçam
+whisper = sussurra | cochicha = sussurram | cochicham
+yell = grita | berra = gritam | berram

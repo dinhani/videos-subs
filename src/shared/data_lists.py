@@ -22,6 +22,7 @@ class DataListFormat(Enum):
     TRIPLE = ("english = misspelled = right", 3)
     EXPRESSION_TRIPLE = ("english = wrong expression = right expression", 3)
     PORTUGAL_TRIPLE = ("english = word of Portugal = word of Brazil", 3)
+    VERB_TRIPLE = ("english bare verb = third person singular = third person plural", 3)
 
     def __init__(self, shape: str, fields: int) -> None:
         self.shape = shape
@@ -105,6 +106,7 @@ FIX_MUSIC_MOODS = DataList(file=DATA_FOLDER / "fix-music-moods.txt", format=Data
 FIX_VOICE_MOODS = DataList(file=DATA_FOLDER / "fix-voice-moods.txt", format=DataListFormat.PAIR)
 FIX_SOUND_LISTS = (FIX_SOUNDS, FIX_MUSIC, FIX_OBJECTS, FIX_MANNERS)
 FIX_SUBJECTS = DataList(file=DATA_FOLDER / "fix-subjects.txt", format=DataListFormat.PAIR)
+FIX_VERBS = DataList(file=DATA_FOLDER / "fix-verbs.txt", format=DataListFormat.VERB_TRIPLE)
 FIX_INTERJECTIONS = DataList(file=DATA_FOLDER / "fix-interjections.txt", format=DataListFormat.PAIR)
 FIX_RANKS = DataList(file=DATA_FOLDER / "fix-ranks.txt", format=DataListFormat.PAIR)
 FIX_ADDRESSES = DataList(file=DATA_FOLDER / "fix-addresses.txt", format=DataListFormat.PAIR)
@@ -112,4 +114,4 @@ FIX_UNITS = DataList(file=DATA_FOLDER / "fix-units.txt", format=DataListFormat.P
 FIX_EXPRESSIONS = DataList(file=DATA_FOLDER / "fix-expressions.txt", format=DataListFormat.EXPRESSION_TRIPLE)
 FIX_WORDS = DataList(file=DATA_FOLDER / "fix-words.txt", format=DataListFormat.TRIPLE)
 FIX_PORTUGAL = DataList(file=DATA_FOLDER / "fix-portugal.txt", format=DataListFormat.PORTUGAL_TRIPLE)
-DATA_LISTS = (CHECK_WORDS, CHECK_EXPRESSIONS, FIX_SOUNDS, FIX_MUSIC, FIX_OBJECTS, FIX_MANNERS, FIX_MUSIC_MOODS, FIX_VOICE_MOODS, FIX_LANGUAGES, FIX_CHANNELS, FIX_SUBJECTS, FIX_INTERJECTIONS, FIX_RANKS, FIX_ADDRESSES, FIX_UNITS, FIX_EXPRESSIONS, FIX_WORDS, FIX_PORTUGAL)
+DATA_LISTS = (CHECK_WORDS, CHECK_EXPRESSIONS, FIX_SOUNDS, FIX_MUSIC, FIX_OBJECTS, FIX_MANNERS, FIX_MUSIC_MOODS, FIX_VOICE_MOODS, FIX_LANGUAGES, FIX_CHANNELS, FIX_SUBJECTS, FIX_VERBS, FIX_INTERJECTIONS, FIX_RANKS, FIX_ADDRESSES, FIX_UNITS, FIX_EXPRESSIONS, FIX_WORDS, FIX_PORTUGAL)

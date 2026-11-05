@@ -72,12 +72,13 @@ class DescriptionTranslation:
 class DescriptionTable:
     sounds: dict[str, tuple[str, ...]]
     subjects: dict[str, tuple[str, ...]]
+    verbs: dict[str, tuple[tuple[str, ...], tuple[str, ...]]]
     moods: dict[str, tuple[str, dict[str, tuple[str, ...]]]]
     languages: dict[str, tuple[str, ...]]
     channels: dict[str, tuple[str, ...]]
 
     @classmethod
-    def from_lists(cls, sounds: tuple[DataList, ...], subjects: DataList, music_moods: DataList, voice_moods: DataList, languages: DataList, channels: DataList) -> "DescriptionTable":
+    def from_lists(cls, sounds: tuple[DataList, ...], subjects: DataList, verbs: DataList, music_moods: DataList, voice_moods: DataList, languages: DataList, channels: DataList) -> "DescriptionTable":
         phrases: dict[str, tuple[str, ...]] = {}
         for sound_list in sounds:
             for key, forms in parse_forms(sound_list).items():
@@ -85,7 +86,7 @@ class DescriptionTable:
                     raise ValueError(f"{sound_list.file.name}: phrase listed in another sound list: {key!r}")
                 phrases[key] = forms
         moods = {"music": ("música", parse_forms(music_moods)), "voice": ("voz", parse_forms(voice_moods))}
-        return cls(sounds=phrases, subjects=parse_forms(subjects), moods=moods, languages=parse_forms(languages), channels=parse_forms(channels))
+        return cls(sounds=phrases, subjects=parse_forms(subjects), verbs={english: (tuple(form.strip() for form in singular.split("|")), tuple(form.strip() for form in plural.split("|"))) for english, singular, plural in verbs.parse()}, moods=moods, languages=parse_forms(languages), channels=parse_forms(channels))
 
     def find_translation(self, description: str) -> DescriptionTranslation | None:
         words = description.split()
@@ -113,10 +114,19 @@ class DescriptionTable:
         for subject_size in range(1, min(DESCRIPTION_SUBJECT_WORDS_MAX, len(words) - 1) + 1):
             subject, phrase = words[:subject_size], words[subject_size:]
             verb = phrase[0].lower()
+
+            # a plural subject, then a verb in its bare form, which agrees with each Portuguese form of the subject: ALL LAUGH is TODO MUNDO RI or TODOS RIEM
+            subject_forms = self.find_subject(" ".join(subject).lower())
+            if len(phrase) == 1 and verb in self.verbs and subject_forms is not None:
+                singulars, plurals = self.verbs[verb]
+                verbs_by_subject = [(subject_portuguese, plurals if subject_portuguese.endswith("s") else singulars) for subject_portuguese in subject_forms]
+                texts_by_subject = tuple((subject_portuguese, match_case(f"{subject_portuguese} {verbs[0]}", description)) for subject_portuguese, verbs in verbs_by_subject)
+                forms = frozenset().union(*(self.to_forms(verbs, subject_portuguese) for subject_portuguese, verbs in verbs_by_subject))
+                return DescriptionTranslation(source=description, text=texts_by_subject[0][1], name="", forms=(forms,), texts_by_subject=texts_by_subject)
+
             phrase_forms = self.find_forms(" ".join(phrase).lower())
             if phrase_forms is None or not (verb.endswith(("ing", "s")) or verb in DESCRIPTION_TAIL_WORDS):
                 continue
-            subject_forms = self.find_subject(" ".join(subject).lower())
             if subject_forms is not None:
                 if verb.endswith("s") and subject_forms[0].endswith("s"):
                     continue

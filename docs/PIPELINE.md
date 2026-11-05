@@ -86,7 +86,8 @@ The description lists are the phrases of `data/fix-sounds.txt` (people), `data/f
 - a phrase after `continues`, in the gerund: `continues laughing` is `continua rindo`;
 - a phrase after `distant`: `distant explosion` is `explosão ao longe`;
 - a phrase followed by a phrase led by `in`, `on` or `over`: `shouting in german`, `laughing on tv`, `bell ringing in the distance`;
-- a subject with a number: `man 2` is `homem 2`.
+- a subject with a number: `man 2` is `homem 2`;
+- a plural subject and a verb in its bare form, from `data/fix-verbs.txt` (`laugh = ri = riem`), the verb agreeing with each Portuguese form of the subject: `all laugh` is `todo mundo ri` or `todos riem`.
 
 The tables are written by hand: each phrase is translated once, with the verb in the third person for -s and in the gerund for -ing, so a subject in front of it keeps the sentence right. A phrase or a subject whose Portuguese depends on the scene is not in the tables: a sound that is different for a person, an animal or a machine (`cries`, `clicks`), a word with several meanings (`choking`, `blows`), and a subject whose gender the English does not tell and that has no form for both genders (`both`); `all` and `everyone` are written `todo mundo`, which has no gender, and `todos` and `todas` are left as the model wrote them. Nothing that needs reading the sentence is fixed here: duplicated lines, gender and grammar are left to check-translate.
 
