@@ -58,6 +58,7 @@ Each id gets its own translation: never merge, split, move, skip or refuse an en
 - Never mask a word that the English writes in full: "caralho", not "c*ralho". Never add warnings, notes or explanations.
 - Translate what a phrase means in the scene, not its first dictionary sense: "You got me." after a joke is "Essa me pegou."; "Break a leg." before a show is "Boa sorte.".
 - Adjectives and participles agree with the gender of the person they describe. Work it out from the names, earlier lines, how others address the person and the descriptions: a woman says "Estou atrasada"; a female lawyer is "a advogada".
+- Translate a sound description such as [door creaks] or (sighs) by the exact sound it names, in the letter case of the English: "[FAUCET DRIPS]" is "[TORNEIRA PINGA]".
 - Translate, do not localize. Units, currencies, dates, times and cultural references stay as in the English, with only the unit word translated: "30 miles" is "30 milhas", never "48 quilômetros"; "6 feet" is "6 pés".
 
 # Register
@@ -83,23 +84,15 @@ These stay exactly as in the English, in the same place relative to the text:
 - the symbols ♪ ♫ … - – — " ¿ ¡ # * [ ] ( ), and a leading "- " dialogue dash on its line;
 - every tag, around the same words: <i>, <b>, <u> and <font ...> with their closing tags, {\\an1} to {\\an9} at the start of a line, and any other <...>, </...> or {\\...} tag. A tag without its pair stays without it;
 - words in a language other than English, which the English left untranslated: "Carpe diem." stays "Carpe diem."; in "No habla español, fellas?" only "fellas" is translated: "No habla español, pessoal?";
-- song lyrics: lines marked with ♪ or ♫, and lines the context shows are sung. A description of the music, such as [song playing] or (singing), is translated.
-
-# Sound descriptions
-
-Translate sound descriptions such as [door creaks] or (sighs), keeping the brackets and the letter case of the English. Name the exact sound the English describes, in the grammatical form of the English:
-- a verb ending in -s becomes the verb in the third person of the present: "[FAUCET DRIPS]" is "[TORNEIRA PINGA]";
-- a verb ending in -ing becomes the gerund: "[TYPEWRITER CLACKING]" is "[MÁQUINA DE ESCREVER BATENDO]";
-- a noun stays a noun: "[FIREWORKS]" is "[FOGOS DE ARTIFÍCIO]", "[APPLAUSE]" is "[APLAUSOS]".
-Use only words that exist in Portuguese: when no Portuguese verb names the sound, use a noun. Never invent a word or use a Spanish one.{second_language}
+- song lyrics: lines marked with ♪ or ♫, and lines the context shows are sung. A description of the music, such as [song playing] or (singing), is translated.{second_language}
 
 # Example
 
 Input:
-{"context_before": [{"en": ["Where's Victor?"], "pt-BR": ["Cadê o Victor?"]}], "entries": {"1": {"en": ["[FAUCET DRIPS]"]}, "2": {"en": ["- We need a boat.", "- Okay."]}, "3": {"en": ["I think he took", "the old highway north,"]}, "4": {"en": ["but he's gonna run out of gas."]}, "5": {"en": ["[TYPEWRITER CLACKING]"]}, "6": {"en": ["<i>Fuck, we're out of gas.</i>"]}, "7": {"en": ["Good afternoon, sir.", "May I see your boarding pass?"]}, "8": {"en": ["♪ Fly me to the moon ♪"]}}, "context_after": [{"en": ["[SIREN WAILING]"]}]}
+{"context_before": [{"en": ["Where's Victor?"], "pt-BR": ["Cadê o Victor?"]}], "entries": {"1": {"en": ["[FAUCET DRIPS]"]}, "2": {"en": ["- We need a boat.", "- Okay."]}, "3": {"en": ["I think he took", "the old highway north,"]}, "4": {"en": ["but he's gonna run out of gas."]}, "5": {"en": ["<i>Fuck, we're out of gas.</i>"]}, "6": {"en": ["Good afternoon, sir.", "May I see your boarding pass?"]}, "7": {"en": ["♪ Fly me to the moon ♪"]}}, "context_after": [{"en": ["[SIREN WAILING]"]}]}
 
 Reply:
-{"1": {"en": ["[FAUCET DRIPS]"], "pt-BR": ["[TORNEIRA PINGA]"]}, "2": {"en": ["- We need a boat.", "- Okay."], "pt-BR": ["- A gente precisa de um barco.", "- Tá."]}, "3": {"en": ["I think he took", "the old highway north,"], "pt-BR": ["Acho que ele pegou", "a rodovia velha pro norte,"]}, "4": {"en": ["but he's gonna run out of gas."], "pt-BR": ["mas vai ficar sem gasolina."]}, "5": {"en": ["[TYPEWRITER CLACKING]"], "pt-BR": ["[MÁQUINA DE ESCREVER BATENDO]"]}, "6": {"en": ["<i>Fuck, we're out of gas.</i>"], "pt-BR": ["<i>Porra, a gasolina acabou.</i>"]}, "7": {"en": ["Good afternoon, sir.", "May I see your boarding pass?"], "pt-BR": ["Boa tarde, senhor.", "Posso ver seu cartão de embarque?"]}, "8": {"en": ["♪ Fly me to the moon ♪"], "pt-BR": ["♪ Fly me to the moon ♪"]}}{second_language_example}
+{"1": {"en": ["[FAUCET DRIPS]"], "pt-BR": ["[TORNEIRA PINGA]"]}, "2": {"en": ["- We need a boat.", "- Okay."], "pt-BR": ["- A gente precisa de um barco.", "- Tá."]}, "3": {"en": ["I think he took", "the old highway north,"], "pt-BR": ["Acho que ele pegou", "a rodovia velha pro norte,"]}, "4": {"en": ["but he's gonna run out of gas."], "pt-BR": ["mas vai ficar sem gasolina."]}, "5": {"en": ["<i>Fuck, we're out of gas.</i>"], "pt-BR": ["<i>Porra, a gasolina acabou.</i>"]}, "6": {"en": ["Good afternoon, sir.", "May I see your boarding pass?"], "pt-BR": ["Boa tarde, senhor.", "Posso ver seu cartão de embarque?"]}, "7": {"en": ["♪ Fly me to the moon ♪"], "pt-BR": ["♪ Fly me to the moon ♪"]}}{second_language_example}
 """
 
 SECOND_LANGUAGE_MATCHED_MIN = 0.9
