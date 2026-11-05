@@ -17,7 +17,7 @@ import srt
 from rich.text import Text
 
 from shared.console import Action, Batch, Color, console
-from shared.data_lists import FIX_CHANNELS, FIX_EXPRESSIONS, FIX_INTERJECTIONS, FIX_LANGUAGES, FIX_MUSIC_MOODS, FIX_SOUND_LISTS, FIX_SUBJECTS, FIX_VOICE_MOODS, FIX_WORDS, DataList
+from shared.data_lists import FIX_CHANNELS, FIX_EXPRESSIONS, FIX_INTERJECTIONS, FIX_LANGUAGES, FIX_MUSIC_MOODS, FIX_PORTUGAL, FIX_SOUND_LISTS, FIX_SUBJECTS, FIX_VOICE_MOODS, FIX_WORDS, DataList
 from shared.descriptions import DESCRIPTION_SIMPLE, SPEAKER_LABEL, DescriptionTable, MovieNames, match_case
 from shared.files import Backups, SubtitleFile, SubtitleFormat, find_subtitles, parse_srt, write_text_replacing
 from shared.languages import WORD
@@ -358,7 +358,7 @@ class WordsFix:
         words_source = [match[0].lower() for line in entry.source_lines for match in WORD.finditer(line)]
         text_source = f" {' '.join(words_source)} "
 
-        # a misspelled word is replaced only when the English entry has its English word, and by one right word only
+        # a misspelled word, or a word of Portugal, is replaced only when the English entry has its English word, and by one right word only
         def replace_word(match: re.Match[str]) -> str:
             word = match[0]
             rights = {right for english, right in words_right[word.lower()] if f" {english} " in text_source}
@@ -385,6 +385,7 @@ FIXES: tuple[TranslationFix, ...] = (
     InterjectionsFix(enabled=True, interjections=FIX_INTERJECTIONS),
     ExpressionsFix(enabled=True, expressions=FIX_EXPRESSIONS),
     WordsFix(enabled=True, words=FIX_WORDS),
+    WordsFix(enabled=True, words=FIX_PORTUGAL),
 )
 
 # ------------------------------------------------------------------------------

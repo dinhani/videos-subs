@@ -318,6 +318,15 @@ add-fix-expressions +triples:
     exit $LASTEXITCODE
 
 [group('data/fix')]
+[doc('Add Portugal words to fix-translations')]
+[script]
+[extension('.ps1')]
+[positional-arguments]
+add-fix-portugal +triples:
+    uv run src/fix-tools/add-to-dictionary.py fix-portugal @args
+    exit $LASTEXITCODE
+
+[group('data/fix')]
 [doc('Add misspellings to fix-translations')]
 [script]
 [extension('.ps1')]

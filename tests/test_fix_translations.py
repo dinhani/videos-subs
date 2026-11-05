@@ -157,6 +157,21 @@ def test_expressions(english: str, translated: str, expected: str) -> None:
     assert fix(EXPRESSIONS, english, translated) == expected
 
 
+PORTUGAL = WordsFix(enabled=True, words=fix_translations.FIX_PORTUGAL)
+
+
+@pytest.mark.parametrize(("english", "translated", "expected"), [
+    ("Take the bus.", "Apanha o autocarro.", "Apanha o ônibus."),
+    ("Call my cell phone.", "Liga para o meu telemóvel.", "Liga para o meu celular."),
+    ("In fact, no.", "De facto, não.", "De fato, não."),
+    ("Join the convoy.", "Junte-se ao comboio.", "Junte-se ao comboio."),
+])
+def test_portugal(english: str, translated: str, expected: str) -> None:
+    assert fix(PORTUGAL, english, translated) == expected
+
+
+
+
 @pytest.mark.parametrize(("english", "translated", "names", "expected"), [
     ("(GRUNTS)", "(GRUNNIDO)", frozenset(), "(GRUNHE)"),
     ("(grunts)", "(grunnido)", frozenset(), "(grunhe)"),

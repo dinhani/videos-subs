@@ -75,7 +75,7 @@ Its fixes, in the order they run, are in `FIXES`:
 - descriptions: writes each description from the description lists, keeping a name only when the English shows it is a name and the model kept it. A form the model already wrote that the table lists as right is left as it is. A speaker label the model kept in English, such as `MAN 2:`, is written from the same tables; a name stays as it is.
 - interjections: replaces an interjection the model kept in English, from `data/fix-interjections.txt` (`wow = uau`), on a line whose English has it and has no `♪` or `♫`.
 - expressions: replaces a translation of an English expression that is wrong in every scene, from `data/fix-expressions.txt` (`hold your fire = mantenham o fogo = não atirem`), only when the English entry has the expression and where it ends its clause.
-- words: replaces the misspellings the model repeats, from `data/fix-words.txt`, only when the English entry has the English word.
+- words: replaces the misspellings the model repeats, from `data/fix-words.txt`, and the words of Portugal, from `data/fix-portugal.txt` (`bus = autocarro = ônibus`), only when the English entry has the English word.
 
 The names of a movie come from its speaker labels, spaCy NER and `data/check-words.txt`. A name NER misses goes to `check-words` only when it stays unchanged in Brazilian Portuguese; a world term with a Portuguese translation, such as `skimwing`, stays out, so check-translate still flags it when it is left in English.
 

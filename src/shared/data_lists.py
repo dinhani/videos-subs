@@ -21,6 +21,7 @@ class DataListFormat(Enum):
     PAIR = ("english = português", 2)
     TRIPLE = ("english = misspelled = right", 3)
     EXPRESSION_TRIPLE = ("english = wrong expression = right expression", 3)
+    PORTUGAL_TRIPLE = ("english = word of Portugal = word of Brazil", 3)
 
     def __init__(self, shape: str, fields: int) -> None:
         self.shape = shape
@@ -37,8 +38,8 @@ class DataListFormat(Enum):
                 raise ValueError(f"not a single word: {item!r}")
             case DataListFormat.EXPRESSION if " " not in item:
                 raise ValueError(f"not an expression of several words: {item!r}")
-            case DataListFormat.TRIPLE if " " in parts[1]:
-                raise ValueError(f"the misspelled word is not a single word: {item!r}")
+            case DataListFormat.TRIPLE | DataListFormat.PORTUGAL_TRIPLE if " " in parts[1]:
+                raise ValueError(f"the replaced word is not a single word: {item!r}")
             case DataListFormat.TRIPLE if load_dictionary(DICTIONARY_HUNSPELL).lookup(parts[1]):
                 raise ValueError(f"the misspelled word is a Brazilian Portuguese word: {item!r}")
 
@@ -107,4 +108,5 @@ FIX_SUBJECTS = DataList(file=DATA_FOLDER / "fix-subjects.txt", format=DataListFo
 FIX_INTERJECTIONS = DataList(file=DATA_FOLDER / "fix-interjections.txt", format=DataListFormat.PAIR)
 FIX_EXPRESSIONS = DataList(file=DATA_FOLDER / "fix-expressions.txt", format=DataListFormat.EXPRESSION_TRIPLE)
 FIX_WORDS = DataList(file=DATA_FOLDER / "fix-words.txt", format=DataListFormat.TRIPLE)
-DATA_LISTS = (CHECK_WORDS, CHECK_EXPRESSIONS, FIX_SOUNDS, FIX_MUSIC, FIX_OBJECTS, FIX_MANNERS, FIX_MUSIC_MOODS, FIX_VOICE_MOODS, FIX_LANGUAGES, FIX_CHANNELS, FIX_SUBJECTS, FIX_INTERJECTIONS, FIX_EXPRESSIONS, FIX_WORDS)
+FIX_PORTUGAL = DataList(file=DATA_FOLDER / "fix-portugal.txt", format=DataListFormat.PORTUGAL_TRIPLE)
+DATA_LISTS = (CHECK_WORDS, CHECK_EXPRESSIONS, FIX_SOUNDS, FIX_MUSIC, FIX_OBJECTS, FIX_MANNERS, FIX_MUSIC_MOODS, FIX_VOICE_MOODS, FIX_LANGUAGES, FIX_CHANNELS, FIX_SUBJECTS, FIX_INTERJECTIONS, FIX_EXPRESSIONS, FIX_WORDS, FIX_PORTUGAL)
