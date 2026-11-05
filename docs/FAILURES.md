@@ -1,6 +1,6 @@
 # Failed approaches
 
-Approaches that were tried and failed, and why. Read this before proposing a new approach, and do not propose one of these again unless the reason no longer holds.
+Approaches that were tried to improve the OCR outputs and the translations and failed, and why. Read this before proposing a new approach, and do not propose one of these again unless the reason no longer holds.
 
 ## Judging translations
 
