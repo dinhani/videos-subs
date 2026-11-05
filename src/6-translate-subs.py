@@ -13,14 +13,12 @@ from pathlib import Path
 from typing import Any
 from xml.etree import ElementTree
 
-import readchar
 import srt
 from openai import OpenAI
 from rich.highlighter import JSONHighlighter
-from rich.text import Text
 
 from shared.alignment import AlignedSubtitle
-from shared.console import Action, Batch, Color, console, log_heading, track
+from shared.console import Action, Answer, Batch, Color, confirm, console, log_heading, track
 from shared.files import SubtitleFile, SubtitleFormat, find_subtitles, parse_srt, write_text_replacing
 from shared.languages import WORD, SecondLanguage, parse_words
 from shared.llm import JsonReply, Trace, connect_llama
@@ -389,12 +387,8 @@ if __name__ == "__main__":
                     # ask before showing the next subtitle
                     if position == len(subs_src):
                         continue
-                    console.print(Text(f"\n  Next subtitle, {len(subs_src) - position} left: {subs_src[position].name}. Show it? (Y/n) "), end="")
-                    answer = ""
-                    while answer not in ("y", "n"):
-                        answer = readchar.readkey().lower().replace(readchar.key.ENTER, "y")
                     console.print()
-                    if answer == "n":
+                    if not confirm(f"Next subtitle, {len(subs_src) - position} left: {subs_src[position].name}. Show it?", default=Answer.YES):
                         break
                     continue
 

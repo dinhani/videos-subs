@@ -9,6 +9,7 @@ from enum import Enum, StrEnum
 from pathlib import Path
 from types import TracebackType
 
+import readchar
 from rich.console import Console
 from rich.progress import BarColumn, MofNCompleteColumn, Progress, ProgressColumn, TextColumn, TimeElapsedColumn, TimeRemainingColumn
 from rich.text import Text
@@ -24,6 +25,11 @@ class Color(StrEnum):
     GREEN = "green"
     RED = "red"
     YELLOW = "yellow"
+
+
+class Answer(StrEnum):
+    YES = "y"
+    NO = "n"
 
 
 class Action(Enum):
@@ -74,6 +80,15 @@ ACTION_WIDTH = max(len(action.label) for action in Action)
 def log_heading(text: str, color: Color) -> None:
     console.print()
     console.print(text, style=color)
+
+
+def confirm(question: str, default: Answer) -> bool:
+    console.print(Text(f"  {question} ({'Y/n' if default == Answer.YES else 'y/N'}) "), end="")
+    key = ""
+    while key not in Answer:
+        key = readchar.readkey().lower().replace(readchar.key.ENTER, default)
+    console.print()
+    return key == Answer.YES
 
 
 def progress_bar(*columns: ProgressColumn) -> Progress:

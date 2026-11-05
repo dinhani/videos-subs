@@ -13,11 +13,10 @@ from dataclasses import dataclass, replace
 from enum import Enum
 from typing import ClassVar
 
-import readchar
 import srt
 from rich.text import Text
 
-from shared.console import Action, Batch, Color, console
+from shared.console import Action, Answer, Batch, Color, confirm, console
 from shared.data_lists import FIX_ADDRESSES, FIX_CHANNELS, FIX_EXPRESSIONS, FIX_INTERJECTIONS, FIX_LANGUAGES, FIX_MUSIC_MOODS, FIX_PORTUGAL, FIX_RANKS, FIX_SOUND_LISTS, FIX_SUBJECTS, FIX_UNITS, FIX_VERBS, FIX_VOICE_MOODS, FIX_WORDS, DataList
 from shared.descriptions import DESCRIPTION_SIMPLE, SPEAKER_LABEL, DescriptionTable, MovieNames, match_case
 from shared.files import Backups, SubtitleFile, SubtitleFormat, find_subtitles, parse_srt, write_text_replacing
@@ -568,11 +567,7 @@ if __name__ == "__main__":
                         for prefix, content, color in (("en ", change.source.content, ""), ("old", change.old.content, Color.RED), ("new", change.new.content, Color.GREEN)):
                             for n, line in enumerate(content.split("\n")):
                                 console.print(Text.assemble(f"      {prefix if n == 0 else '   '}  ", (line, color)))
-                    console.print(Text(f"  Apply {summary}? (y/N) "), end="")
-                    answer = ""
-                    while answer not in ("y", "n"):
-                        answer = readchar.readkey().lower().replace(readchar.key.ENTER, "n")
-                    if answer == "n":
+                    if not confirm(f"Apply {summary}?", default=Answer.NO):
                         Action.DECLINED.log(sub.name)
                         continue
 
