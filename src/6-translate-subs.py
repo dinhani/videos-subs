@@ -41,8 +41,8 @@ The subtitles are from {movie}. Use what you know about it and its characters to
 A JSON object with:
 - "context_before": the entries just before, each with its English lines ("en") and its accepted translation ("pt-BR"). Keep the terms and forms of address these translations use.
 - "entries": maps an id to one entry to translate, with its English lines ("en").
-- "context_after": the entries just after, each with its English lines ("en").{second_language_input}
-Use both contexts to understand the scene, but never translate them or put them in the reply.
+- "context_after": the entries just after, each with its English lines ("en").
+Use both contexts to understand the scene, but never translate them or put them in the reply.{second_language_input}
 
 # Reply
 
@@ -110,7 +110,7 @@ SECOND_LANGUAGE_SECTION = """
 
 # {language} subtitle
 
-People translated "{tag}" from the same dialogue, so it shows what the English means in the scene: the sense of an idiom or of a word with several meanings, whether "you" is one person or several, gender and tense. Use it only to understand the English, and translate the English:
+The {language} subtitle ("{tag}") was translated by people from the same dialogue as the English, so it shows what the English means in the scene: the sense of an idiom or of a word with several meanings, whether "you" is one person or several, gender and tense. Use it only to understand the English, and translate the English:
 - When the {language} leaves something out or adds something, follow the English.
 - Address people as the Register section says, never as the {language} does: it uses formal address far more often than Brazilian Portuguese.
 - What the Kept unchanged section keeps, such as song lyrics, stays as in the English even when the {language} translates it.
