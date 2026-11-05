@@ -13,9 +13,11 @@ from pathlib import Path
 from typing import Any
 from xml.etree import ElementTree
 
+import readchar
 import srt
 from openai import OpenAI
 from rich.highlighter import JSONHighlighter
+from rich.text import Text
 
 from shared.alignment import AlignedSubtitle
 from shared.console import Action, Batch, Color, console, log_heading, track
@@ -323,10 +325,11 @@ if __name__ == "__main__":
     llama = None if arguments.print_prompt else connect_llama()
 
     with Batch() as batch:
-        for sub_src in batch.walk(subs_src):
+        for position, sub_src in enumerate(batch.walk(subs_src), start=1):
             # prepare files
             sub_dst = sub_src.to_translation()
             if llama is None:
+                batch.clear_screen()
                 Action.PROMPT.log(sub_src.name)
             elif sub_dst.path.exists():
                 Action.EXISTS.log(sub_dst.name)
@@ -382,6 +385,17 @@ if __name__ == "__main__":
                         blocks.append(f'  "{key}": {opener}\n{body}\n  {closer}' if items else f'  "{key}": {opener}{closer}')
                     log_heading(f"user: chunk 1 of {len(chunk_starts)}, entries 1 to {chunk_end} of {len(translation.pending)}", Color.YELLOW)
                     console.print(JSONHighlighter()("{\n" + ",\n".join(blocks) + "\n}"), soft_wrap=True)
+
+                    # ask before showing the next subtitle
+                    if position == len(subs_src):
+                        continue
+                    console.print(Text(f"\n  Next subtitle, {len(subs_src) - position} left: {subs_src[position].name}. Show it? (Y/n) "), end="")
+                    answer = ""
+                    while answer not in ("y", "n"):
+                        answer = readchar.readkey().lower().replace(readchar.key.ENTER, "y")
+                    console.print()
+                    if answer == "n":
+                        break
                     continue
 
                 # translate in chunks, tracing every request and reply
