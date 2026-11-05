@@ -42,6 +42,10 @@ Google recommends it for Gemma, but it scored worse on the bench than retries at
 
 A prompt whose examples come from the movies being benchmarked is overfit to them, and its better scores are not real. Examples in a prompt never come from a bench source.
 
+### The second language as a guide to forms of address
+
+The second-language prompt told the model that the second language shows formal or casual address. Spanish `usted` and European Portuguese `a senhora` are used far more often than the Brazilian forms, and the model copied them: in The Silence of the Lambs, Lecter called Clarice `a senhora` where the translation without a second language had `você`, and `senhora` went from 11 entries to 16 with Spanish and 17 with European Portuguese, against 0 in the official translation. Forms of address come from the register rules of the prompt, never from the second language.
+
 ### Wrapping translated lines
 
 Wrapping the translated lines at 42 characters left orphan words on their own line. Lines are not wrapped; the player wraps them.
