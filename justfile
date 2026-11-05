@@ -264,6 +264,15 @@ add-fix-objects +pairs:
     exit $LASTEXITCODE
 
 [group('data/fix')]
+[doc('Add description manners to fix-translations')]
+[script]
+[extension('.ps1')]
+[positional-arguments]
+add-fix-manners +pairs:
+    uv run src/fix-tools/add-to-dictionary.py fix-manners @args
+    exit $LASTEXITCODE
+
+[group('data/fix')]
 [doc('Add music moods to fix-translations')]
 [script]
 [extension('.ps1')]

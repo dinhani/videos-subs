@@ -28,6 +28,9 @@ TABLE = DescriptionTable.from_lists(sounds=FIX_SOUND_LISTS, subjects=FIX_SUBJECT
     ("CONTINUES LAUGHING", "CONTINUA RINDO", ""),
     ("DISTANT EXPLOSION", "EXPLOSÃO AO LONGE", ""),
     ("IN A DEEP VOICE", "COM UMA VOZ GRAVE", ""),
+    ("GROANS IN PAIN", "GEME DE DOR", ""),
+    ("Sighs in relief", "Suspira de alívio", ""),
+    ("IN SIGN LANGUAGE", "EM LÍNGUA DE SINAIS", ""),
     ("whispering in normal voice", "sussurrando com voz normal", ""),
 ])
 def test_find_translation(description: str, text: str, name: str) -> None:

@@ -64,7 +64,7 @@ class DescriptionTranslation:
 @dataclass(frozen=True)
 class DescriptionTable:
     sounds: dict[str, tuple[str, ...]]
-    subjects: dict[str, str]
+    subjects: dict[str, tuple[str, ...]]
     moods: dict[str, tuple[str, dict[str, tuple[str, ...]]]]
     languages: dict[str, tuple[str, ...]]
     channels: dict[str, tuple[str, ...]]
@@ -78,7 +78,7 @@ class DescriptionTable:
                     raise ValueError(f"{sound_list.file.name}: phrase listed in another sound list: {key!r}")
                 phrases[key] = forms
         moods = {"music": ("música", parse_forms(music_moods)), "voice": ("voz", parse_forms(voice_moods))}
-        return cls(sounds=phrases, subjects=dict(subjects.parse()), moods=moods, languages=parse_forms(languages), channels=parse_forms(channels))
+        return cls(sounds=phrases, subjects=parse_forms(subjects), moods=moods, languages=parse_forms(languages), channels=parse_forms(channels))
 
     def find_translation(self, description: str) -> DescriptionTranslation | None:
         words = description.split()
@@ -87,9 +87,9 @@ class DescriptionTable:
         forms = self.find_forms(key)
         if forms is not None:
             return DescriptionTranslation(source=description, text=match_case(forms[0], description), name="", forms=(self.to_forms(forms, ""),))
-        subject = self.find_subject(key) if DESCRIPTION_NUMBERED.fullmatch(key) else None
-        if subject is not None:
-            return DescriptionTranslation(source=description, text=match_case(subject, description), name="", forms=(self.to_forms((subject,), ""),))
+        subject_forms = self.find_subject(key) if DESCRIPTION_NUMBERED.fullmatch(key) else None
+        if subject_forms is not None:
+            return DescriptionTranslation(source=description, text=match_case(subject_forms[0], description), name="", forms=(self.to_forms(subject_forms, ""),))
 
         # a list such as GRUNTS, GASPS: the first part may have a subject or a name, the others are phrases
         if "," in description:
@@ -109,12 +109,12 @@ class DescriptionTable:
             phrase_forms = self.find_forms(" ".join(phrase).lower())
             if phrase_forms is None or not (verb.endswith(("ing", "s")) or verb in DESCRIPTION_TAIL_WORDS):
                 continue
-            subject_portuguese = self.find_subject(" ".join(subject).lower())
-            if subject_portuguese is not None:
-                if verb.endswith("s") and subject_portuguese.endswith("s"):
+            subject_forms = self.find_subject(" ".join(subject).lower())
+            if subject_forms is not None:
+                if verb.endswith("s") and subject_forms[0].endswith("s"):
                     continue
-                text = match_case(f"{subject_portuguese} {phrase_forms[0]}", description)
-                return DescriptionTranslation(source=description, text=text, name="", forms=(self.to_forms(phrase_forms, subject_portuguese),))
+                text = match_case(f"{subject_forms[0]} {phrase_forms[0]}", description)
+                return DescriptionTranslation(source=description, text=text, name="", forms=(frozenset().union(*(self.to_forms(phrase_forms, subject_portuguese) for subject_portuguese in subject_forms)),))
             if any(word.lower().endswith(("'s", "’s")) or word.lower() in self.subjects or word.lower() in self.sounds or (not description.isupper() and word[0].islower()) for word in subject):
                 continue
             name = " ".join(subject)
@@ -163,13 +163,13 @@ class DescriptionTable:
                 return tuple(f"{form} {form_tail}" for form in forms for form_tail in forms_tail)
         return None
 
-    def find_subject(self, subject: str) -> str | None:
+    def find_subject(self, subject: str) -> tuple[str, ...] | None:
         # a subject of the list, or one with a number: MAN 2
         if subject in self.subjects:
             return self.subjects[subject]
         numbered = DESCRIPTION_NUMBERED.fullmatch(subject)
         if numbered is not None and numbered["subject"] in self.subjects:
-            return f"{self.subjects[numbered['subject']]} {numbered['number']}"
+            return tuple(f"{form} {numbered['number']}" for form in self.subjects[numbered["subject"]])
         return None
 
     def to_forms(self, phrases: tuple[str, ...], subject: str) -> frozenset[str]:

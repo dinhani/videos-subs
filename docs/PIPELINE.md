@@ -77,7 +77,7 @@ Its fixes, in the order they run, are in `FIXES`:
 
 The names of a movie come from its speaker labels, spaCy NER and `data/check-words.txt`. A name NER misses goes to `check-words` only when it stays unchanged in Brazilian Portuguese; a world term with a Portuguese translation, such as `skimwing`, stays out, so check-translate still flags it when it is left in English.
 
-The description lists are the phrases of `data/fix-sounds.txt` (people), `data/fix-music.txt` and `data/fix-objects.txt` (objects, machines and nature), a phrase in one of them only; the subjects of `data/fix-subjects.txt`; the moods of `data/fix-music-moods.txt` (`grim = sombria`) and `data/fix-voice-moods.txt` (`deep = grave`); the languages of `data/fix-languages.txt` (`swedish = sueco`) and the channels a voice comes through of `data/fix-channels.txt` (`on tv = na TV`). The table builds descriptions from them:
+The description lists are the phrases of `data/fix-sounds.txt` (people), `data/fix-music.txt` and `data/fix-objects.txt` (objects, machines and nature) and `data/fix-manners.txt` (`in pain`, `in relief`), a phrase in one of them only; the subjects of `data/fix-subjects.txt`; the moods of `data/fix-music-moods.txt` (`grim = sombria`) and `data/fix-voice-moods.txt` (`deep = grave`); the languages of `data/fix-languages.txt` (`swedish = sueco`) and the channels a voice comes through of `data/fix-channels.txt` (`on tv = na TV`). The table builds descriptions from them:
 
 - a mood before music or a voice: `grim music playing` is `música sombria tocando`, `in a deep voice` is `com uma voz grave`;
 - a language after `speaking`, `speaks` or `in`: `speaking swedish` is `falando sueco`;

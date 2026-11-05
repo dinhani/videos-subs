@@ -35,6 +35,7 @@ polish = polonês
 quenya = quenya
 russian = russo
 sangheili = sangheili
+sign language = língua de sinais | linguagem de sinais | libras
 spanish = espanhol
 swedish = sueco
 tagalog = tagalo
