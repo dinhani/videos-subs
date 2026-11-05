@@ -4,8 +4,6 @@ from models import LlamaModel, NmtFamily, NmtModel, ScoringModel
 from runs import PipelineTranslator, Run, Source
 from shared.languages import SecondLanguage
 
-PROMPTS_DIR = Path(__file__).parent / "prompts"
-
 SOURCES = (
     Source(library_english=Path("Z:/midias/filmes/Fall - 1 - Fall (2022)/_subs/Fall (2022, Web-DL, 1080p, SDR, h264, 5.1, EAC3).embed.3.eng.sdh.srt")),
     Source(
@@ -75,7 +73,6 @@ SCORING_MODELS = (COMET_WMT22, XLM_ROBERTA_LARGE)
 RUNS_ACTIVE = (
     Run.from_model(GEMMA_4_26B),
     Run.from_fixes(Run.from_model(GEMMA_4_26B)),
-    *(Run.from_prompt(GEMMA_4_26B, prompt) for prompt in sorted(PROMPTS_DIR.glob("*.txt"))),
     Run.from_second_language(GEMMA_4_26B, SecondLanguage.SPANISH),
     Run.from_fixes(Run.from_second_language(GEMMA_4_26B, SecondLanguage.SPANISH)),
     Run.from_second_language(GEMMA_4_26B, SecondLanguage.EUROPEAN_PORTUGUESE),
