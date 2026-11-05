@@ -69,8 +69,10 @@ Its fixes, in the order they run, are in `FIXES`:
 - tags: deletes the tags the English entry does not have and restores the English `{\anN}`, and restores whole-line italics when the translation has no italics at all.
 - leftovers: deletes a JSON ending of the model reply, such as `"]},`, at the end of a line whose English line does not end that way.
 - brackets: completes or swaps the brackets of a description to match the English line, and removes brackets the English line does not have.
-- quotes: removes a quote the English line does not have, when it is the only extra one.
-- descriptions: writes each description from the description lists, keeping a name only when the English shows it is a name and the model kept it. A form the model already wrote that the table lists as right is left as it is.
+- quotes: removes a quote the English line does not have, when it is the only extra one, and adds one the English line has at its start or end, when it is the only missing one.
+- dashes: adds the dialogue dash of an English line that the translation lost, and removes a dash the English line does not have.
+- symbols: removes `¿` and `¡` when the English entry has none.
+- descriptions: writes each description from the description lists, keeping a name only when the English shows it is a name and the model kept it. A form the model already wrote that the table lists as right is left as it is. A speaker label the model kept in English, such as `MAN 2:`, is written from the same tables; a name stays as it is.
 - interjections: replaces an interjection the model kept in English, from `data/fix-interjections.txt` (`wow = uau`), on a line whose English has it and has no `♪` or `♫`.
 - expressions: replaces a translation of an English expression that is wrong in every scene, from `data/fix-expressions.txt` (`hold your fire = mantenham o fogo = não atirem`), only when the English entry has the expression and where it ends its clause.
 - words: replaces the misspellings the model repeats, from `data/fix-words.txt`, only when the English entry has the English word.

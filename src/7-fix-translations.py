@@ -18,7 +18,7 @@ from rich.text import Text
 
 from shared.console import Action, Batch, Color, console
 from shared.data_lists import FIX_CHANNELS, FIX_EXPRESSIONS, FIX_INTERJECTIONS, FIX_LANGUAGES, FIX_MUSIC_MOODS, FIX_SOUND_LISTS, FIX_SUBJECTS, FIX_VOICE_MOODS, FIX_WORDS, DataList
-from shared.descriptions import DESCRIPTION_SIMPLE, DescriptionTable, MovieNames, match_case
+from shared.descriptions import DESCRIPTION_SIMPLE, SPEAKER_LABEL, DescriptionTable, MovieNames, match_case
 from shared.files import Backups, SubtitleFile, SubtitleFormat, find_subtitles, parse_srt, write_text_replacing
 from shared.languages import WORD
 from shared.subtitles import BRACKETS, FORMATTING_TAGS, LANGUAGE_TRANSLATION, QUOTES, parse_lines, replace_text
@@ -159,11 +159,29 @@ class QuotesFix:
     enabled: bool
 
     def fix(self, entry: "TranslationEntry", movie_names: MovieNames) -> tuple[str, ...]:
-        # one quote more than the English entry, at the start or end of the only line where the English line has none; curly quotes count as quotes
         if not entry.is_aligned:
             return entry.target_lines
         lines = list(entry.target_lines)
-        if sum(line.count(quote) for line in lines for quote in QUOTES) != sum(line.count(quote) for line in entry.source_lines for quote in QUOTES) + 1:
+        quotes_extra = sum(line.count(quote) for line in lines for quote in QUOTES) - sum(line.count(quote) for line in entry.source_lines for quote in QUOTES)
+
+        # one quote less than the English entry, at the start or end of the only line where the English line has it; the quote is the one the English line has
+        if quotes_extra == -1:
+            quotes_missing: list[tuple[int, str, str]] = []
+            for n, (source_line, line) in enumerate(zip(entry.source_lines, lines)):
+                source_plain = FORMATTING_TAGS.sub("", source_line).strip().lstrip("-–— ")
+                plain = FORMATTING_TAGS.sub("", line).strip().lstrip("-–— ")
+                if source_plain.startswith(tuple(QUOTES)) and not plain.startswith(tuple(QUOTES)):
+                    quotes_missing.append((n, "start", source_plain[0]))
+                if source_plain.endswith(tuple(QUOTES)) and not plain.endswith(tuple(QUOTES)):
+                    quotes_missing.append((n, "end", source_plain[-1]))
+            if len(quotes_missing) == 1:
+                n, place, quote = quotes_missing[0]
+                position = BracketsFix.TAGS_START.match(lines[n]).end() if place == "start" else BracketsFix.TAGS_END.search(lines[n]).start()
+                lines[n] = lines[n][:position] + quote + lines[n][position:]
+            return tuple(lines)
+
+        # one quote more than the English entry, at the start or end of the only line where the English line has none; curly quotes count as quotes
+        if quotes_extra != 1:
             return entry.target_lines
         quotes_added: list[tuple[int, int]] = []
         for n, (source_line, line) in enumerate(zip(entry.source_lines, lines)):
@@ -177,6 +195,44 @@ class QuotesFix:
             n, position = quotes_added[0]
             lines[n] = (lines[n][:position] + lines[n][position + 1:]).strip()
         return tuple(lines)
+
+
+@dataclass(frozen=True)
+class DashesFix:
+    name: ClassVar[str] = "dashes"
+    START: ClassVar[re.Pattern[str]] = re.compile(r"^(?:\{\\[^{}]*\}|<[^<>]+>|\s)*")
+    DASH: ClassVar[re.Pattern[str]] = re.compile(r"[-–—](?![-–—])\s*")
+    DASHES: ClassVar[str] = "-–—"
+    enabled: bool
+
+    def fix(self, entry: "TranslationEntry", movie_names: MovieNames) -> tuple[str, ...]:
+        # the dialogue dash of each English line: added when the line lost it, removed when the English line has no dash at all
+        if not entry.is_aligned:
+            return entry.target_lines
+        lines: list[str] = []
+        for source_line, line in zip(entry.source_lines, entry.target_lines):
+            source_start, start = self.START.match(source_line).end(), self.START.match(line).end()
+            source_dash, dash = self.DASH.match(source_line, source_start), self.DASH.match(line, start)
+            if source_dash is not None and not line[start:start + 1] in self.DASHES and line[start:].strip():
+                lines.append(line[:start] + source_dash[0] + line[start:])
+            elif dash is not None and not source_line[source_start:source_start + 1] in self.DASHES:
+                lines.append(line[:start] + line[dash.end():])
+            else:
+                lines.append(line)
+        return tuple(lines)
+
+
+@dataclass(frozen=True)
+class SymbolsFix:
+    name: ClassVar[str] = "symbols"
+    SPANISH: ClassVar[re.Pattern[str]] = re.compile(r"[¿¡]")
+    enabled: bool
+
+    def fix(self, entry: "TranslationEntry", movie_names: MovieNames) -> tuple[str, ...]:
+        # the Spanish opening marks, when the English entry has none
+        if any(self.SPANISH.search(line) for line in entry.source_lines):
+            return entry.target_lines
+        return tuple(self.SPANISH.sub("", line) for line in entry.target_lines)
 
 
 @dataclass(frozen=True)
@@ -223,6 +279,17 @@ class DescriptionsFix:
                 lines[n] = self.replace_descriptions(source_line, descriptions, texts)
             elif paired:
                 lines[n] = self.replace_descriptions(line, descriptions_target, texts)
+
+        # a speaker label the model kept in English, such as MAN 2, written from the tables; a name stays as it is
+        for n, (source_line, line) in enumerate(zip(entry.source_lines, lines)):
+            source_label, label = SPEAKER_LABEL.match(FORMATTING_TAGS.sub("", source_line)), SPEAKER_LABEL.match(line)
+            if source_label is None or label is None or label[1] != source_label[1]:
+                continue
+            translation = table.find_translation(label[1])
+            subject_forms = table.find_subject(label[1].lower())
+            text = translation.text if translation is not None and not translation.name else subject_forms[0].upper() if subject_forms else None
+            if text is not None:
+                lines[n] = line[:label.start(1)] + text + line[label.end(1):]
         return tuple(lines)
 
     def replace_descriptions(self, line: str, descriptions: list[re.Match[str]], texts: list[str | None]) -> str:
@@ -305,13 +372,15 @@ class WordsFix:
         return tuple(words_wrong.sub(replace_word, line) for line in entry.target_lines)
 
 
-TranslationFix = TagsFix | LeftoversFix | BracketsFix | QuotesFix | DescriptionsFix | InterjectionsFix | ExpressionsFix | WordsFix
+TranslationFix = TagsFix | LeftoversFix | BracketsFix | QuotesFix | DashesFix | SymbolsFix | DescriptionsFix | InterjectionsFix | ExpressionsFix | WordsFix
 
 FIXES: tuple[TranslationFix, ...] = (
     TagsFix(enabled=True),
     LeftoversFix(enabled=True),
     BracketsFix(enabled=True),
     QuotesFix(enabled=True),
+    DashesFix(enabled=True),
+    SymbolsFix(enabled=True),
     DescriptionsFix(enabled=True, sounds=FIX_SOUND_LISTS, subjects=FIX_SUBJECTS, music_moods=FIX_MUSIC_MOODS, voice_moods=FIX_VOICE_MOODS, languages=FIX_LANGUAGES, channels=FIX_CHANNELS),
     InterjectionsFix(enabled=True, interjections=FIX_INTERJECTIONS),
     ExpressionsFix(enabled=True, expressions=FIX_EXPRESSIONS),

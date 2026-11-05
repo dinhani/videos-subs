@@ -34,6 +34,8 @@ TAGS = fix_translations.TagsFix(enabled=True)
 LEFTOVERS = fix_translations.LeftoversFix(enabled=True)
 BRACKETS = fix_translations.BracketsFix(enabled=True)
 QUOTES = fix_translations.QuotesFix(enabled=True)
+DASHES = fix_translations.DashesFix(enabled=True)
+SYMBOLS = fix_translations.SymbolsFix(enabled=True)
 DESCRIPTIONS = fix_translations.DescriptionsFix(enabled=True, sounds=fix_translations.FIX_SOUND_LISTS, subjects=fix_translations.FIX_SUBJECTS, music_moods=fix_translations.FIX_MUSIC_MOODS, voice_moods=fix_translations.FIX_VOICE_MOODS, languages=fix_translations.FIX_LANGUAGES, channels=fix_translations.FIX_CHANNELS)
 INTERJECTIONS = fix_translations.InterjectionsFix(enabled=True, interjections=fix_translations.FIX_INTERJECTIONS)
 EXPRESSIONS = fix_translations.ExpressionsFix(enabled=True, expressions=fix_translations.FIX_EXPRESSIONS)
@@ -80,6 +82,46 @@ def test_brackets(english: str, translated: str, expected: str) -> None:
 ])
 def test_quotes(english: str, translated: str, expected: str) -> None:
     assert fix(QUOTES, english, translated) == expected
+
+
+@pytest.mark.parametrize(("english", "translated", "expected"), [
+    ('"I know.', 'Eu sei.', '"Eu sei.'),
+    ('He said "no."', 'Ele disse "não.', 'Ele disse "não."'),
+    ('<i>"Run."</i>', '<i>"Corra.</i>', '<i>"Corra."</i>'),
+])
+def test_quotes_missing(english: str, translated: str, expected: str) -> None:
+    assert fix(QUOTES, english, translated) == expected
+
+
+@pytest.mark.parametrize(("english", "translated", "expected"), [
+    ("- Hi.\n- Bye.", "Oi.\n- Tchau.", "- Oi.\n- Tchau."),
+    ("{\\an8}-Hi.\n-Bye.", "{\\an8}Oi.\n-Tchau.", "{\\an8}-Oi.\n-Tchau."),
+    ("<i>- Hi.</i>", "<i>Oi.</i>", "<i>- Oi.</i>"),
+    ("Hi.", "- Oi.", "Oi."),
+    ("--and then he left.", "-- e então ele foi embora.", "-- e então ele foi embora."),
+    ("--and then he left.", "- e então ele foi embora.", "- e então ele foi embora."),
+])
+def test_dashes(english: str, translated: str, expected: str) -> None:
+    assert fix(DASHES, english, translated) == expected
+
+
+@pytest.mark.parametrize(("english", "translated", "expected"), [
+    ("What?", "¿O quê?", "O quê?"),
+    ("¿Qué?", "¿Qué?", "¿Qué?"),
+])
+def test_symbols(english: str, translated: str, expected: str) -> None:
+    assert fix(SYMBOLS, english, translated) == expected
+
+
+@pytest.mark.parametrize(("english", "translated", "expected"), [
+    ("MAN 2: Hi.", "MAN 2: Oi.", "HOMEM 2: Oi."),
+    ("AUTOMATED VOICE: Warning.", "AUTOMATED VOICE: Aviso.", "VOZ AUTOMATIZADA: Aviso."),
+    ("CROWD: Yes!", "CROWD: Sim!", "MULTIDÃO: Sim!"),
+    ("JOHN: Hi.", "JOHN: Oi.", "JOHN: Oi."),
+    ("MAN 2: Hi.", "HOMEM 2: Oi.", "HOMEM 2: Oi."),
+])
+def test_labels(english: str, translated: str, expected: str) -> None:
+    assert fix(DESCRIPTIONS, english, translated) == expected
 
 
 @pytest.mark.parametrize(("english", "translated", "expected"), [
