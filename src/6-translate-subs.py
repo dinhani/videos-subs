@@ -369,7 +369,7 @@ if __name__ == "__main__":
                     system = JSONHighlighter()(movie_prompt)
                     system.highlight_words([text for text in (movie_info_text, second_prompt.strip()) if text], style=Color.GREEN)
                     system.highlight_words([sub_src.movie_title], style=Color.CYAN)
-                    log_heading("system", Color.YELLOW)
+                    log_heading(f"system: {sub_src.name}", Color.YELLOW)
                     console.print(system, soft_wrap=True)
 
                     # one entry per line, since the compact JSON the model reads is a single line
