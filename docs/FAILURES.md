@@ -64,11 +64,9 @@ A second request that asks a model for the entries with a wrong meaning, after t
 
 Table entries whose Portuguese depends on the scene were written wrong in some entries: a sound that is different for a person, an animal or a machine (`barks`, `hisses`), a word with several meanings (`choking`, `blows`), and a subject whose gender the English does not tell (`both`, `everyone`). Two independent reviews found them, and they were removed. A fix that needs the scene belongs to the fix skill.
 
-### Object sounds as whole phrases with one form
+### Mechanical fixes for object sounds
 
-About 200 phrases of an object and its sound, such as `engine humming` or `camera clicks`, were added to the tables with the verb form only. In a sample of 8 movies, 9 of every 10 entries they changed were already right: the model writes these sounds as nouns, such as `ZUMBIDO DO MOTOR`, `BIP DE ALARME` and `CLIQUE DE CÂMERA`, and the fix replaced them with `MOTOR ZUMBINDO`. An object sound goes in the tables only with every right form the model writes for it.
-
-Listing those forms from the library did not work either: in 94 translations, most of these phrases appear 3 times or fewer, too few to list every right form. Most of what the model wrote was right, and the wrong forms were misspellings and English words (`ding do elevador`, `sino de elevator`, `dispositivo zumbando`, `click de arma`), which check-translate already flags as unknown words. Some right forms were ones the tables would have replaced with a wrong one: `drums playing` is `bateria tocando`, a drum kit, not `tambores tocando`.
+Object sounds, such as `engine humming` or `camera clicks`, have many right wordings, nouns as often as verbs: `ZUMBIDO DO MOTOR`, `BIP DE ALARME`, `CLIQUE DE CÂMERA`. Table entries for them replaced right translations far more often than wrong ones, and the wrong ones are misspellings and English words that check-translate already flags.
 
 ### Human subtitles or a review at watch time
 
