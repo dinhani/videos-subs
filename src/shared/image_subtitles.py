@@ -33,6 +33,7 @@ VOBSUB_SET_ALPHA = 0x04
 VOBSUB_CHANGE_COLOR = 0x07
 VOBSUB_END = 0xFF
 VOBSUB_ARGUMENT_SIZES = {0x00: 0, 0x01: 0, 0x02: 0, VOBSUB_SET_COLOR: 2, VOBSUB_SET_ALPHA: 2, 0x05: 6, 0x06: 4}
+VOBSUB_HEIGHT_MAX = 1080
 
 
 class ScreenPosition(StrEnum):
@@ -173,7 +174,7 @@ class VobSubScreen:
         palette = re.search(r"^palette:\s*(.+)$", text, re.MULTILINE)
         if size is None or palette is None:
             raise ValueError("VobSub header without size or palette")
-        return cls(width=int(size[1]), height=int(size[2]), colors=[bytes.fromhex(color.strip()) for color in palette[1].split(",")])
+        return cls(width=int(size[1]), height=min(int(size[2]), VOBSUB_HEIGHT_MAX), colors=[bytes.fromhex(color.strip()) for color in palette[1].split(",")])
 
     def read_packet(self, packet: bytes) -> None:
         # the control sequences of the packet pick 4 of the 16 header colors and their alpha, one per pixel code
