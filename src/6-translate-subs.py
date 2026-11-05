@@ -106,7 +106,7 @@ Reply:
 SECOND_LANGUAGE_MATCHED_MIN = 0.9
 SECOND_LANGUAGE_PROMPT = """
 
-"second_language" maps ids in "entries" to the lines of the {language} subtitle of the same movie that are on screen at the same time. People translated it from the same dialogue, so it shows what the English means in the scene: the sense of an idiom or of a word with several meanings, whether "you" is one person or several, formal or casual address, gender and tense. Use it only to understand the English, and translate the English: when the {language} leaves something out or adds something, follow the English. Never copy {language} words, spellings or sentence structure; write Brazilian Portuguese.{forms}"""
+"second_language" maps ids in "entries" to the lines of the {language} subtitle of the same movie that are on screen at the same time. People translated it from the same dialogue, so it shows what the English means in the scene: the sense of an idiom or of a word with several meanings, whether "you" is one person or several, gender and tense. Address people as the Register section says, never as the {language} does: it uses formal address far more often than Brazilian Portuguese. Use it only to understand the English, and translate the English: when the {language} leaves something out or adds something, follow the English. Never copy {language} words, spellings or sentence structure; write Brazilian Portuguese.{forms}"""
 SECOND_LANGUAGE_FORMS = {
     SecondLanguage.EUROPEAN_PORTUGUESE: 'European Portuguese forms are not Brazilian: never write "tu" and its verb forms, "consigo" for "com você", "estar a" with the infinitive for the gerund ("está a fazer" is "está fazendo"), or spellings such as "facto", "equipa" and "tentámos".',
 }
