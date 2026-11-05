@@ -309,6 +309,24 @@ add-fix-interjections +pairs:
     exit $LASTEXITCODE
 
 [group('data/fix')]
+[doc('Add ranks to fix-translations')]
+[script]
+[extension('.ps1')]
+[positional-arguments]
+add-fix-ranks +pairs:
+    uv run src/fix-tools/add-to-dictionary.py fix-ranks @args
+    exit $LASTEXITCODE
+
+[group('data/fix')]
+[doc('Add units to fix-translations')]
+[script]
+[extension('.ps1')]
+[positional-arguments]
+add-fix-units +pairs:
+    uv run src/fix-tools/add-to-dictionary.py fix-units @args
+    exit $LASTEXITCODE
+
+[group('data/fix')]
 [doc('Add wrong expression translations to fix-translations')]
 [script]
 [extension('.ps1')]

@@ -17,7 +17,7 @@ import srt
 from rich.text import Text
 
 from shared.console import Action, Batch, Color, console
-from shared.data_lists import FIX_CHANNELS, FIX_EXPRESSIONS, FIX_INTERJECTIONS, FIX_LANGUAGES, FIX_MUSIC_MOODS, FIX_PORTUGAL, FIX_SOUND_LISTS, FIX_SUBJECTS, FIX_VOICE_MOODS, FIX_WORDS, DataList
+from shared.data_lists import FIX_CHANNELS, FIX_EXPRESSIONS, FIX_KEPT_LISTS, FIX_LANGUAGES, FIX_MUSIC_MOODS, FIX_PORTUGAL, FIX_SOUND_LISTS, FIX_SUBJECTS, FIX_VOICE_MOODS, FIX_WORDS, DataList
 from shared.descriptions import DESCRIPTION_SIMPLE, SPEAKER_LABEL, DescriptionTable, MovieNames, match_case
 from shared.files import Backups, SubtitleFile, SubtitleFormat, find_subtitles, parse_srt, write_text_replacing
 from shared.languages import WORD
@@ -300,27 +300,27 @@ class DescriptionsFix:
 
 
 @dataclass(frozen=True)
-class InterjectionsFix:
-    name: ClassVar[str] = "interjections"
+class KeptWordsFix:
+    name: ClassVar[str] = "kept words"
     SONG: ClassVar[re.Pattern[str]] = re.compile(r"[♪♫]")
     enabled: bool
-    interjections: DataList
+    words: tuple[DataList, ...]
 
     def fix(self, entry: "TranslationEntry", movie_names: MovieNames) -> tuple[str, ...]:
         if not entry.is_aligned:
             return entry.target_lines
-        interjections, pattern = load_interjections(self.interjections)
+        words_kept, pattern = load_kept_words(self.words)
         if pattern is None:
             return entry.target_lines
 
-        # an interjection the model kept in English is replaced on the line whose English has it; song lines stay as they are
+        # an interjection, rank or unit the model kept in English is replaced on the line whose English has it, unless it is a name in the movie, such as Miles; song lines stay as they are
         lines: list[str] = []
         for source_line, line in zip(entry.source_lines, entry.target_lines):
             source_words = {match[0].lower() for match in pattern.finditer(source_line)}
             if self.SONG.search(source_line) or not source_words:
                 lines.append(line)
                 continue
-            lines.append(pattern.sub(lambda match: match_case(interjections[match[0].lower()], match[0]) if match[0].lower() in source_words else match[0], line))
+            lines.append(pattern.sub(lambda match: match_case(words_kept[" ".join(match[0].lower().split())], match[0]) if match[0].lower() in source_words and not any(movie_names.is_name(word) for word in match[0].lower().split()) else match[0], line))
         return tuple(lines)
 
 
@@ -372,7 +372,7 @@ class WordsFix:
         return tuple(words_wrong.sub(replace_word, line) for line in entry.target_lines)
 
 
-TranslationFix = TagsFix | LeftoversFix | BracketsFix | QuotesFix | DashesFix | SymbolsFix | DescriptionsFix | InterjectionsFix | ExpressionsFix | WordsFix
+TranslationFix = TagsFix | LeftoversFix | BracketsFix | QuotesFix | DashesFix | SymbolsFix | DescriptionsFix | KeptWordsFix | ExpressionsFix | WordsFix
 
 FIXES: tuple[TranslationFix, ...] = (
     TagsFix(enabled=True),
@@ -382,7 +382,7 @@ FIXES: tuple[TranslationFix, ...] = (
     DashesFix(enabled=True),
     SymbolsFix(enabled=True),
     DescriptionsFix(enabled=True, sounds=FIX_SOUND_LISTS, subjects=FIX_SUBJECTS, music_moods=FIX_MUSIC_MOODS, voice_moods=FIX_VOICE_MOODS, languages=FIX_LANGUAGES, channels=FIX_CHANNELS),
-    InterjectionsFix(enabled=True, interjections=FIX_INTERJECTIONS),
+    KeptWordsFix(enabled=True, words=FIX_KEPT_LISTS),
     ExpressionsFix(enabled=True, expressions=FIX_EXPRESSIONS),
     WordsFix(enabled=True, words=FIX_WORDS),
     WordsFix(enabled=True, words=FIX_PORTUGAL),
@@ -475,11 +475,17 @@ def load_description_table(sounds: tuple[DataList, ...], subjects: DataList, mus
 
 
 @functools.cache
-def load_interjections(file: DataList) -> tuple[dict[str, str], re.Pattern[str] | None]:
-    interjections = dict(file.parse())
+def load_kept_words(files: tuple[DataList, ...]) -> tuple[dict[str, str], re.Pattern[str] | None]:
+    interjections: dict[str, str] = {}
+    for file in files:
+        for english, portuguese in file.parse():
+            if english in interjections:
+                raise ValueError(f"{file.file.name}: word listed in another list of kept words: {english!r}")
+            interjections[english] = portuguese
     if not interjections:
         return interjections, None
-    return interjections, re.compile(rf"(?<![\w-])(?:{'|'.join(re.escape(word) for word in sorted(interjections, key=len, reverse=True))})(?![\w-])", re.IGNORECASE)
+    alternatives = "|".join(r"\s+".join(re.escape(word) for word in english.split()) for english in sorted(interjections, key=len, reverse=True))
+    return interjections, re.compile(rf"(?<![\w-])(?:{alternatives})(?![\w-])", re.IGNORECASE)
 
 
 @functools.cache

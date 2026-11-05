@@ -1,0 +1,12 @@
+feet = pés
+foot = pé
+gallon = galão
+gallons = galões
+inch = polegada
+inches = polegadas
+mile = milha
+miles = milhas
+ounce = onça
+ounces = onças
+pound = libra
+pounds = libras

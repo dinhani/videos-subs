@@ -1,0 +1,16 @@
+admiral = almirante
+colonel = coronel
+commander = comandante
+corporal = cabo
+detective = detetive
+first lieutenant = primeiro-tenente
+lance corporal = cabo
+lieutenant = tenente
+lieutenant colonel = tenente-coronel
+rear admiral = contra-almirante
+sarge = sargento
+second lieutenant = segundo-tenente
+sergeant = sargento
+sergeant major = sargento-mor
+sheriff = xerife
+vice admiral = vice-almirante
