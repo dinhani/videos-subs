@@ -8,6 +8,7 @@ import json
 import re
 from collections.abc import Sequence
 from dataclasses import dataclass, field
+from enum import Enum
 from pathlib import Path
 from typing import Any
 from xml.etree import ElementTree
@@ -16,6 +17,7 @@ import srt
 from openai import OpenAI
 from rich.highlighter import JSONHighlighter
 
+from shared.alignment import AlignedSubtitle
 from shared.console import Action, Batch, Color, console, log_heading, track
 from shared.files import SubtitleFile, SubtitleFormat, find_subtitles, parse_srt, write_text_replacing
 from shared.languages import WORD, parse_words
@@ -41,7 +43,7 @@ A JSON object with:
 - "context_before": the entries just before, each with its English lines ("en") and its accepted translation ("pt"). Keep the terms and forms of address these translations use.
 - "entries": maps an id to one English entry, given as an array of its lines. These are the entries to translate.
 - "context_after": the English lines of the entries just after.
-Use both contexts to understand the scene, but never translate them or put them in the reply.
+Use both contexts to understand the scene, but never translate them or put them in the reply.{second_language}
 
 # Reply
 
@@ -101,6 +103,11 @@ Reply:
 {"1": {"en": ["[FAUCET DRIPS]"], "pt": ["[TORNEIRA PINGA]"]}, "2": {"en": ["- We need a boat.", "- Okay."], "pt": ["- A gente precisa de um barco.", "- Tá."]}, "3": {"en": ["I think he took", "the old highway north,"], "pt": ["Acho que ele pegou", "a rodovia velha pro norte,"]}, "4": {"en": ["but he's gonna run out of gas."], "pt": ["mas vai ficar sem gasolina."]}, "5": {"en": ["[TYPEWRITER CLACKING]"], "pt": ["[MÁQUINA DE ESCREVER BATENDO]"]}, "6": {"en": ["<i>Fuck, we're out of gas.</i>"], "pt": ["<i>Porra, a gasolina acabou.</i>"]}, "7": {"en": ["Good afternoon, sir.", "May I see your boarding pass?"], "pt": ["Boa tarde, senhor.", "Posso ver seu cartão de embarque?"]}, "8": {"en": ["♪ Fly me to the moon ♪"], "pt": ["♪ Fly me to the moon ♪"]}}
 """
 
+SECOND_LANGUAGE_MATCHED_MIN = 0.9
+SECOND_LANGUAGE_PROMPT = """
+
+"second_language" maps ids in "entries" to the lines of the {language} subtitle of the same movie that are on screen at the same time. People translated it from the same dialogue, so it shows what the English means in the scene: the sense of an idiom or of a word with several meanings, whether "you" is one person or several, formal or casual address, gender and tense. Use it only to understand the English, and translate the English: when the {language} leaves something out or adds something, follow the English. Never copy {language} words, spellings or sentence structure; write Brazilian Portuguese.{forms}"""
+
 NFO_CHARACTERS_MAX = 20
 NFO_SHOW = "tvshow.nfo"
 NFO_CREDIT_NOTES = re.compile(r"\s*\((?:voice|archive footage|archive sound)(?:,\s*(?:voice|archive footage|archive sound))*\)", re.IGNORECASE)
@@ -157,6 +164,52 @@ class MovieInfo:
         return "\n".join(lines)
 
 # ------------------------------------------------------------------------------
+# Second language
+# ------------------------------------------------------------------------------
+class SecondLanguage(Enum):
+    SPANISH = ("spa", "Spanish", "")
+    EUROPEAN_PORTUGUESE = ("por", "European Portuguese", 'European Portuguese forms are not Brazilian: never write "tu" and its verb forms, "consigo" for "com você", "estar a" with the infinitive for the gerund ("está a fazer" is "está fazendo"), or spellings such as "facto", "equipa" and "tentámos".')
+    FRENCH = ("fra", "French", "")
+    ITALIAN = ("ita", "Italian", "")
+
+    def __init__(self, code: str, label: str, forms: str) -> None:
+        self.code = code
+        self.label = label
+        self.forms = forms
+
+    def to_prompt(self) -> str:
+        return SECOND_LANGUAGE_PROMPT.replace("{language}", self.label).replace("{forms}", f" {self.forms}" if self.forms else "")
+
+
+@dataclass(frozen=True)
+class SecondSubtitle:
+    language: SecondLanguage
+    file: SubtitleFile
+    offset_seconds: float
+    lines: dict[int, tuple[str, ...]]
+    entries_english: int
+
+    @classmethod
+    def find(cls, language: SecondLanguage, english: SubtitleFile, english_entries: list[srt.Subtitle]) -> "SecondSubtitle | None":
+        # pick most entries
+        candidates = [(file, parse_srt(file.path)) for file in english.find_text_subtitles(language.code)]
+        if not candidates:
+            return None
+        file, entries = max(candidates, key=lambda candidate: len(candidate[1]))
+
+        # match lines on screen
+        aligned = AlignedSubtitle.from_entries(entries, english=english_entries)
+        english_texts = [i for i, entry in enumerate(english_entries) if parse_lines(entry)]
+        lines = {i: matched for i in english_texts if (matched := tuple(line for other in aligned.find_overlapping(english_entries[i]) for line in parse_lines(other)))}
+        return cls(language=language, file=file, offset_seconds=aligned.offset.total_seconds(), lines=lines, entries_english=len(english_texts))
+
+    def is_matched(self) -> bool:
+        return len(self.lines) >= SECOND_LANGUAGE_MATCHED_MIN * self.entries_english
+
+    def to_record(self) -> dict[str, Any]:
+        return {"second_language": self.file.name, "offset_seconds": self.offset_seconds, "matched": len(self.lines), "entries": self.entries_english}
+
+# ------------------------------------------------------------------------------
 # Translation
 # ------------------------------------------------------------------------------
 @dataclass
@@ -167,18 +220,20 @@ class SubtitleTranslation:
     trace: Trace
     temperatures: tuple[float, ...]
     prompt: str
+    second_lines: dict[int, tuple[str, ...]]
     translated: dict[int, Sequence[str]] = field(default_factory=dict)
 
     @classmethod
-    def from_entries(cls, entries: list[srt.Subtitle], trace: Trace, temperatures: tuple[float, ...], prompt: str) -> "SubtitleTranslation":
+    def from_entries(cls, entries: list[srt.Subtitle], trace: Trace, temperatures: tuple[float, ...], prompt: str, second_lines: dict[int, tuple[str, ...]]) -> "SubtitleTranslation":
         lines = [parse_lines(entry) for entry in entries]
-        return cls(entries=entries, lines=lines, pending=[i for i, entry_lines in enumerate(lines) if entry_lines], trace=trace, temperatures=temperatures, prompt=prompt)
+        return cls(entries=entries, lines=lines, pending=[i for i, entry_lines in enumerate(lines) if entry_lines], trace=trace, temperatures=temperatures, prompt=prompt, second_lines=second_lines)
 
     def to_request(self, start: int, end: int) -> dict[str, Any]:
         chunk = self.pending[start:end]
         return {
             "context_before": [{"en": self.lines[i], "pt": self.translated[i]} for i in self.pending[max(0, start - CHUNK_CONTEXT_BEFORE):start] if i in self.translated],
             "entries": {str(n): self.lines[i] for n, i in enumerate(chunk, start=1)},
+            **({"second_language": {str(n): self.second_lines[i] for n, i in enumerate(chunk, start=1) if i in self.second_lines}} if self.second_lines else {}),
             "context_after": [self.lines[i] for i in self.pending[end:end + CHUNK_CONTEXT_AFTER]],
         }
 
@@ -264,11 +319,15 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Translates English subtitles to Brazilian Portuguese; folders only English ones.")
     parser.add_argument("--temperatures", nargs="+", type=float, default=LLM_TEMPERATURES, help=f"temperature of each attempt of a chunk, in order (default: {' '.join(map(str, LLM_TEMPERATURES))})")
     parser.add_argument("--prompt", type=Path, help="text file with the system prompt to use instead of LLM_PROMPT; {movie} in it is replaced by the title of the movie or episode, as in LLM_PROMPT")
+    parser.add_argument("--second-language", choices=[language.code for language in SecondLanguage], help="language code of a text subtitle of the same video, in its _subs folder, whose lines on screen with each English entry are sent with it; without one, or when it matches too few entries, the English is sent alone")
     parser.add_argument("--print-prompt", action="store_true", help="print the system prompt and the first chunk of each subtitle, even one already translated, without translating it")
     subs_src = find_subtitles(parser, formats=(SubtitleFormat.TEXT,), language=LANGUAGE_SOURCE)
     arguments = parser.parse_args()
     temperatures = tuple(arguments.temperatures)
     prompt = arguments.prompt.read_text(encoding="utf-8") if arguments.prompt else LLM_PROMPT
+    second_language = next((language for language in SecondLanguage if language.code == arguments.second_language), None)
+    if second_language and "{second_language}" not in prompt:
+        parser.error("--second-language needs {second_language} in the prompt")
     llama = None if arguments.print_prompt else connect_llama()
 
     with Batch() as batch:
@@ -290,14 +349,27 @@ if __name__ == "__main__":
                 if movie_info is None:
                     Action.NFO.log(f"{sub_src.nfo.name} not found, translating with the title only")
                 movie_info_text = movie_info.to_prompt("\n".join(entry.content for entry in sub_entries)) if movie_info else ""
-                movie_prompt = prompt.replace("{movie_info}", f"\n\n{movie_info_text}" if movie_info_text else "").replace("{movie}", sub_src.movie_title)
-                translation = SubtitleTranslation.from_entries(sub_entries, trace=Trace(file=sub_dst.to_trace()), temperatures=temperatures, prompt=movie_prompt)
+
+                # match second language
+                second_subtitle = SecondSubtitle.find(second_language, english=sub_src, english_entries=sub_entries) if second_language else None
+                if second_language and second_subtitle is None:
+                    Action.SKIP.log(f"no {second_language.label} text subtitle, translating from the English alone")
+                if second_subtitle:
+                    Action.ALIGN.log(f"{second_subtitle.file.name}: {len(second_subtitle.lines)} of {second_subtitle.entries_english} entries matched, offset {second_subtitle.offset_seconds:.2f}s")
+                    if not second_subtitle.is_matched():
+                        Action.DISCARD.log(f"{second_subtitle.file.name} matches under {SECOND_LANGUAGE_MATCHED_MIN:.0%} of the entries, translating from the English alone")
+                        second_subtitle = None
+                second_prompt = second_subtitle.language.to_prompt() if second_subtitle else ""
+
+                # build translation
+                movie_prompt = prompt.replace("{movie_info}", f"\n\n{movie_info_text}" if movie_info_text else "").replace("{second_language}", second_prompt).replace("{movie}", sub_src.movie_title)
+                translation = SubtitleTranslation.from_entries(sub_entries, trace=Trace(file=sub_dst.to_trace()), temperatures=temperatures, prompt=movie_prompt, second_lines=second_subtitle.lines if second_subtitle else {})
                 chunk_starts = range(0, len(translation.pending), CHUNK_SIZE)
 
                 # print the system prompt, with the movie title and info marked, and the first chunk, without translating
                 if llama is None:
                     system = JSONHighlighter()(movie_prompt)
-                    system.highlight_words([movie_info_text] if movie_info_text else [], style=Color.GREEN)
+                    system.highlight_words([text for text in (movie_info_text, second_prompt.strip()) if text], style=Color.GREEN)
                     system.highlight_words([sub_src.movie_title], style=Color.CYAN)
                     log_heading("system", Color.YELLOW)
                     console.print(system, soft_wrap=True)
@@ -318,6 +390,8 @@ if __name__ == "__main__":
                 translation.trace.file.parent.mkdir(exist_ok=True)
                 if movie_info_text:
                     translation.trace.record({"movie_info": movie_info_text})
+                if second_subtitle:
+                    translation.trace.record(second_subtitle.to_record())
                 for chunk_start in track(chunk_starts):
                     translation.translate(llama, chunk_start, min(chunk_start + CHUNK_SIZE, len(translation.pending)))
 

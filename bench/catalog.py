@@ -10,10 +10,18 @@ SOURCES = (
     Source(
         library_english=Path("Z:/midias/filmes/Hannibal Lecter - 1 - Silence of the Lambs, The (1991)/_subs/The Silence of the Lambs (1991, Web-DL, 2160p, SDR, h265, 5.1, AAC).embed.2.eng.srt"),
         library_official=Path("Z:/midias/filmes/Hannibal Lecter - 1 - Silence of the Lambs, The (1991)/_subs/The Silence of the Lambs (1991, Web-DL, 2160p, SDR, h265, 5.1, AAC).embed.21.pob.srt"),
+        library_second_languages=(
+            Path("Z:/midias/filmes/Hannibal Lecter - 1 - Silence of the Lambs, The (1991)/_subs/The Silence of the Lambs (1991, Web-DL, 2160p, SDR, h265, 5.1, AAC).embed.8.spa.srt"),
+            Path("Z:/midias/filmes/Hannibal Lecter - 1 - Silence of the Lambs, The (1991)/_subs/The Silence of the Lambs (1991, Web-DL, 2160p, SDR, h265, 5.1, AAC).embed.22.por.srt"),
+        ),
     ),
     Source(
         library_english=Path("Z:/midias/filmes/F1 - 1 - F1 (2025)/_subs/F1 (2025, Web-DL, 2160p, HDR, h265, 5.1, EAC3 Atmos).embed.2.eng.srt"),
         library_official=Path("Z:/midias/filmes/F1 - 1 - F1 (2025)/_subs/F1 (2025, Web-DL, 2160p, HDR, h265, 5.1, EAC3 Atmos).embed.32.pob.srt"),
+        library_second_languages=(
+            Path("Z:/midias/filmes/F1 - 1 - F1 (2025)/_subs/F1 (2025, Web-DL, 2160p, HDR, h265, 5.1, EAC3 Atmos).embed.12.spa.srt"),
+            Path("Z:/midias/filmes/F1 - 1 - F1 (2025)/_subs/F1 (2025, Web-DL, 2160p, HDR, h265, 5.1, EAC3 Atmos).embed.31.por.srt"),
+        ),
     ),
 )
 
@@ -67,6 +75,10 @@ RUNS_ACTIVE = (
     Run.from_model(GEMMA_4_26B),
     Run.from_fixes(Run.from_model(GEMMA_4_26B)),
     *(Run.from_prompt(GEMMA_4_26B, prompt) for prompt in sorted(PROMPTS_DIR.glob("*.txt"))),
+    Run.from_second_language(GEMMA_4_26B, "spa"),
+    Run.from_fixes(Run.from_second_language(GEMMA_4_26B, "spa")),
+    Run.from_second_language(GEMMA_4_26B, "por"),
+    Run.from_fixes(Run.from_second_language(GEMMA_4_26B, "por")),
 )
 RUNS_DISABLED = (
     *(Run.from_model(model) for model in NMT_MODELS),

@@ -30,6 +30,7 @@ Use these terms, and only these, in code, logs, docs and conversation. Do not ro
 - **trace**: the JSON record in `_traces` of every LLM request and reply for one OCR or translation.
 - **issue**: one problem a check step flags in an entry, with a kind (`wrong order`, `untranslated`, ...) and a weight.
 - **report**: the text file in `_checks` with the issues of one OCR output or translation, and its score: weighted issues per 100 entries.
+- **second language**: a text subtitle of the same video in a language other than English, such as Spanish, that translate sends with the English so the model sees how people translated each entry.
 
 ## Pipeline
 

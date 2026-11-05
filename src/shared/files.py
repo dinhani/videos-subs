@@ -228,6 +228,9 @@ class SubtitleFile:
     def find_image_subtitle(self) -> "SubtitleFile | None":
         return next((image for image in (self.to_format(format) for format in SubtitleFormat if format.is_image()) if image.name in list_folder(self.folder)), None)
 
+    def find_text_subtitles(self, language: str) -> list["SubtitleFile"]:
+        return [file for name in sorted(list_folder(self.folder)) if (file := SubtitleFile.find(self.folder / name)) and file.is_text() and file.video_name == self.video_name and file.language == language]
+
     def to_translation(self) -> "SubtitleFile":
         return SubtitleFile(folder=self.movie_dir, track=self.track, language=LANGUAGE_TRANSLATION, kind=self.kind, format=SubtitleFormat.TRANSLATION)
 

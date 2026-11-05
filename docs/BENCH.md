@@ -4,7 +4,7 @@
 
 ## Folders
 
-- `1-english/`: the English copy of each source, with the `.nfo` of the source next to it.
+- `1-english/`: the English copy of each source, with the `.nfo` and the second-language subtitles of the source next to it.
 - `2-references/`: the reference translations. Only `2-references/*/<name>.claude.srt` is committed.
 - `3-runs/`: one folder per run with its translations. The bench copies the `.nfo` of each source into the movie folder of each run, so translate finds it as in the library.
 - `4-compare/`: the output of `just bench compare`.
@@ -13,6 +13,7 @@
 
 - A run of a model translates with `LLM_PROMPT` and scores the raw model output, without fix-translations.
 - Each `prompts/<name>.txt` adds a run `gemma-4-26b+<name>`, which translates with that file as the system prompt instead of `LLM_PROMPT`.
+- A run `gemma-4-26b+<language code>`, such as `gemma-4-26b+spa`, translates with `--second-language`. Each run copies the second-language subtitles of every source into its `_subs`, as they are in the library; a source without one in that language is translated from the English alone.
 - A run `<run>-fix` copies the translations of its base run, applies fix-translations and scores the result. It keeps the translation time of the base run.
 - `catalog.py` splits the runs into `RUNS_ACTIVE` and `RUNS_DISABLED`. Only the `gemma-4-26b` runs are active. `just bench run` translates only active runs and refuses a disabled one; `just bench compare` and `just bench models` default to the active runs. A disabled run keeps its translations, reports and scores: `just bench score`, `just bench report` and `just bench runs` still cover every run.
 

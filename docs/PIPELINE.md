@@ -54,6 +54,7 @@ Translates every `.eng.srt` with Gemma 4 26B A4B, thinking disabled, into `<name
 - The reply is constrained by a JSON schema that fixes the ids and the number of lines per entry. The `en` field in the reply is not used by the code; it makes the model restate each line before translating it.
 - A failed chunk is retried at other temperatures, then split in halves. After that, the last reply is accepted and recorded in the trace as accepted with a problem; warn adds a warning entry for it.
 - The system prompt gets the title of the movie or episode, and what the tinyMediaManager `.nfo` says that can change a translation: the plot, and the credited characters named in the subtitle with their actors. Without an `.nfo`, the prompt has the title only.
+- With `--second-language <code>` (`spa`, `por`, `fra` or `ita`), each request also gets, for each entry, the lines of the second language on screen with it. translate takes the text subtitle of the same video in that language with the most entries, from `_subs`, and shifts it onto the English by the median offset of the English entries around each entry. It sends the English alone when there is no such subtitle or it matches under 90% of the English entries. Only the bench uses this option so far.
 - Translated lines keep the source line breaks and are not wrapped; the player wraps lines that do not fit the screen.
 - The translation is written without renumbering, so its entries keep the numbers of the source.
 

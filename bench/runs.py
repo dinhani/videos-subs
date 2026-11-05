@@ -2,7 +2,6 @@ import contextlib
 import itertools
 import json
 import shutil
-import statistics
 import subprocess
 import sys
 import time
@@ -17,6 +16,7 @@ import questionary
 import srt
 
 from models import LlamaModel, NmtModel
+from shared.alignment import ALIGNMENT_OVERLAP_MIN, AlignedSubtitle
 from shared.console import Action
 from shared.files import SUBS_FOLDER, SubtitleFile, SubtitleFormat, move_replacing, parse_srt, write_text_replacing
 from shared.subtitles import parse_plain_text, replace_text
@@ -34,9 +34,6 @@ LLAMA_LOG_FILE = "llama.log"
 RETRANSLATION_FOLDER = "_retranslation"
 BACKUPS_FOLDER = "_backups"
 
-ALIGNMENT_OVERLAP_MIN = timedelta(milliseconds=200)
-ALIGNMENT_OFFSET_MAX = timedelta(seconds=2)
-
 
 @dataclass(frozen=True)
 class PipelineTranslator:
@@ -44,6 +41,7 @@ class PipelineTranslator:
     model: LlamaModel
     temperatures: tuple[float, ...] = ()
     prompt: Path | None = None
+    second_language: str | None = None
 
     def serving(self, log: Path) -> contextlib.AbstractContextManager[None]:
         return self.model.serving(log)
@@ -52,6 +50,7 @@ class PipelineTranslator:
         options = [
             *(["--temperatures", *map(str, self.temperatures)] if self.temperatures else []),
             *(["--prompt", str(self.prompt)] if self.prompt else []),
+            *(["--second-language", self.second_language] if self.second_language else []),
         ]
         subprocess.run([sys.executable, str(SRC_DIR / "6-translate-subs.py"), str(english), *options], check=True)
 
@@ -140,6 +139,7 @@ class Reference:
 class Source:
     library_english: Path
     library_official: Path | None = None
+    library_second_languages: tuple[Path, ...] = ()
 
     @property
     def movie(self) -> str:
@@ -152,6 +152,10 @@ class Source:
     @property
     def name(self) -> str:
         return SubtitleFile.from_path(self.english).track
+
+    @property
+    def second_languages(self) -> tuple[Path, ...]:
+        return tuple(ENGLISH_DIR / self.movie / file.name for file in self.library_second_languages)
 
     @property
     def library_nfo(self) -> Path:
@@ -178,7 +182,7 @@ class Source:
         return REFERENCES_DIR / self.movie / SCORES_FOLDER / f"{self.name}.claude.official.json"
 
     def copy_from_library(self) -> None:
-        for library_file, copy in ((self.library_english, self.english), (self.library_nfo, self.nfo), (self.library_official, self.reference_official.file)):
+        for library_file, copy in ((self.library_english, self.english), (self.library_nfo, self.nfo), (self.library_official, self.reference_official.file), *zip(self.library_second_languages, self.second_languages)):
             if library_file is None or copy.exists():
                 continue
             copy.parent.mkdir(parents=True, exist_ok=True)
@@ -220,11 +224,9 @@ class Scoring:
         english_entries = parse_srt(self.english)
         reference_entries = parse_srt(self.reference.file)
 
-        # shift the reference by its median offset from the English, then entries that overlap on screen form one segment
-        reference_starts = [entry.start for entry in reference_entries]
-        differences = [difference for entry in english_entries if abs(difference := min(reference_starts, key=lambda start: abs(start - entry.start)) - entry.start) < ALIGNMENT_OFFSET_MAX]
-        offset = statistics.median(differences) if differences else timedelta(0)
-        items = sorted([("en", entry.start, entry.end, entry) for entry in english_entries] + [("ref", entry.start - offset, entry.end - offset, entry) for entry in reference_entries], key=lambda item: item[1])
+        # shift the reference by its offset from the English, then entries that overlap on screen form one segment
+        aligned = AlignedSubtitle.from_entries(reference_entries, english=english_entries)
+        items = sorted([("en", entry.start, entry.end, entry) for entry in english_entries] + [("ref", entry.start, entry.end, entry) for entry in aligned.entries], key=lambda item: item[1])
         blocks: list[list[tuple[str, timedelta, timedelta, srt.Subtitle]]] = []
         block_end = None
         for item in items:
@@ -245,7 +247,7 @@ class Scoring:
                 "mt": " ".join(to_plain_line(hypothesis[entry.index]) for entry in english if entry.index in hypothesis),
                 "ref": " ".join(to_plain_line(entry) for entry in reference),
             })
-        Action.ALIGN.log(f"{self.hypothesis.name} with {self.reference.name}: {len(segments)} segments, offset {offset.total_seconds():.2f}s")
+        Action.ALIGN.log(f"{self.hypothesis.name} with {self.reference.name}: {len(segments)} segments, offset {aligned.offset.total_seconds():.2f}s")
         return {"output": str(self.output), "segments": segments}
 
 
@@ -291,8 +293,9 @@ class RunTranslation:
 
     def copy_english(self) -> None:
         self.english.parent.mkdir(parents=True, exist_ok=True)
-        if not self.english.exists():
-            shutil.copy2(self.source.english, self.english)
+        for source_file in (self.source.english, *self.source.second_languages):
+            if not (copy := self.english.parent / source_file.name).exists():
+                shutil.copy2(source_file, copy)
         nfo = self.translation.parent / self.source.nfo.name
         if self.source.nfo.exists() and not nfo.exists():
             shutil.copy2(self.source.nfo, nfo)
@@ -348,6 +351,10 @@ class Run:
     @classmethod
     def from_prompt(cls, model: LlamaModel, prompt: Path) -> "Run":
         return cls(name=f"{model.name}+{prompt.stem}", translator=PipelineTranslator(model=model, prompt=prompt))
+
+    @classmethod
+    def from_second_language(cls, model: LlamaModel, language: str) -> "Run":
+        return cls(name=f"{model.name}+{language}", translator=PipelineTranslator(model=model, second_language=language))
 
     @classmethod
     def from_fixes(cls, base: "Run") -> "Run":
