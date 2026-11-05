@@ -6,7 +6,7 @@ Personal scripts that extract the tracks of the videos in the media library, ide
 
 The only subtitle this project makes for viewers is the Brazilian Portuguese translation, `<name>.pob.translated.srt`. Its source is an English text subtitle, either extracted from a text track or made by OCR from an image subtitle. Viewers who want English watch the original track inside the video, which the media server shows as it is; nobody watches an extracted or OCR text subtitle.
 
-So an OCR output is only input for translation. Judge an OCR issue, a check-ocr rule or a fix by whether it changes the translation: wrong or missing text, lines in the wrong order, and markup that can reach the translated `.srt` matter; punctuation style that is faithful to the image, such as `....` for an ellipsis, does not.
+So an OCR output is only input for translation: an English one is translated, and one in a second language is sent with the English for the model to read. Judge an OCR issue, a check-ocr rule or a fix by whether it changes the translation: wrong or missing text, lines in the wrong order, and markup that can reach the translated `.srt` matter; punctuation style that is faithful to the image, such as `....` for an ellipsis, does not.
 
 Subtitles are written by people, and `♪` follows no fixed format: it may mark every line of a song, only some, or none. A rule judges a line by the `♪` on that line and does not infer it from other lines or entries.
 
@@ -39,7 +39,7 @@ Run the steps in order; each step skips files it already processed, so every ste
 1. `1-extract-subs.py`: extracts the tracks of each video into `_subs`, as text subtitles and image subtitles.
 2. `2-identify-text-subs.py`: puts the language code and kind in the name of each text subtitle.
 3. `3-identify-ocr-subs.py`: puts the language code and kind in the name of each image subtitle, from a Tesseract reading.
-4. `4-ocr-subs.py`: transcribes the English image subtitles into text subtitles with Gemma vision.
+4. `4-ocr-subs.py`: transcribes the English and second-language image subtitles into text subtitles with Gemma vision.
 5. `5-check-ocr-subs.py`: checks each OCR output against its image subtitle and writes a report.
 6. `6-translate-subs.py`: translates each `.eng.srt` into `<name>.pob.translated.srt` in the movie folder.
 7. `7-fix-translations.py`: applies the mechanical fixes to each translation.

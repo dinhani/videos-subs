@@ -38,11 +38,11 @@ Reads the first entries of each image subtitle with Tesseract, detects the langu
 
 ## 4. ocr
 
-Transcribes the English image subtitles with Gemma 4 12B vision into `<name>.eng.srt`, next to the image subtitle. Only English is transcribed, since only English is translated. Entries with identical images are transcribed once. A failed chunk is retried, then split down to single entries; an entry that still fails is written as `[OCR failed]`.
+Transcribes the English image subtitles, and the image subtitles in every language translate can use as a second language (`SecondLanguage` in `shared/languages.py`), with Gemma 4 12B vision into `<name>.<language code>.srt`, next to the image subtitle. English is the source of the translation; the second languages are transcribed so translate can send them with it. Other languages are not transcribed, since nothing reads them. Entries with identical images are transcribed once. A failed chunk is retried, then split down to single entries; an entry that still fails is written as `[OCR failed]`.
 
 ## 5. check-ocr
 
-Checks every text subtitle made by ocr against its image subtitle and writes a report. Its rules are in [RULES.md](RULES.md), section 1.
+Checks every text subtitle made by ocr, in English and in the second languages, against its image subtitle and writes a report. Its rules are in [RULES.md](RULES.md), section 1.
 
 check-ocr compares the width of each line on the image with the width of its text. An entry is in the wrong order when its lines fit the image only in reverse order; this happens in SDH tracks, where two speakers' lines sit at opposite sides of the screen and Gemma reads the left one first. Width differences alone are not flagged: a track may use a second, narrower font, such as for translated foreign dialogue.
 
@@ -54,7 +54,7 @@ Translates every `.eng.srt` with Gemma 4 26B A4B, thinking disabled, into `<name
 - The reply is constrained by a JSON schema that fixes the ids and the number of lines per entry. The `en` field in the reply is not used by the code; it makes the model restate each line before translating it.
 - A failed chunk is retried at other temperatures, then split in halves. After that, the last reply is accepted and recorded in the trace as accepted with a problem; warn adds a warning entry for it.
 - The system prompt gets the title of the movie or episode, and what the tinyMediaManager `.nfo` says that can change a translation: the plot, and the credited characters named in the subtitle with their actors. Without an `.nfo`, the prompt has the title only.
-- With `--second-language <code>` (`spa`, `por`, `fra` or `ita`), each request also gets, for each entry, the lines of the second language on screen with it. translate takes the text subtitle of the same video in that language with the most entries, from `_subs`, and shifts it onto the English by the median offset of the English entries around each entry. It sends the English alone when there is no such subtitle or it matches under 90% of the English entries. Only the bench uses this option so far.
+- With `--second-language <code>` (`spa`, `por`, `fra` or `ita`), each request also gets, for each entry, the lines of the second language on screen with it. translate takes the text subtitle of the same video in that language with the most entries, from `_subs`, extracted or made by ocr, and shifts it onto the English by the median offset of the English entries around each entry. It sends the English alone when there is no such subtitle or it matches under 90% of the English entries. Only the bench uses this option so far.
 - Translated lines keep the source line breaks and are not wrapped; the player wraps lines that do not fit the screen.
 - The translation is written without renumbering, so its entries keep the numbers of the source.
 

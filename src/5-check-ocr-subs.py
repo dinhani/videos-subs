@@ -20,8 +20,9 @@ from PIL import ImageFont, ImageOps
 from shared.console import Action, Batch, cancel_on_interrupt
 from shared.files import SubtitleFile, SubtitleFormat, find_subtitles, parse_srt
 from shared.image_subtitles import SubtitleEntry, parse_image_subtitle
+from shared.languages import LANGUAGES_OCR
 from shared.reports import CHECK_WORKERS, Issue, IssueKind, Report, ReportScore, log_ranking, quote_entries
-from shared.subtitles import LANGUAGE_SOURCE, OCR_FAILED_TEXT, parse_plain_text
+from shared.subtitles import OCR_FAILED_TEXT, parse_plain_text
 
 # ------------------------------------------------------------------------------
 # Constants
@@ -290,7 +291,7 @@ def check_subtitle(subtitle: SubtitleFile) -> ReportScore:
 if __name__ == "__main__":
     subs = [
         sub
-        for sub in find_subtitles(argparse.ArgumentParser(description="Checks text subtitles made by OCR against their image subtitles; only ones next to an image subtitle, folders only English ones."), formats=(SubtitleFormat.TEXT,), languages=(LANGUAGE_SOURCE,))
+        for sub in find_subtitles(argparse.ArgumentParser(description="Checks text subtitles made by OCR against their image subtitles; only ones next to an image subtitle, folders only English and second-language ones."), formats=(SubtitleFormat.TEXT,), languages=LANGUAGES_OCR)
         if sub.find_image_subtitle() is not None
     ]
     scores_current = {sub: score for sub in subs if (score := ReportScore.find(sub.to_report())) is not None}

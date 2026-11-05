@@ -57,6 +57,9 @@ class SecondLanguage(Enum):
         return prompt.replace("{language}", self.label).replace("{forms}", f" {self.forms}" if self.forms else "")
 
 
+LANGUAGES_OCR = (LANGUAGE_SOURCE, *(language.code for language in SecondLanguage))
+
+
 class TextLanguage(Enum):
     ENGLISH = (LANGUAGE_SOURCE, "en")
     PORTUGUESE_BRAZIL = (LANGUAGE_TRANSLATION, "pt")

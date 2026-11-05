@@ -179,14 +179,15 @@ reset-identifier-en *paths:
 
 [group('data')]
 [doc('Remove Portuguese language codes from subtitles')]
-[confirm('Remove the por and pob language codes from every subtitle in _subs under the given paths, or under Z:/midias/filmes and Z:/midias/series without paths? (y/N)')]
+[confirm('Remove the por, por.sdh, pob and pob.sdh codes from every subtitle in _subs and every OCR trace in _traces under the given paths, or under Z:/midias/filmes and Z:/midias/series without paths? (y/N)')]
 [script]
 [extension('.ps1')]
 [positional-arguments]
 reset-identifier-pt *paths:
     $folders = if ($args) { $args } else { 'Z:/midias/filmes', 'Z:/midias/series' }
-    Get-ChildItem -LiteralPath $folders -File -Recurse | Where-Object { $_.Directory.Name -eq '_subs' -and $_.Name -match '\.(por|pob)\.(srt|sup|mks)$' } | ForEach-Object {
-        $name = $_.Name -replace '\.(por|pob)\.(srt|sup|mks)$', '.$2'
+    $patterns = @{ '_subs' = '\.(por|pob)(\.sdh)?(\.(srt|sup|mks))$'; '_traces' = '\.(por|pob)(\.sdh)?(\.ocr\.json)$' }
+    Get-ChildItem -LiteralPath $folders -File -Recurse | Where-Object { $patterns.ContainsKey($_.Directory.Name) -and $_.Name -match $patterns[$_.Directory.Name] } | ForEach-Object {
+        $name = $_.Name -replace $patterns[$_.Directory.Name], '$3'
         Rename-Item -LiteralPath $_.FullName -NewName $name
         Write-Output $name
     }

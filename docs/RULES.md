@@ -16,7 +16,7 @@ When a flag is wrong, mark its entry so the check does not report that flag agai
 
 # 1. OCR
 
-Every correction writes what the picture most likely says.
+Every correction writes what the picture most likely says. An OCR output may be in English or in a second language; the examples are in English, and the correction of an entry in a second language writes the text in that language.
 
 ## 1.1 ocr failed
 

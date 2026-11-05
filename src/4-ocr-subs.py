@@ -16,8 +16,9 @@ from openai.types.chat import ChatCompletionContentPartParam
 from shared.console import Action, Batch, track
 from shared.files import SubtitleFormat, find_subtitles, write_text_replacing
 from shared.image_subtitles import SubtitleEntry, parse_image_subtitle
+from shared.languages import LANGUAGES_OCR
 from shared.llm import LLM_PROPS_URL, JsonReply, Trace, connect_llama
-from shared.subtitles import LANGUAGE_SOURCE, OCR_FAILED_TEXT
+from shared.subtitles import OCR_FAILED_TEXT
 
 # ------------------------------------------------------------------------------
 # Constants
@@ -133,7 +134,7 @@ class SubtitleTranscription:
 # Execution
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
-    subs = find_subtitles(argparse.ArgumentParser(description="Transcribes image subtitles to text subtitles with a vision LLM; folders only English ones."), formats=(SubtitleFormat.PGS, SubtitleFormat.VOBSUB), languages=(LANGUAGE_SOURCE,))
+    subs = find_subtitles(argparse.ArgumentParser(description="Transcribes image subtitles to text subtitles with a vision LLM; folders only English and second-language ones."), formats=(SubtitleFormat.PGS, SubtitleFormat.VOBSUB), languages=LANGUAGES_OCR)
     llama = connect_llama()
     llama_slots = llama.get(LLM_PROPS_URL, cast_to=LlamaProps).total_slots
 
