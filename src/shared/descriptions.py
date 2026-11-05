@@ -57,8 +57,14 @@ class DescriptionTable:
     subjects: dict[str, str]
 
     @classmethod
-    def from_lists(cls, sounds: DataList, subjects: DataList) -> "DescriptionTable":
-        return cls(sounds={key: tuple(form.strip() for form in value.split("|")) for key, value in sounds.parse()}, subjects=dict(subjects.parse()))
+    def from_lists(cls, sounds: tuple[DataList, ...], subjects: DataList) -> "DescriptionTable":
+        phrases: dict[str, tuple[str, ...]] = {}
+        for sound_list in sounds:
+            for key, value in sound_list.parse():
+                if key in phrases:
+                    raise ValueError(f"{sound_list.file.name}: phrase listed in another sound list: {key!r}")
+                phrases[key] = tuple(form.strip() for form in value.split("|"))
+        return cls(sounds=phrases, subjects=dict(subjects.parse()))
 
     def find_translation(self, description: str) -> DescriptionTranslation | None:
         words = description.split()

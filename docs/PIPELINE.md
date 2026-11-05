@@ -69,10 +69,12 @@ Its fixes, in the order they run, are in `FIXES`:
 - leftovers: deletes a JSON ending of the model reply, such as `"]},`, at the end of a line whose English line does not end that way.
 - brackets: completes or swaps the brackets of a description to match the English line, and removes brackets the English line does not have.
 - quotes: removes a quote the English line does not have, when it is the only extra one.
-- descriptions: writes each description from `data/fix-sounds.txt` and `data/fix-subjects.txt`, keeping a name only when the English shows it is a name and the model kept it. A form the model already wrote that the table lists as right is left as it is.
+- descriptions: writes each description from the sound lists and `data/fix-subjects.txt`, keeping a name only when the English shows it is a name and the model kept it. A form the model already wrote that the table lists as right is left as it is.
 - words: replaces the misspellings the model repeats, from `data/fix-words.txt`, only when the English entry has the English word.
 
 The names of a movie come from its speaker labels, spaCy NER and `data/check-words.txt`. A name NER misses goes to `check-words` only when it stays unchanged in Brazilian Portuguese; a world term with a Portuguese translation, such as `skimwing`, stays out, so check-translate still flags it when it is left in English.
+
+The sound lists are `data/fix-sounds.txt`, `data/fix-music.txt`, `data/fix-languages.txt` (`speaking swedish`, `in elvish`) and `data/fix-channels.txt` (`on tv`, `over radio`); a phrase is in one of them only.
 
 The tables are written by hand: each phrase is translated once, with the verb in the third person for -s and in the gerund for -ing, so a subject in front of it keeps the sentence right. A phrase or a subject whose Portuguese depends on the scene is not in the tables: a sound that is different for a person, an animal or a machine (`cries`, `clicks`), a word with several meanings (`choking`, `blows`), and a subject whose gender the English does not tell (`both`, `everyone`). Nothing that needs reading the sentence is fixed here: duplicated lines, gender and grammar are left to check-translate.
 

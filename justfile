@@ -228,6 +228,33 @@ add-fix-sounds +pairs:
     exit $LASTEXITCODE
 
 [group('data/fix')]
+[doc('Add music descriptions to fix-translations')]
+[script]
+[extension('.ps1')]
+[positional-arguments]
+add-fix-music +pairs:
+    uv run src/fix-tools/add-to-dictionary.py fix-music @args
+    exit $LASTEXITCODE
+
+[group('data/fix')]
+[doc('Add language descriptions to fix-translations')]
+[script]
+[extension('.ps1')]
+[positional-arguments]
+add-fix-languages +pairs:
+    uv run src/fix-tools/add-to-dictionary.py fix-languages @args
+    exit $LASTEXITCODE
+
+[group('data/fix')]
+[doc('Add channel descriptions to fix-translations')]
+[script]
+[extension('.ps1')]
+[positional-arguments]
+add-fix-channels +pairs:
+    uv run src/fix-tools/add-to-dictionary.py fix-channels @args
+    exit $LASTEXITCODE
+
+[group('data/fix')]
 [doc('Add description subjects to fix-translations')]
 [script]
 [extension('.ps1')]

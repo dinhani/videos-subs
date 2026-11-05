@@ -18,7 +18,7 @@ from typing import NamedTuple
 import spacy
 
 from shared.console import Action, Batch, Color, cancel_on_interrupt, log_heading
-from shared.data_lists import DATA_FOLDER, FIX_SOUNDS, FIX_SUBJECTS
+from shared.data_lists import DATA_FOLDER, FIX_SOUND_LISTS, FIX_SUBJECTS
 from shared.descriptions import DESCRIPTION_SIMPLE, DESCRIPTION_SUBJECT_WORDS_MAX, NLP_MODEL, SPEAKER_LABEL, DescriptionTable
 from shared.files import SubtitleFile, SubtitleFormat, find_subtitles, parse_srt, write_text_replacing
 from shared.languages import WORD
@@ -70,7 +70,7 @@ class Section(Enum):
     ADDRESSES = ("addresses.txt", "Nouns that address a person, at the start or the end of a sentence", "", 0)
     LABELS = ("labels.txt", "Speaker labels", "", 0)
     DESCRIPTIONS = ("descriptions.txt", "Descriptions the tables of fix-translations do not cover", "", 0)
-    PHRASES = ("description-phrases.txt", "Phrases after a subject, in description parts the tables do not cover, missing from fix-sounds", "subjects", 0)
+    PHRASES = ("description-phrases.txt", "Phrases after a subject, in description parts the tables do not cover, missing from the sound lists", "subjects", 0)
     SUBJECTS = ("description-subjects.txt", "Subjects before a verb, in description parts the tables do not translate with a subject, missing from fix-subjects", "phrases", 0)
     DESCRIPTION_VERBS = ("description-verbs.txt", "Verbs of description parts, by lemma", "tables", 0)
     TEMPLATES = ("description-templates.txt", f"Patterns of description parts the tables do not cover, with one word as {TEMPLATE_GAP}", "words", TEMPLATE_FILLERS_MIN)
@@ -384,7 +384,7 @@ class Library:
 
 @functools.cache
 def load_description_table() -> DescriptionTable:
-    return DescriptionTable.from_lists(FIX_SOUNDS, FIX_SUBJECTS)
+    return DescriptionTable.from_lists(FIX_SOUND_LISTS, FIX_SUBJECTS)
 
 
 @functools.cache

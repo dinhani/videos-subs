@@ -2,10 +2,10 @@ from pathlib import Path
 
 import pytest
 
-from shared.data_lists import FIX_SOUNDS, FIX_SUBJECTS
+from shared.data_lists import FIX_SOUND_LISTS, FIX_SUBJECTS
 from shared.descriptions import DescriptionTable, MovieNames
 
-TABLE = DescriptionTable.from_lists(FIX_SOUNDS, FIX_SUBJECTS)
+TABLE = DescriptionTable.from_lists(FIX_SOUND_LISTS, FIX_SUBJECTS)
 
 
 @pytest.mark.parametrize(("description", "text", "name"), [

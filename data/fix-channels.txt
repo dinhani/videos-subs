@@ -1,0 +1,8 @@
+on pa = no alto-falante
+on phone = ao telefone
+on radio = no rádio
+on speakers = nos alto-falantes
+on tv = na TV
+over pa = pelo alto-falante
+over phone = pelo telefone
+over radio = pelo rádio | via rádio

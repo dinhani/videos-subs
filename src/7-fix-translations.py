@@ -17,7 +17,7 @@ import srt
 from rich.text import Text
 
 from shared.console import Action, Batch, Color, console
-from shared.data_lists import FIX_SOUNDS, FIX_SUBJECTS, FIX_WORDS, DataList
+from shared.data_lists import FIX_SOUND_LISTS, FIX_SUBJECTS, FIX_WORDS, DataList
 from shared.descriptions import DESCRIPTION_SIMPLE, DescriptionTable, MovieNames
 from shared.files import Backups, SubtitleFile, SubtitleFormat, find_subtitles, parse_srt, write_text_replacing
 from shared.languages import WORD
@@ -184,7 +184,7 @@ class DescriptionsFix:
     name: ClassVar[str] = "descriptions"
     LINE_REST: ClassVar[re.Pattern[str]] = re.compile(r"[\s\-–—]")
     enabled: bool
-    sounds: DataList
+    sounds: tuple[DataList, ...]
     subjects: DataList
 
     def fix(self, entry: "TranslationEntry", movie_names: MovieNames) -> tuple[str, ...]:
@@ -262,7 +262,7 @@ FIXES: tuple[TranslationFix, ...] = (
     LeftoversFix(enabled=True),
     BracketsFix(enabled=True),
     QuotesFix(enabled=True),
-    DescriptionsFix(enabled=True, sounds=FIX_SOUNDS, subjects=FIX_SUBJECTS),
+    DescriptionsFix(enabled=True, sounds=FIX_SOUND_LISTS, subjects=FIX_SUBJECTS),
     WordsFix(enabled=True, words=FIX_WORDS),
 )
 
@@ -348,7 +348,7 @@ class Translation:
 
 
 @functools.cache
-def load_description_table(sounds: DataList, subjects: DataList) -> DescriptionTable:
+def load_description_table(sounds: tuple[DataList, ...], subjects: DataList) -> DescriptionTable:
     return DescriptionTable.from_lists(sounds, subjects)
 
 

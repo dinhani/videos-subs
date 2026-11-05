@@ -34,7 +34,7 @@ TAGS = fix_translations.TagsFix(enabled=True)
 LEFTOVERS = fix_translations.LeftoversFix(enabled=True)
 BRACKETS = fix_translations.BracketsFix(enabled=True)
 QUOTES = fix_translations.QuotesFix(enabled=True)
-DESCRIPTIONS = fix_translations.DescriptionsFix(enabled=True, sounds=fix_translations.FIX_SOUNDS, subjects=fix_translations.FIX_SUBJECTS)
+DESCRIPTIONS = fix_translations.DescriptionsFix(enabled=True, sounds=fix_translations.FIX_SOUND_LISTS, subjects=fix_translations.FIX_SUBJECTS)
 
 
 @pytest.mark.parametrize(("english", "translated", "expected"), [
