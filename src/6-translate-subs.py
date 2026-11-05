@@ -8,7 +8,6 @@ import json
 import re
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from enum import Enum
 from pathlib import Path
 from typing import Any
 from xml.etree import ElementTree
@@ -20,7 +19,7 @@ from rich.highlighter import JSONHighlighter
 from shared.alignment import AlignedSubtitle
 from shared.console import Action, Batch, Color, console, log_heading, track
 from shared.files import SubtitleFile, SubtitleFormat, find_subtitles, parse_srt, write_text_replacing
-from shared.languages import WORD, parse_words
+from shared.languages import WORD, SecondLanguage, parse_words
 from shared.llm import JsonReply, Trace, connect_llama
 from shared.subtitles import LANGUAGE_SOURCE, parse_lines, replace_text
 
@@ -166,21 +165,6 @@ class MovieInfo:
 # ------------------------------------------------------------------------------
 # Second language
 # ------------------------------------------------------------------------------
-class SecondLanguage(Enum):
-    SPANISH = ("spa", "Spanish", "")
-    EUROPEAN_PORTUGUESE = ("por", "European Portuguese", 'European Portuguese forms are not Brazilian: never write "tu" and its verb forms, "consigo" for "com você", "estar a" with the infinitive for the gerund ("está a fazer" is "está fazendo"), or spellings such as "facto", "equipa" and "tentámos".')
-    FRENCH = ("fra", "French", "")
-    ITALIAN = ("ita", "Italian", "")
-
-    def __init__(self, code: str, label: str, forms: str) -> None:
-        self.code = code
-        self.label = label
-        self.forms = forms
-
-    def to_prompt(self) -> str:
-        return SECOND_LANGUAGE_PROMPT.replace("{language}", self.label).replace("{forms}", f" {self.forms}" if self.forms else "")
-
-
 @dataclass(frozen=True)
 class SecondSubtitle:
     language: SecondLanguage
@@ -321,7 +305,7 @@ if __name__ == "__main__":
     parser.add_argument("--prompt", type=Path, help="text file with the system prompt to use instead of LLM_PROMPT; {movie} in it is replaced by the title of the movie or episode, as in LLM_PROMPT")
     parser.add_argument("--second-language", choices=[language.code for language in SecondLanguage], help="language code of a text subtitle of the same video, in its _subs folder, whose lines on screen with each English entry are sent with it; without one, or when it matches too few entries, the English is sent alone")
     parser.add_argument("--print-prompt", action="store_true", help="print the system prompt and the first chunk of each subtitle, even one already translated, without translating it")
-    subs_src = find_subtitles(parser, formats=(SubtitleFormat.TEXT,), language=LANGUAGE_SOURCE)
+    subs_src = find_subtitles(parser, formats=(SubtitleFormat.TEXT,), languages=(LANGUAGE_SOURCE,))
     arguments = parser.parse_args()
     temperatures = tuple(arguments.temperatures)
     prompt = arguments.prompt.read_text(encoding="utf-8") if arguments.prompt else LLM_PROMPT
@@ -359,7 +343,7 @@ if __name__ == "__main__":
                     if not second_subtitle.is_matched():
                         Action.DISCARD.log(f"{second_subtitle.file.name} matches under {SECOND_LANGUAGE_MATCHED_MIN:.0%} of the entries, translating from the English alone")
                         second_subtitle = None
-                second_prompt = second_subtitle.language.to_prompt() if second_subtitle else ""
+                second_prompt = second_subtitle.language.to_prompt(SECOND_LANGUAGE_PROMPT) if second_subtitle else ""
 
                 # build translation
                 movie_prompt = prompt.replace("{movie_info}", f"\n\n{movie_info_text}" if movie_info_text else "").replace("{second_language}", second_prompt).replace("{movie}", sub_src.movie_title)

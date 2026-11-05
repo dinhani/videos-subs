@@ -399,7 +399,7 @@ if __name__ == "__main__":
     parser.add_argument("--output", type=Path, default=OUTPUT_DEFAULT, help=f"folder to write the report files to (default: {OUTPUT_DEFAULT})")
     parser.add_argument("--titles-min", type=int, default=TITLES_MIN_DEFAULT, help=f"list only items found in at least this many movies or series (default: {TITLES_MIN_DEFAULT})")
     parser.add_argument("--rows", type=int, default=ROWS_DEFAULT, help=f"most items listed in each section (default: {ROWS_DEFAULT})")
-    subs = sorted(set(find_subtitles(parser, formats=(SubtitleFormat.TEXT,), language=LANGUAGE_SOURCE)), key=lambda sub: (sub.title_name, str(sub.movie_dir), sub.video_name, sub.name))
+    subs = sorted(set(find_subtitles(parser, formats=(SubtitleFormat.TEXT,), languages=(LANGUAGE_SOURCE,))), key=lambda sub: (sub.title_name, str(sub.movie_dir), sub.video_name, sub.name))
     arguments = parser.parse_args()
     library = Library.create()
 

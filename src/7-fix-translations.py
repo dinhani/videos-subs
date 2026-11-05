@@ -540,7 +540,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Fixes the mistakes of the translations that have a mechanical fix, by comparing each entry with its English source. Shows the changes of each translation and asks before writing it.")
     parser.add_argument("--yes", action="store_true", help="write every translation without showing its changes or asking")
     Backups.add_argument(parser)
-    subs = find_subtitles(parser, formats=(SubtitleFormat.TRANSLATION,), language=LANGUAGE_TRANSLATION)
+    subs = find_subtitles(parser, formats=(SubtitleFormat.TRANSLATION,), languages=(LANGUAGE_TRANSLATION,))
     arguments = parser.parse_args()
     backups = Backups.start(arguments.backups)
 

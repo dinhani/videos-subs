@@ -42,6 +42,21 @@ def get_language_detector() -> LanguageDetector:
     return LanguageDetectorBuilder.from_all_languages().build()
 
 
+class SecondLanguage(Enum):
+    SPANISH = ("spa", "Spanish", "")
+    EUROPEAN_PORTUGUESE = ("por", "European Portuguese", 'European Portuguese forms are not Brazilian: never write "tu" and its verb forms, "consigo" for "com você", "estar a" with the infinitive for the gerund ("está a fazer" is "está fazendo"), or spellings such as "facto", "equipa" and "tentámos".')
+    FRENCH = ("fra", "French", "")
+    ITALIAN = ("ita", "Italian", "")
+
+    def __init__(self, code: str, label: str, forms: str) -> None:
+        self.code = code
+        self.label = label
+        self.forms = forms
+
+    def to_prompt(self, prompt: str) -> str:
+        return prompt.replace("{language}", self.label).replace("{forms}", f" {self.forms}" if self.forms else "")
+
+
 class TextLanguage(Enum):
     ENGLISH = (LANGUAGE_SOURCE, "en")
     PORTUGUESE_BRAZIL = (LANGUAGE_TRANSLATION, "pt")

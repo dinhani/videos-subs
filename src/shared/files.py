@@ -51,9 +51,9 @@ def find_files(parser: argparse.ArgumentParser, extensions_file: tuple[str, ...]
     return files
 
 
-def find_subtitles(parser: argparse.ArgumentParser, formats: tuple["SubtitleFormat", ...], language: str | None = None) -> list["SubtitleFile"]:
+def find_subtitles(parser: argparse.ArgumentParser, formats: tuple["SubtitleFormat", ...], languages: tuple[str, ...] = ()) -> list["SubtitleFile"]:
     extensions = tuple(format.extension for format in formats)
-    suffixes = tuple(suffix for format in formats for suffix in format.to_suffixes(language)) if language else extensions
+    suffixes = tuple(suffix for format in formats for language in languages for suffix in format.to_suffixes(language)) if languages else extensions
     return [SubtitleFile.from_path(file) for file in find_files(parser, extensions_file=extensions, extensions_folder=suffixes, folder=formats[0].folder)]
 
 

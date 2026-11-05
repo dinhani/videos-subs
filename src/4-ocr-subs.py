@@ -133,7 +133,7 @@ class SubtitleTranscription:
 # Execution
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
-    subs = find_subtitles(argparse.ArgumentParser(description="Transcribes image subtitles to text subtitles with a vision LLM; folders only English ones."), formats=(SubtitleFormat.PGS, SubtitleFormat.VOBSUB), language=LANGUAGE_SOURCE)
+    subs = find_subtitles(argparse.ArgumentParser(description="Transcribes image subtitles to text subtitles with a vision LLM; folders only English ones."), formats=(SubtitleFormat.PGS, SubtitleFormat.VOBSUB), languages=(LANGUAGE_SOURCE,))
     llama = connect_llama()
     llama_slots = llama.get(LLM_PROPS_URL, cast_to=LlamaProps).total_slots
 

@@ -290,7 +290,7 @@ def check_subtitle(subtitle: SubtitleFile) -> ReportScore:
 if __name__ == "__main__":
     subs = [
         sub
-        for sub in find_subtitles(argparse.ArgumentParser(description="Checks text subtitles made by OCR against their image subtitles; only ones next to an image subtitle, folders only English ones."), formats=(SubtitleFormat.TEXT,), language=LANGUAGE_SOURCE)
+        for sub in find_subtitles(argparse.ArgumentParser(description="Checks text subtitles made by OCR against their image subtitles; only ones next to an image subtitle, folders only English ones."), formats=(SubtitleFormat.TEXT,), languages=(LANGUAGE_SOURCE,))
         if sub.find_image_subtitle() is not None
     ]
     scores_current = {sub: score for sub in subs if (score := ReportScore.find(sub.to_report())) is not None}

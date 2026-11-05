@@ -339,7 +339,7 @@ def check_subtitle(subtitle: SubtitleFile, languagetool_server: str) -> ReportSc
 # Execution
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
-    subs = find_subtitles(argparse.ArgumentParser(description="Checks translated subtitles against their English source for common translation mistakes."), formats=(SubtitleFormat.TRANSLATION,), language=LANGUAGE_TRANSLATION)
+    subs = find_subtitles(argparse.ArgumentParser(description="Checks translated subtitles against their English source for common translation mistakes."), formats=(SubtitleFormat.TRANSLATION,), languages=(LANGUAGE_TRANSLATION,))
     scores_current = {sub: score for sub in subs if (score := ReportScore.find(sub.to_report())) is not None}
     scores = list(scores_current.values())
     subs_pending = [sub for sub in subs if sub not in scores_current]
