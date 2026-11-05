@@ -69,12 +69,20 @@ Its fixes, in the order they run, are in `FIXES`:
 - leftovers: deletes a JSON ending of the model reply, such as `"]},`, at the end of a line whose English line does not end that way.
 - brackets: completes or swaps the brackets of a description to match the English line, and removes brackets the English line does not have.
 - quotes: removes a quote the English line does not have, when it is the only extra one.
-- descriptions: writes each description from the sound lists and `data/fix-subjects.txt`, keeping a name only when the English shows it is a name and the model kept it. A form the model already wrote that the table lists as right is left as it is.
+- descriptions: writes each description from the description lists, keeping a name only when the English shows it is a name and the model kept it. A form the model already wrote that the table lists as right is left as it is.
+- interjections: replaces an interjection the model kept in English, from `data/fix-interjections.txt` (`wow = uau`), on a line whose English has it and has no `♪` or `♫`.
 - words: replaces the misspellings the model repeats, from `data/fix-words.txt`, only when the English entry has the English word.
 
 The names of a movie come from its speaker labels, spaCy NER and `data/check-words.txt`. A name NER misses goes to `check-words` only when it stays unchanged in Brazilian Portuguese; a world term with a Portuguese translation, such as `skimwing`, stays out, so check-translate still flags it when it is left in English.
 
-The sound lists are `data/fix-sounds.txt`, `data/fix-music.txt`, `data/fix-languages.txt` (`speaking swedish`, `in elvish`) and `data/fix-channels.txt` (`on tv`, `over radio`); a phrase is in one of them only.
+The description lists are the phrases of `data/fix-sounds.txt` and `data/fix-music.txt` (a phrase is in one of them only), the subjects of `data/fix-subjects.txt`, the music moods of `data/fix-moods.txt` (`grim = sombria`), the languages of `data/fix-languages.txt` (`swedish = sueco`) and the channels a voice comes through of `data/fix-channels.txt` (`on tv = na TV`). The table builds descriptions from them:
+
+- a mood before music: `grim music playing` is `música sombria tocando`;
+- a language after `speaking`, `speaks` or `in`: `speaking swedish` is `falando sueco`;
+- a phrase after `continues`, in the gerund: `continues laughing` is `continua rindo`;
+- a phrase after `distant`: `distant explosion` is `explosão ao longe`;
+- a phrase followed by a phrase led by `in`, `on` or `over`: `shouting in german`, `laughing on tv`, `bell ringing in the distance`;
+- a subject with a number: `man 2` is `homem 2`.
 
 The tables are written by hand: each phrase is translated once, with the verb in the third person for -s and in the gerund for -ing, so a subject in front of it keeps the sentence right. A phrase or a subject whose Portuguese depends on the scene is not in the tables: a sound that is different for a person, an animal or a machine (`cries`, `clicks`), a word with several meanings (`choking`, `blows`), and a subject whose gender the English does not tell (`both`, `everyone`). Nothing that needs reading the sentence is fixed here: duplicated lines, gender and grammar are left to check-translate.
 

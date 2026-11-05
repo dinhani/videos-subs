@@ -13,6 +13,16 @@ DESCRIPTION_SIMPLE = re.compile(r"\[([^\[\]()<>{}]+)\]|\(([^\[\]()<>{}]+)\)")
 DESCRIPTION_SUBJECT_WORDS_MAX = 2
 DESCRIPTION_PUNCTUATION = re.compile(r"[\[\]()\-–—]")
 DESCRIPTION_ARTICLE = re.compile(r"^(?:o|a|os|as)\s+")
+DESCRIPTION_NUMBERED = re.compile(r"(?P<subject>.+) (?P<number>#?\d+)")
+DESCRIPTION_TAIL_WORDS = ("in", "on", "over")
+DESCRIPTION_FAR = ("ao longe", "distante", "distantes")
+LANGUAGE_PHRASES = (
+    ("speaking in ", ("falando em ", "falando ", "fala em ", "fala ", "em ")),
+    ("speaks in ", ("fala em ", "fala ", "falando em ", "falando ", "em ")),
+    ("speaking ", ("falando ", "falando em ", "fala ", "fala em ", "em ")),
+    ("speaks ", ("fala ", "fala em ", "falando ", "falando em ", "em ")),
+    ("in ", ("em ",)),
+)
 
 NLP_MODEL = "en_core_web_sm"
 NLP_NAME_LABELS = frozenset({"PERSON", "ORG"})
@@ -55,58 +65,113 @@ class DescriptionTranslation:
 class DescriptionTable:
     sounds: dict[str, tuple[str, ...]]
     subjects: dict[str, str]
+    moods: dict[str, tuple[str, ...]]
+    languages: dict[str, tuple[str, ...]]
+    channels: dict[str, tuple[str, ...]]
 
     @classmethod
-    def from_lists(cls, sounds: tuple[DataList, ...], subjects: DataList) -> "DescriptionTable":
+    def from_lists(cls, sounds: tuple[DataList, ...], subjects: DataList, moods: DataList, languages: DataList, channels: DataList) -> "DescriptionTable":
         phrases: dict[str, tuple[str, ...]] = {}
         for sound_list in sounds:
-            for key, value in sound_list.parse():
+            for key, forms in parse_forms(sound_list).items():
                 if key in phrases:
                     raise ValueError(f"{sound_list.file.name}: phrase listed in another sound list: {key!r}")
-                phrases[key] = tuple(form.strip() for form in value.split("|"))
-        return cls(sounds=phrases, subjects=dict(subjects.parse()))
+                phrases[key] = forms
+        return cls(sounds=phrases, subjects=dict(subjects.parse()), moods=parse_forms(moods), languages=parse_forms(languages), channels=parse_forms(channels))
 
     def find_translation(self, description: str) -> DescriptionTranslation | None:
         words = description.split()
         description = " ".join(words)
         key = " ".join(words).lower()
-        if key in self.sounds:
-            return DescriptionTranslation(source=description, text=match_case(self.sounds[key][0], description), name="", forms=(self.to_forms(self.sounds[key], ""),))
+        forms = self.find_forms(key)
+        if forms is not None:
+            return DescriptionTranslation(source=description, text=match_case(forms[0], description), name="", forms=(self.to_forms(forms, ""),))
+        subject = self.find_subject(key) if DESCRIPTION_NUMBERED.fullmatch(key) else None
+        if subject is not None:
+            return DescriptionTranslation(source=description, text=match_case(subject, description), name="", forms=(self.to_forms((subject,), ""),))
 
         # a list such as GRUNTS, GASPS: the first part may have a subject or a name, the others are phrases
         if "," in description:
             first, *others = (part.strip() for part in description.split(","))
             translation = self.find_translation(first)
-            others_keys = [" ".join(other.split()).lower() for other in others]
-            if translation is None or not all(other_key in self.sounds for other_key in others_keys):
+            others_forms = [self.find_forms(" ".join(other.split()).lower()) for other in others]
+            if translation is None or any(other_forms is None for other_forms in others_forms):
                 return None
-            texts = [translation.text, *(match_case(self.sounds[other_key][0], other) for other_key, other in zip(others_keys, others))]
-            forms = (*translation.forms, *(self.to_forms(self.sounds[other_key], "") for other_key in others_keys))
+            texts = [translation.text, *(match_case(other_forms[0], other) for other_forms, other in zip(others_forms, others) if other_forms)]
+            forms = (*translation.forms, *(self.to_forms(other_forms, "") for other_forms in others_forms if other_forms))
             return DescriptionTranslation(source=description, text=", ".join(texts), name=translation.name, forms=forms)
 
-        # a subject or a name, then a phrase led by a verb in -ing or -s
+        # a subject or a name, then a phrase led by a verb in -ing or -s, or by in, on or over
         for subject_size in range(1, min(DESCRIPTION_SUBJECT_WORDS_MAX, len(words) - 1) + 1):
             subject, phrase = words[:subject_size], words[subject_size:]
-            phrase_key = " ".join(phrase).lower()
             verb = phrase[0].lower()
-            if phrase_key not in self.sounds or not verb.endswith(("ing", "s")):
+            phrase_forms = self.find_forms(" ".join(phrase).lower())
+            if phrase_forms is None or not (verb.endswith(("ing", "s")) or verb in DESCRIPTION_TAIL_WORDS):
                 continue
-            subject_key = " ".join(subject).lower()
-            if subject_key in self.subjects:
-                subject_portuguese = self.subjects[subject_key]
-                if not verb.endswith("ing") and subject_portuguese.endswith("s"):
+            subject_portuguese = self.find_subject(" ".join(subject).lower())
+            if subject_portuguese is not None:
+                if verb.endswith("s") and subject_portuguese.endswith("s"):
                     continue
-                text = match_case(f"{subject_portuguese} {self.sounds[phrase_key][0]}", description)
-                return DescriptionTranslation(source=description, text=text, name="", forms=(self.to_forms(self.sounds[phrase_key], subject_portuguese),))
+                text = match_case(f"{subject_portuguese} {phrase_forms[0]}", description)
+                return DescriptionTranslation(source=description, text=text, name="", forms=(self.to_forms(phrase_forms, subject_portuguese),))
             if any(word.lower().endswith(("'s", "’s")) or word.lower() in self.subjects or word.lower() in self.sounds or (not description.isupper() and word[0].islower()) for word in subject):
                 continue
             name = " ".join(subject)
-            phrase_portuguese = self.sounds[phrase_key][0].upper() if description.isupper() else self.sounds[phrase_key][0]
-            return DescriptionTranslation(source=description, text=f"{name} {phrase_portuguese}", name=name, forms=(self.to_forms(self.sounds[phrase_key], name),))
+            phrase_portuguese = phrase_forms[0].upper() if description.isupper() else phrase_forms[0]
+            return DescriptionTranslation(source=description, text=f"{name} {phrase_portuguese}", name=name, forms=(self.to_forms(phrase_forms, name),))
+        return None
+
+    def find_forms(self, phrase: str) -> tuple[str, ...] | None:
+        # a phrase of the lists, or one built from them
+        if phrase in self.sounds:
+            return self.sounds[phrase]
+        if phrase in self.channels:
+            return self.channels[phrase]
+        words = phrase.split(" ")
+        rest = " ".join(words[1:])
+
+        # a mood before music: GRIM MUSIC PLAYING
+        if words[0] in self.moods and words[1:2] == ["music"] and (forms := self.find_forms(rest)):
+            return tuple(form.replace("música", f"música {mood}", 1) for mood in self.moods[words[0]] for form in forms if "música" in form) or None
+
+        # a language after speaking or in: SPEAKING SWEDISH
+        for prefix, prefixes_portuguese in LANGUAGE_PHRASES:
+            language = phrase.removeprefix(prefix)
+            if phrase.startswith(prefix) and language in self.languages:
+                return tuple(f"{prefix_portuguese}{form}" for prefix_portuguese in prefixes_portuguese for form in self.languages[language])
+
+        # a phrase in -ing that goes on, or that comes from far: CONTINUES LAUGHING, DISTANT EXPLOSION; the gerund is written first, and the other forms are left as the model wrote them
+        if words[0] == "continues" and (forms := self.find_forms(rest)):
+            gerunds = [form for form in forms if form.split()[0].endswith("ndo")]
+            return tuple(f"continua {form}" for form in [*gerunds, *(form for form in forms if form not in gerunds)]) if gerunds else None
+        if words[0] == "distant" and (forms := self.find_forms(rest)):
+            return tuple(f"{form} {far}" for far in DESCRIPTION_FAR for form in forms)
+
+        # a phrase followed by a phrase led by in, on or over: SHOUTING IN GERMAN, LAUGHING ON TV, BELL RINGING IN THE DISTANCE
+        for size in range(len(words) - 1, 0, -1):
+            if words[size] not in DESCRIPTION_TAIL_WORDS:
+                continue
+            forms_tail = self.find_forms(" ".join(words[size:]))
+            forms = self.find_forms(" ".join(words[:size])) if forms_tail else None
+            if forms_tail and forms:
+                return tuple(f"{form} {form_tail}" for form in forms for form_tail in forms_tail)
+        return None
+
+    def find_subject(self, subject: str) -> str | None:
+        # a subject of the list, or one with a number: MAN 2
+        if subject in self.subjects:
+            return self.subjects[subject]
+        numbered = DESCRIPTION_NUMBERED.fullmatch(subject)
+        if numbered is not None and numbered["subject"] in self.subjects:
+            return f"{self.subjects[numbered['subject']]} {numbered['number']}"
         return None
 
     def to_forms(self, phrases: tuple[str, ...], subject: str) -> frozenset[str]:
         return frozenset(DESCRIPTION_ARTICLE.sub("", normalize_description(f"{subject} {phrase}")) for phrase in phrases)
+
+
+def parse_forms(data_list: DataList) -> dict[str, tuple[str, ...]]:
+    return {key: tuple(form.strip() for form in value.split("|")) for key, value in data_list.parse()}
 
 
 @dataclass(frozen=True)

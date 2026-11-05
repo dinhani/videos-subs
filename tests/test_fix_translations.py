@@ -34,7 +34,8 @@ TAGS = fix_translations.TagsFix(enabled=True)
 LEFTOVERS = fix_translations.LeftoversFix(enabled=True)
 BRACKETS = fix_translations.BracketsFix(enabled=True)
 QUOTES = fix_translations.QuotesFix(enabled=True)
-DESCRIPTIONS = fix_translations.DescriptionsFix(enabled=True, sounds=fix_translations.FIX_SOUND_LISTS, subjects=fix_translations.FIX_SUBJECTS)
+DESCRIPTIONS = fix_translations.DescriptionsFix(enabled=True, sounds=fix_translations.FIX_SOUND_LISTS, subjects=fix_translations.FIX_SUBJECTS, moods=fix_translations.FIX_MOODS, languages=fix_translations.FIX_LANGUAGES, channels=fix_translations.FIX_CHANNELS)
+INTERJECTIONS = fix_translations.InterjectionsFix(enabled=True, interjections=fix_translations.FIX_INTERJECTIONS)
 
 
 @pytest.mark.parametrize(("english", "translated", "expected"), [
@@ -78,6 +79,18 @@ def test_brackets(english: str, translated: str, expected: str) -> None:
 ])
 def test_quotes(english: str, translated: str, expected: str) -> None:
     assert fix(QUOTES, english, translated) == expected
+
+
+@pytest.mark.parametrize(("english", "translated", "expected"), [
+    ("Wow.", "Wow.", "Uau."),
+    ("Uh-huh. Sure.", "UH-HUH. CLARO.", "AHAM. CLARO."),
+    ("Ow, ow!", "Ow, ow!", "Ai, ai!"),
+    ("♪ Wow, wow ♪", "♪ Wow, wow ♪", "♪ Wow, wow ♪"),
+    ("Nice.", "Wow.", "Wow."),
+    ("Wow.", "Nossa.", "Nossa."),
+])
+def test_interjections(english: str, translated: str, expected: str) -> None:
+    assert fix(INTERJECTIONS, english, translated) == expected
 
 
 @pytest.mark.parametrize(("english", "translated", "names", "expected"), [

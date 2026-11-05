@@ -17,8 +17,8 @@ import srt
 from rich.text import Text
 
 from shared.console import Action, Batch, Color, console
-from shared.data_lists import FIX_SOUND_LISTS, FIX_SUBJECTS, FIX_WORDS, DataList
-from shared.descriptions import DESCRIPTION_SIMPLE, DescriptionTable, MovieNames
+from shared.data_lists import FIX_CHANNELS, FIX_INTERJECTIONS, FIX_LANGUAGES, FIX_MOODS, FIX_SOUND_LISTS, FIX_SUBJECTS, FIX_WORDS, DataList
+from shared.descriptions import DESCRIPTION_SIMPLE, DescriptionTable, MovieNames, match_case
 from shared.files import Backups, SubtitleFile, SubtitleFormat, find_subtitles, parse_srt, write_text_replacing
 from shared.languages import WORD
 from shared.subtitles import BRACKETS, FORMATTING_TAGS, LANGUAGE_TRANSLATION, QUOTES, parse_lines, replace_text
@@ -186,11 +186,14 @@ class DescriptionsFix:
     enabled: bool
     sounds: tuple[DataList, ...]
     subjects: DataList
+    moods: DataList
+    languages: DataList
+    channels: DataList
 
     def fix(self, entry: "TranslationEntry", movie_names: MovieNames) -> tuple[str, ...]:
         if not entry.is_aligned:
             return entry.target_lines
-        table = load_description_table(self.sounds, self.subjects)
+        table = load_description_table(self.sounds, self.subjects, self.moods, self.languages, self.channels)
         lines = list(entry.target_lines)
         for n, (source_line, line) in enumerate(zip(entry.source_lines, entry.target_lines)):
             descriptions = list(DESCRIPTION_SIMPLE.finditer(source_line))
@@ -229,6 +232,31 @@ class DescriptionsFix:
 
 
 @dataclass(frozen=True)
+class InterjectionsFix:
+    name: ClassVar[str] = "interjections"
+    SONG: ClassVar[re.Pattern[str]] = re.compile(r"[♪♫]")
+    enabled: bool
+    interjections: DataList
+
+    def fix(self, entry: "TranslationEntry", movie_names: MovieNames) -> tuple[str, ...]:
+        if not entry.is_aligned:
+            return entry.target_lines
+        interjections, pattern = load_interjections(self.interjections)
+        if pattern is None:
+            return entry.target_lines
+
+        # an interjection the model kept in English is replaced on the line whose English has it; song lines stay as they are
+        lines: list[str] = []
+        for source_line, line in zip(entry.source_lines, entry.target_lines):
+            source_words = {match[0].lower() for match in pattern.finditer(source_line)}
+            if self.SONG.search(source_line) or not source_words:
+                lines.append(line)
+                continue
+            lines.append(pattern.sub(lambda match: match_case(interjections[match[0].lower()], match[0]) if match[0].lower() in source_words else match[0], line))
+        return tuple(lines)
+
+
+@dataclass(frozen=True)
 class WordsFix:
     name: ClassVar[str] = "words"
     enabled: bool
@@ -255,14 +283,15 @@ class WordsFix:
         return tuple(words_wrong.sub(replace_word, line) for line in entry.target_lines)
 
 
-TranslationFix = TagsFix | LeftoversFix | BracketsFix | QuotesFix | DescriptionsFix | WordsFix
+TranslationFix = TagsFix | LeftoversFix | BracketsFix | QuotesFix | DescriptionsFix | InterjectionsFix | WordsFix
 
 FIXES: tuple[TranslationFix, ...] = (
     TagsFix(enabled=True),
     LeftoversFix(enabled=True),
     BracketsFix(enabled=True),
     QuotesFix(enabled=True),
-    DescriptionsFix(enabled=True, sounds=FIX_SOUND_LISTS, subjects=FIX_SUBJECTS),
+    DescriptionsFix(enabled=True, sounds=FIX_SOUND_LISTS, subjects=FIX_SUBJECTS, moods=FIX_MOODS, languages=FIX_LANGUAGES, channels=FIX_CHANNELS),
+    InterjectionsFix(enabled=True, interjections=FIX_INTERJECTIONS),
     WordsFix(enabled=True, words=FIX_WORDS),
 )
 
@@ -348,8 +377,16 @@ class Translation:
 
 
 @functools.cache
-def load_description_table(sounds: tuple[DataList, ...], subjects: DataList) -> DescriptionTable:
-    return DescriptionTable.from_lists(sounds, subjects)
+def load_description_table(sounds: tuple[DataList, ...], subjects: DataList, moods: DataList, languages: DataList, channels: DataList) -> DescriptionTable:
+    return DescriptionTable.from_lists(sounds=sounds, subjects=subjects, moods=moods, languages=languages, channels=channels)
+
+
+@functools.cache
+def load_interjections(file: DataList) -> tuple[dict[str, str], re.Pattern[str] | None]:
+    interjections = dict(file.parse())
+    if not interjections:
+        return interjections, None
+    return interjections, re.compile(rf"(?<![\w-])(?:{'|'.join(re.escape(word) for word in sorted(interjections, key=len, reverse=True))})(?![\w-])", re.IGNORECASE)
 
 
 @functools.cache

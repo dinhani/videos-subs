@@ -255,12 +255,30 @@ add-fix-channels +pairs:
     exit $LASTEXITCODE
 
 [group('data/fix')]
+[doc('Add music moods to fix-translations')]
+[script]
+[extension('.ps1')]
+[positional-arguments]
+add-fix-moods +pairs:
+    uv run src/fix-tools/add-to-dictionary.py fix-moods @args
+    exit $LASTEXITCODE
+
+[group('data/fix')]
 [doc('Add description subjects to fix-translations')]
 [script]
 [extension('.ps1')]
 [positional-arguments]
 add-fix-subjects +pairs:
     uv run src/fix-tools/add-to-dictionary.py fix-subjects @args
+    exit $LASTEXITCODE
+
+[group('data/fix')]
+[doc('Add interjections to fix-translations')]
+[script]
+[extension('.ps1')]
+[positional-arguments]
+add-fix-interjections +pairs:
+    uv run src/fix-tools/add-to-dictionary.py fix-interjections @args
     exit $LASTEXITCODE
 
 [group('data/fix')]
