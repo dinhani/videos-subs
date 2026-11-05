@@ -18,7 +18,7 @@ from typing import NamedTuple
 import spacy
 
 from shared.console import Batch, Color, cancel_on_interrupt, log_heading
-from shared.data_lists import FIX_SOUNDS, FIX_SUBJECTS
+from shared.data_lists import DATA_FOLDER, FIX_SOUNDS, FIX_SUBJECTS
 from shared.descriptions import DESCRIPTION_SIMPLE, DESCRIPTION_SUBJECT_WORDS_MAX, NLP_MODEL, SPEAKER_LABEL, DescriptionTable
 from shared.files import SubtitleFile, SubtitleFormat, find_subtitles, parse_srt, write_text_replacing
 from shared.languages import WORD
@@ -27,7 +27,7 @@ from shared.subtitles import LANGUAGE_SOURCE, OCR_FAILED_TEXT, QUOTES, parse_pla
 # ------------------------------------------------------------------------------
 # Constants
 # ------------------------------------------------------------------------------
-OUTPUT_DEFAULT = Path(__file__).parents[1] / "stats" / "english.txt"
+OUTPUT_DEFAULT = DATA_FOLDER / "stats-english.txt"
 TITLES_MIN_DEFAULT = 3
 ROWS_DEFAULT = 300
 

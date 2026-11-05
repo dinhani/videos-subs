@@ -2,4 +2,4 @@ __pycache__/
 .venv/
 *.part
 .msys*
-stats/
+data/stats-english.txt
