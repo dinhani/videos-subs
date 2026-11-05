@@ -36,6 +36,7 @@ BRACKETS = fix_translations.BracketsFix(enabled=True)
 QUOTES = fix_translations.QuotesFix(enabled=True)
 DESCRIPTIONS = fix_translations.DescriptionsFix(enabled=True, sounds=fix_translations.FIX_SOUND_LISTS, subjects=fix_translations.FIX_SUBJECTS, music_moods=fix_translations.FIX_MUSIC_MOODS, voice_moods=fix_translations.FIX_VOICE_MOODS, languages=fix_translations.FIX_LANGUAGES, channels=fix_translations.FIX_CHANNELS)
 INTERJECTIONS = fix_translations.InterjectionsFix(enabled=True, interjections=fix_translations.FIX_INTERJECTIONS)
+EXPRESSIONS = fix_translations.ExpressionsFix(enabled=True, expressions=fix_translations.FIX_EXPRESSIONS)
 
 
 @pytest.mark.parametrize(("english", "translated", "expected"), [
@@ -91,6 +92,18 @@ def test_quotes(english: str, translated: str, expected: str) -> None:
 ])
 def test_interjections(english: str, translated: str, expected: str) -> None:
     assert fix(INTERJECTIONS, english, translated) == expected
+
+
+@pytest.mark.parametrize(("english", "translated", "expected"), [
+    ("Hold your fire!", "Mantenham o fogo!", "Não atirem!"),
+    ("Hold your fire.", "Mantenha o fogo retido.", "Não atire."),
+    ("HOLD YOUR FIRE!", "MANTENHAM O FOGO SUSPENSO!", "NÃO ATIREM!"),
+    ("Hold your fire!", "Não atirem!", "Não atirem!"),
+    ("Keep firing!", "Mantenham o fogo!", "Mantenham o fogo!"),
+    ("Hold fire for what?", "Mantenham o fogo para quê?", "Mantenham o fogo para quê?"),
+])
+def test_expressions(english: str, translated: str, expected: str) -> None:
+    assert fix(EXPRESSIONS, english, translated) == expected
 
 
 @pytest.mark.parametrize(("english", "translated", "names", "expected"), [

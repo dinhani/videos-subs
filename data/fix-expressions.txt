@@ -1,0 +1,12 @@
+hold fire = mantenha o fogo = não atire
+hold fire = mantenha o fogo retido = não atire
+hold fire = mantenha o fogo suspenso = não atire
+hold fire = mantenham o fogo = não atirem
+hold fire = mantenham o fogo retido = não atirem
+hold fire = mantenham o fogo suspenso = não atirem
+hold your fire = mantenha o fogo = não atire
+hold your fire = mantenha o fogo retido = não atire
+hold your fire = mantenha o fogo suspenso = não atire
+hold your fire = mantenham o fogo = não atirem
+hold your fire = mantenham o fogo retido = não atirem
+hold your fire = mantenham o fogo suspenso = não atirem

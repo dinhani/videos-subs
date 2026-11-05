@@ -20,6 +20,7 @@ class DataListFormat(Enum):
     EXPRESSION = ("expression of several words", 1)
     PAIR = ("english = português", 2)
     TRIPLE = ("english = misspelled = right", 3)
+    EXPRESSION_TRIPLE = ("english = wrong expression = right expression", 3)
 
     def __init__(self, shape: str, fields: int) -> None:
         self.shape = shape
@@ -103,5 +104,6 @@ FIX_VOICE_MOODS = DataList(file=DATA_FOLDER / "fix-voice-moods.txt", format=Data
 FIX_SOUND_LISTS = (FIX_SOUNDS, FIX_MUSIC, FIX_OBJECTS)
 FIX_SUBJECTS = DataList(file=DATA_FOLDER / "fix-subjects.txt", format=DataListFormat.PAIR)
 FIX_INTERJECTIONS = DataList(file=DATA_FOLDER / "fix-interjections.txt", format=DataListFormat.PAIR)
+FIX_EXPRESSIONS = DataList(file=DATA_FOLDER / "fix-expressions.txt", format=DataListFormat.EXPRESSION_TRIPLE)
 FIX_WORDS = DataList(file=DATA_FOLDER / "fix-words.txt", format=DataListFormat.TRIPLE)
-DATA_LISTS = (CHECK_WORDS, CHECK_EXPRESSIONS, FIX_SOUNDS, FIX_MUSIC, FIX_OBJECTS, FIX_MUSIC_MOODS, FIX_VOICE_MOODS, FIX_LANGUAGES, FIX_CHANNELS, FIX_SUBJECTS, FIX_INTERJECTIONS, FIX_WORDS)
+DATA_LISTS = (CHECK_WORDS, CHECK_EXPRESSIONS, FIX_SOUNDS, FIX_MUSIC, FIX_OBJECTS, FIX_MUSIC_MOODS, FIX_VOICE_MOODS, FIX_LANGUAGES, FIX_CHANNELS, FIX_SUBJECTS, FIX_INTERJECTIONS, FIX_EXPRESSIONS, FIX_WORDS)

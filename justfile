@@ -300,6 +300,15 @@ add-fix-interjections +pairs:
     exit $LASTEXITCODE
 
 [group('data/fix')]
+[doc('Add wrong expression translations to fix-translations')]
+[script]
+[extension('.ps1')]
+[positional-arguments]
+add-fix-expressions +triples:
+    uv run src/fix-tools/add-to-dictionary.py fix-expressions @args
+    exit $LASTEXITCODE
+
+[group('data/fix')]
 [doc('Add misspellings to fix-translations')]
 [script]
 [extension('.ps1')]

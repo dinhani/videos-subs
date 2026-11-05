@@ -26,6 +26,7 @@ def test_real_lists_parse(data_list_real: DataList) -> None:
     (DataListFormat.TRIPLE, "maybe = talvez"),
     (DataListFormat.TRIPLE, "maybe = tal ve = talvez"),
     (DataListFormat.TRIPLE, "maybe = casa = talvez"),
+    (DataListFormat.EXPRESSION_TRIPLE, "hold your fire = não atirem"),
 ])
 def test_ensure_valid_refuses(format: DataListFormat, item: str) -> None:
     with pytest.raises(ValueError):

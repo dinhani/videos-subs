@@ -17,7 +17,7 @@ import srt
 from rich.text import Text
 
 from shared.console import Action, Batch, Color, console
-from shared.data_lists import FIX_CHANNELS, FIX_INTERJECTIONS, FIX_LANGUAGES, FIX_MUSIC_MOODS, FIX_SOUND_LISTS, FIX_SUBJECTS, FIX_VOICE_MOODS, FIX_WORDS, DataList
+from shared.data_lists import FIX_CHANNELS, FIX_EXPRESSIONS, FIX_INTERJECTIONS, FIX_LANGUAGES, FIX_MUSIC_MOODS, FIX_SOUND_LISTS, FIX_SUBJECTS, FIX_VOICE_MOODS, FIX_WORDS, DataList
 from shared.descriptions import DESCRIPTION_SIMPLE, DescriptionTable, MovieNames, match_case
 from shared.files import Backups, SubtitleFile, SubtitleFormat, find_subtitles, parse_srt, write_text_replacing
 from shared.languages import WORD
@@ -258,6 +258,27 @@ class InterjectionsFix:
 
 
 @dataclass(frozen=True)
+class ExpressionsFix:
+    name: ClassVar[str] = "expressions"
+    enabled: bool
+    expressions: DataList
+
+    def fix(self, entry: "TranslationEntry", movie_names: MovieNames) -> tuple[str, ...]:
+        rights, wrongs = load_expressions(self.expressions)
+        if wrongs is None:
+            return entry.target_lines
+        text_source = f" {' '.join(match[0].lower() for line in entry.source_lines for match in WORD.finditer(line))} "
+
+        # a wrong translation of an English expression is replaced only when the English entry has that expression, by one right translation only, and only where it ends its clause, so a command stays a command
+        def replace_expression(match: re.Match[str]) -> str:
+            expression = match[0]
+            rights_found = {right for english, right in rights[" ".join(expression.lower().split())] if f" {english} " in text_source}
+            return match_case(rights_found.pop(), expression) if len(rights_found) == 1 else expression
+
+        return tuple(wrongs.sub(replace_expression, line) for line in entry.target_lines)
+
+
+@dataclass(frozen=True)
 class WordsFix:
     name: ClassVar[str] = "words"
     enabled: bool
@@ -284,7 +305,7 @@ class WordsFix:
         return tuple(words_wrong.sub(replace_word, line) for line in entry.target_lines)
 
 
-TranslationFix = TagsFix | LeftoversFix | BracketsFix | QuotesFix | DescriptionsFix | InterjectionsFix | WordsFix
+TranslationFix = TagsFix | LeftoversFix | BracketsFix | QuotesFix | DescriptionsFix | InterjectionsFix | ExpressionsFix | WordsFix
 
 FIXES: tuple[TranslationFix, ...] = (
     TagsFix(enabled=True),
@@ -293,6 +314,7 @@ FIXES: tuple[TranslationFix, ...] = (
     QuotesFix(enabled=True),
     DescriptionsFix(enabled=True, sounds=FIX_SOUND_LISTS, subjects=FIX_SUBJECTS, music_moods=FIX_MUSIC_MOODS, voice_moods=FIX_VOICE_MOODS, languages=FIX_LANGUAGES, channels=FIX_CHANNELS),
     InterjectionsFix(enabled=True, interjections=FIX_INTERJECTIONS),
+    ExpressionsFix(enabled=True, expressions=FIX_EXPRESSIONS),
     WordsFix(enabled=True, words=FIX_WORDS),
 )
 
@@ -388,6 +410,17 @@ def load_interjections(file: DataList) -> tuple[dict[str, str], re.Pattern[str] 
     if not interjections:
         return interjections, None
     return interjections, re.compile(rf"(?<![\w-])(?:{'|'.join(re.escape(word) for word in sorted(interjections, key=len, reverse=True))})(?![\w-])", re.IGNORECASE)
+
+
+@functools.cache
+def load_expressions(file: DataList) -> tuple[dict[str, list[tuple[str, str]]], re.Pattern[str] | None]:
+    expressions: dict[str, list[tuple[str, str]]] = {}
+    for english, wrong, right in file.parse():
+        expressions.setdefault(" ".join(wrong.lower().split()), []).append((" ".join(english.lower().split()), right))
+    if not expressions:
+        return expressions, None
+    alternatives = "|".join(r"\s+".join(re.escape(word) for word in wrong.split()) for wrong in sorted(expressions, key=len, reverse=True))
+    return expressions, re.compile(rf"(?<!\w)(?:{alternatives})(?=\s*(?:[.!,;…]|$))", re.IGNORECASE)
 
 
 @functools.cache
