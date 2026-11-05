@@ -39,6 +39,7 @@ class Action(Enum):
     WARN = ("warn", Color.GREEN)
     ADD = ("add", Color.GREEN)
     SCORE = ("score", Color.GREEN)
+    COUNT = ("count", Color.GREEN)
     DOWNLOAD = ("download", Color.GREEN)
     START = ("start", Color.GREEN)
     STOP = ("stop", Color.GREEN)

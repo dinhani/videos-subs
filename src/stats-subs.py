@@ -17,7 +17,7 @@ from typing import NamedTuple
 
 import spacy
 
-from shared.console import Batch, Color, cancel_on_interrupt, log_heading
+from shared.console import Action, Batch, Color, cancel_on_interrupt, log_heading
 from shared.data_lists import DATA_FOLDER, FIX_SOUNDS, FIX_SUBJECTS
 from shared.descriptions import DESCRIPTION_SIMPLE, DESCRIPTION_SUBJECT_WORDS_MAX, NLP_MODEL, SPEAKER_LABEL, DescriptionTable
 from shared.files import SubtitleFile, SubtitleFormat, find_subtitles, parse_srt, write_text_replacing
@@ -403,16 +403,21 @@ if __name__ == "__main__":
     arguments = parser.parse_args()
     library = Library.create()
 
-    # read and parse the subs READ_WORKERS at a time, and add them up by video and by title
     with Batch() as batch, cancel_on_interrupt(ProcessPoolExecutor(max_workers=READ_WORKERS)) as executor:
+        # read and parse every sub, READ_WORKERS at a time across movies
         observations_read: dict[SubtitleFile, Future[Observations]] = {sub: executor.submit(Observations.from_file, sub) for sub in subs}
-        for _, title_subs in itertools.groupby(subs, key=lambda sub: sub.title_name):
+
+        # add up every sub of a movie as its observations arrive, by video and by title
+        subs_walked = batch.walk_ahead(subs, observations_read)
+        for _, title_walked in itertools.groupby(subs_walked, key=lambda walked: walked[0].title_name):
             title = Observations.create()
-            for _, video_subs in itertools.groupby(title_subs, key=lambda sub: (sub.movie_dir, sub.video_name)):
+            for _, video_walked in itertools.groupby(title_walked, key=lambda walked: (walked[0].movie_dir, walked[0].video_name)):
                 video = Observations.create()
-                for sub in batch.walk(video_subs):
+                for sub, _ in video_walked:
                     with batch.attempt(sub.path):
-                        video = video.with_track(observations_read.pop(sub).result())
+                        track = observations_read.pop(sub).result()
+                        Action.COUNT.log(f"{sub.name} · {track.measures[Measure.ENTRIES]} entries")
+                        video = video.with_track(track)
                 title = title.with_video(video)
             library.add_title(title)
 
