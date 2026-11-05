@@ -27,7 +27,8 @@ from shared.subtitles import LANGUAGE_SOURCE, OCR_FAILED_TEXT, QUOTES, parse_pla
 # ------------------------------------------------------------------------------
 # Constants
 # ------------------------------------------------------------------------------
-OUTPUT_DEFAULT = DATA_FOLDER / "stats-english.txt"
+OUTPUT_DEFAULT = DATA_FOLDER / "stats"
+SUMMARY_FILE = "summary.txt"
 TITLES_MIN_DEFAULT = 3
 ROWS_DEFAULT = 300
 
@@ -62,19 +63,20 @@ DETAILS_SHOWN = 6
 # Types
 # ------------------------------------------------------------------------------
 class Section(Enum):
-    SENTENCES = ("Sentences of the dialogue", "", 0)
-    WORD_SEQUENCES = ("Word sequences of the dialogue, without a sequence that a longer one holds in most of its count", "", 0)
-    PHRASAL_VERBS = ("Phrasal verbs of the dialogue, by the lemma of the verb", "forms", 0)
-    INTERJECTIONS = ("Interjections of the dialogue", "", 0)
-    ADDRESSES = ("Nouns that address a person, at the start or the end of a sentence", "", 0)
-    LABELS = ("Speaker labels", "", 0)
-    DESCRIPTIONS = ("Descriptions the tables of fix-translations do not cover", "", 0)
-    PHRASES = ("Phrases after a subject, in description parts the tables do not cover, missing from fix-sounds", "subjects", 0)
-    SUBJECTS = ("Subjects before a verb, in description parts the tables do not translate with a subject, missing from fix-subjects", "phrases", 0)
-    DESCRIPTION_VERBS = ("Verbs of description parts, by lemma", "tables", 0)
-    TEMPLATES = (f"Patterns of description parts the tables do not cover, with one word as {TEMPLATE_GAP}", "words", TEMPLATE_FILLERS_MIN)
+    SENTENCES = ("sentences.txt", "Sentences of the dialogue", "", 0)
+    WORD_SEQUENCES = ("word-sequences.txt", "Word sequences of the dialogue, without a sequence that a longer one holds in most of its count", "", 0)
+    PHRASAL_VERBS = ("phrasal-verbs.txt", "Phrasal verbs of the dialogue, by the lemma of the verb", "forms", 0)
+    INTERJECTIONS = ("interjections.txt", "Interjections of the dialogue", "", 0)
+    ADDRESSES = ("addresses.txt", "Nouns that address a person, at the start or the end of a sentence", "", 0)
+    LABELS = ("labels.txt", "Speaker labels", "", 0)
+    DESCRIPTIONS = ("descriptions.txt", "Descriptions the tables of fix-translations do not cover", "", 0)
+    PHRASES = ("description-phrases.txt", "Phrases after a subject, in description parts the tables do not cover, missing from fix-sounds", "subjects", 0)
+    SUBJECTS = ("description-subjects.txt", "Subjects before a verb, in description parts the tables do not translate with a subject, missing from fix-subjects", "phrases", 0)
+    DESCRIPTION_VERBS = ("description-verbs.txt", "Verbs of description parts, by lemma", "tables", 0)
+    TEMPLATES = ("description-templates.txt", f"Patterns of description parts the tables do not cover, with one word as {TEMPLATE_GAP}", "words", TEMPLATE_FILLERS_MIN)
 
-    def __init__(self, heading: str, details_label: str, details_min: int) -> None:
+    def __init__(self, file: str, heading: str, details_label: str, details_min: int) -> None:
+        self.file = file
         self.heading = heading
         self.details_label = details_label
         self.details_min = details_min
@@ -365,18 +367,19 @@ class Library:
     def describe(self) -> str:
         return f"{self.tracks} tracks, {self.videos} videos, {self.titles} titles"
 
-    def to_report(self, titles_min: int, rows: int) -> str:
+    def to_reports(self, titles_min: int, rows: int) -> dict[str, str]:
         descriptions_total = self.descriptions.total()
         entries_total = self.measures[Measure.ENTRIES]
-        lines = ["English subtitles statistics", "", self.describe()]
+        summary = ["English subtitles statistics", "", self.describe()]
         for measure in Measure:
             total = descriptions_total if measure.of_descriptions else entries_total
-            lines.append(f"{measure.label}: {self.measures[measure]}" + (f" ({self.measures[measure] / total:.1%})" if total and measure != Measure.ENTRIES else ""))
-        lines.append(f"descriptions: {descriptions_total}" + "".join(f", {status.value} {self.descriptions[status] / descriptions_total:.1%}" for status in DescriptionStatus if descriptions_total))
-        lines += ["", f"Each section lists the items found in at least {titles_min} titles, at most {rows} of them. A video counts each item as often as its track with the most of it."]
+            summary.append(f"{measure.label}: {self.measures[measure]}" + (f" ({self.measures[measure] / total:.1%})" if total and measure != Measure.ENTRIES else ""))
+        summary.append(f"descriptions: {descriptions_total}" + "".join(f", {status.value} {self.descriptions[status] / descriptions_total:.1%}" for status in DescriptionStatus if descriptions_total))
+        summary += ["", f"Each file lists the items found in at least {titles_min} titles, at most {rows} of them. A video counts each item as often as its track with the most of it."]
+        reports = {SUMMARY_FILE: "\n".join(summary) + "\n"}
         for section in Section:
-            lines += ["", f"## {section.heading}", *self.tallies[section].to_lines(section, titles_min=titles_min, rows=rows)]
-        return "\n".join(lines) + "\n"
+            reports[section.file] = "\n".join([section.heading, "", *self.tallies[section].to_lines(section, titles_min=titles_min, rows=rows)]) + "\n"
+        return reports
 
 
 @functools.cache
@@ -393,7 +396,7 @@ def load_parser() -> spacy.language.Language:
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Collects statistics of the English text subtitles, to find what fix-translations could translate with fixed rules and what the translation prompt should cover.")
-    parser.add_argument("--output", type=Path, default=OUTPUT_DEFAULT, help=f"report file to write (default: {OUTPUT_DEFAULT})")
+    parser.add_argument("--output", type=Path, default=OUTPUT_DEFAULT, help=f"folder to write the report files to (default: {OUTPUT_DEFAULT})")
     parser.add_argument("--titles-min", type=int, default=TITLES_MIN_DEFAULT, help=f"list only items found in at least this many movies or series (default: {TITLES_MIN_DEFAULT})")
     parser.add_argument("--rows", type=int, default=ROWS_DEFAULT, help=f"most items listed in each section (default: {ROWS_DEFAULT})")
     subs = sorted(set(find_subtitles(parser, formats=(SubtitleFormat.TEXT,), language=LANGUAGE_SOURCE)), key=lambda sub: (sub.title_name, str(sub.movie_dir), sub.video_name, sub.name))
@@ -413,6 +416,7 @@ if __name__ == "__main__":
                 title = title.with_video(video)
             library.add_title(title)
 
-        arguments.output.parent.mkdir(parents=True, exist_ok=True)
-        write_text_replacing(arguments.output, library.to_report(titles_min=arguments.titles_min, rows=arguments.rows), newline="\n")
+        arguments.output.mkdir(parents=True, exist_ok=True)
+        for name, report in library.to_reports(titles_min=arguments.titles_min, rows=arguments.rows).items():
+            write_text_replacing(arguments.output / name, report, newline="\n")
         log_heading(f"{library.describe()}, written to {arguments.output}", Color.GREEN)
