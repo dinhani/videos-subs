@@ -41,7 +41,7 @@ Run the steps in order; each step skips files it already processed, so every ste
 3. `3-identify-ocr-subs.py`: puts the language code and kind in the name of each image subtitle, from a Tesseract reading.
 4. `4-ocr-subs.py`: transcribes the English and second-language image subtitles into text subtitles with Gemma vision.
 5. `5-check-ocr-subs.py`: checks each OCR output against its image subtitle and writes a report.
-6. `6-translate-subs.py`: translates each `.eng.srt` into `<name>.pob.translated.srt` in the movie folder.
+6. `6-translate-subs.py`: translates each `.eng.srt`, with a second language when the video has one, into `<name>.pob.translated.srt` in the movie folder.
 7. `7-fix-translations.py`: applies the mechanical fixes to each translation.
 8. `8-check-translations.py`: checks each translation against its English source and writes a report.
 9. `9-warn-subs.py`: adds warning entries at the start of each translation.

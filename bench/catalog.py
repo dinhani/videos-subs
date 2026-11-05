@@ -2,6 +2,7 @@ from pathlib import Path
 
 from models import LlamaModel, NmtFamily, NmtModel, ScoringModel
 from runs import PipelineTranslator, Run, Source
+from shared.languages import SecondLanguage
 
 PROMPTS_DIR = Path(__file__).parent / "prompts"
 
@@ -75,10 +76,10 @@ RUNS_ACTIVE = (
     Run.from_model(GEMMA_4_26B),
     Run.from_fixes(Run.from_model(GEMMA_4_26B)),
     *(Run.from_prompt(GEMMA_4_26B, prompt) for prompt in sorted(PROMPTS_DIR.glob("*.txt"))),
-    Run.from_second_language(GEMMA_4_26B, "spa"),
-    Run.from_fixes(Run.from_second_language(GEMMA_4_26B, "spa")),
-    Run.from_second_language(GEMMA_4_26B, "por"),
-    Run.from_fixes(Run.from_second_language(GEMMA_4_26B, "por")),
+    Run.from_second_language(GEMMA_4_26B, SecondLanguage.SPANISH),
+    Run.from_fixes(Run.from_second_language(GEMMA_4_26B, SecondLanguage.SPANISH)),
+    Run.from_second_language(GEMMA_4_26B, SecondLanguage.EUROPEAN_PORTUGUESE),
+    Run.from_fixes(Run.from_second_language(GEMMA_4_26B, SecondLanguage.EUROPEAN_PORTUGUESE)),
 )
 RUNS_DISABLED = (
     *(Run.from_model(model) for model in NMT_MODELS),

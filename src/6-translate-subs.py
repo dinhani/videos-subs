@@ -8,6 +8,7 @@ import json
 import re
 from collections.abc import Sequence
 from dataclasses import dataclass, field
+from datetime import timedelta
 from pathlib import Path
 from typing import Any
 from xml.etree import ElementTree
@@ -102,11 +103,13 @@ Reply:
 {"1": {"en": ["[FAUCET DRIPS]"], "pt": ["[TORNEIRA PINGA]"]}, "2": {"en": ["- We need a boat.", "- Okay."], "pt": ["- A gente precisa de um barco.", "- Tá."]}, "3": {"en": ["I think he took", "the old highway north,"], "pt": ["Acho que ele pegou", "a rodovia velha pro norte,"]}, "4": {"en": ["but he's gonna run out of gas."], "pt": ["mas vai ficar sem gasolina."]}, "5": {"en": ["[TYPEWRITER CLACKING]"], "pt": ["[MÁQUINA DE ESCREVER BATENDO]"]}, "6": {"en": ["<i>Fuck, we're out of gas.</i>"], "pt": ["<i>Porra, a gasolina acabou.</i>"]}, "7": {"en": ["Good afternoon, sir.", "May I see your boarding pass?"], "pt": ["Boa tarde, senhor.", "Posso ver seu cartão de embarque?"]}, "8": {"en": ["♪ Fly me to the moon ♪"], "pt": ["♪ Fly me to the moon ♪"]}}
 """
 
-SECOND_LANGUAGES = (SecondLanguage.EUROPEAN_PORTUGUESE, SecondLanguage.SPANISH, SecondLanguage.FRENCH, SecondLanguage.ITALIAN)
 SECOND_LANGUAGE_MATCHED_MIN = 0.9
 SECOND_LANGUAGE_PROMPT = """
 
 "second_language" maps ids in "entries" to the lines of the {language} subtitle of the same movie that are on screen at the same time. People translated it from the same dialogue, so it shows what the English means in the scene: the sense of an idiom or of a word with several meanings, whether "you" is one person or several, formal or casual address, gender and tense. Use it only to understand the English, and translate the English: when the {language} leaves something out or adds something, follow the English. Never copy {language} words, spellings or sentence structure; write Brazilian Portuguese.{forms}"""
+SECOND_LANGUAGE_FORMS = {
+    SecondLanguage.EUROPEAN_PORTUGUESE: 'European Portuguese forms are not Brazilian: never write "tu" and its verb forms, "consigo" for "com você", "estar a" with the infinitive for the gerund ("está a fazer" is "está fazendo"), or spellings such as "facto", "equipa" and "tentámos".',
+}
 
 NFO_CHARACTERS_MAX = 20
 NFO_SHOW = "tvshow.nfo"
@@ -167,15 +170,15 @@ class MovieInfo:
 # Second language
 # ------------------------------------------------------------------------------
 @dataclass(frozen=True)
-class SecondSubtitle:
+class SecondLanguageSubtitle:
     language: SecondLanguage
     file: SubtitleFile
-    offset_seconds: float
+    offset: timedelta
     lines: dict[int, tuple[str, ...]]
     entries_english: int
 
     @classmethod
-    def find(cls, language: SecondLanguage, english: SubtitleFile, english_entries: list[srt.Subtitle]) -> "SecondSubtitle | None":
+    def find(cls, language: SecondLanguage, english: SubtitleFile, english_entries: list[srt.Subtitle]) -> "SecondLanguageSubtitle | None":
         # pick most entries
         candidates = [(file, parse_srt(file.path)) for file in english.find_text_subtitles(language.code)]
         if not candidates:
@@ -186,13 +189,17 @@ class SecondSubtitle:
         aligned = AlignedSubtitle.from_entries(entries, english=english_entries)
         english_texts = [i for i, entry in enumerate(english_entries) if parse_lines(entry)]
         lines = {i: matched for i in english_texts if (matched := tuple(line for other in aligned.find_overlapping(english_entries[i]) for line in parse_lines(other)))}
-        return cls(language=language, file=file, offset_seconds=aligned.offset.total_seconds(), lines=lines, entries_english=len(english_texts))
+        return cls(language=language, file=file, offset=aligned.offset, lines=lines, entries_english=len(english_texts))
 
     def is_matched(self) -> bool:
         return len(self.lines) >= SECOND_LANGUAGE_MATCHED_MIN * self.entries_english
 
+    def to_prompt(self) -> str:
+        forms = SECOND_LANGUAGE_FORMS.get(self.language)
+        return SECOND_LANGUAGE_PROMPT.replace("{language}", self.language.label).replace("{forms}", f" {forms}" if forms else "")
+
     def to_record(self) -> dict[str, Any]:
-        return {"second_language": self.file.name, "offset_seconds": self.offset_seconds, "matched": len(self.lines), "entries": self.entries_english}
+        return {"second_language": self.file.name, "offset_seconds": self.offset.total_seconds(), "matched": len(self.lines), "entries": self.entries_english}
 
 # ------------------------------------------------------------------------------
 # Translation
@@ -304,7 +311,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Translates English subtitles to Brazilian Portuguese; folders only English ones.")
     parser.add_argument("--temperatures", nargs="+", type=float, default=LLM_TEMPERATURES, help=f"temperature of each attempt of a chunk, in order (default: {' '.join(map(str, LLM_TEMPERATURES))})")
     parser.add_argument("--prompt", type=Path, help="text file with the system prompt to use instead of LLM_PROMPT; {movie} in it is replaced by the title of the movie or episode, as in LLM_PROMPT")
-    parser.add_argument("--second-languages", nargs="*", choices=[language.code for language in SecondLanguage], default=[language.code for language in SECOND_LANGUAGES], help=f"language codes of text subtitles of the same video, in its _subs folder, in order of preference; the first one that matches enough entries has its lines on screen with each English entry sent with it; with no codes, or when none matches, the English is sent alone (default: {' '.join(language.code for language in SECOND_LANGUAGES)})")
+    parser.add_argument("--second-languages", nargs="*", choices=[language.code for language in SecondLanguage], default=[language.code for language in SecondLanguage], help=f"language codes of text subtitles of the same video, in its _subs folder, in order of preference; the first one that matches enough entries has its lines on screen with each English entry sent with it; with no codes, or when none matches, the English is sent alone (default: {' '.join(language.code for language in SecondLanguage)})")
     parser.add_argument("--print-prompt", action="store_true", help="print the system prompt and the first chunk of each subtitle, even one already translated, without translating it")
     subs_src = find_subtitles(parser, formats=(SubtitleFormat.TEXT,), languages=(LANGUAGE_SOURCE,))
     arguments = parser.parse_args()
@@ -338,11 +345,11 @@ if __name__ == "__main__":
                 # match second language
                 second_subtitle = None
                 for second_language in second_languages:
-                    candidate = SecondSubtitle.find(second_language, english=sub_src, english_entries=sub_entries)
+                    candidate = SecondLanguageSubtitle.find(second_language, english=sub_src, english_entries=sub_entries)
                     if candidate is None:
                         Action.SKIP.log(f"no {second_language.label} text subtitle")
                         continue
-                    Action.ALIGN.log(f"{candidate.file.name}: {len(candidate.lines)} of {candidate.entries_english} entries matched, offset {candidate.offset_seconds:.2f}s")
+                    Action.ALIGN.log(f"{candidate.file.name}: {len(candidate.lines)} of {candidate.entries_english} entries matched, offset {candidate.offset.total_seconds():.2f}s")
                     if not candidate.is_matched():
                         Action.DISCARD.log(f"{candidate.file.name} matches under {SECOND_LANGUAGE_MATCHED_MIN:.0%} of the entries")
                         continue
@@ -350,7 +357,7 @@ if __name__ == "__main__":
                     break
                 if second_languages and second_subtitle is None:
                     Action.SKIP.log("no second language, translating from the English alone")
-                second_prompt = second_subtitle.language.to_prompt(SECOND_LANGUAGE_PROMPT) if second_subtitle else ""
+                second_prompt = second_subtitle.to_prompt() if second_subtitle else ""
 
                 # build translation
                 movie_prompt = prompt.replace("{movie_info}", f"\n\n{movie_info_text}" if movie_info_text else "").replace("{second_language}", second_prompt).replace("{movie}", sub_src.movie_title)
