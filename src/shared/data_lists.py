@@ -108,7 +108,6 @@ FIX_SUBJECTS = DataList(file=DATA_FOLDER / "fix-subjects.txt", format=DataListFo
 FIX_INTERJECTIONS = DataList(file=DATA_FOLDER / "fix-interjections.txt", format=DataListFormat.PAIR)
 FIX_RANKS = DataList(file=DATA_FOLDER / "fix-ranks.txt", format=DataListFormat.PAIR)
 FIX_UNITS = DataList(file=DATA_FOLDER / "fix-units.txt", format=DataListFormat.PAIR)
-FIX_KEPT_LISTS = (FIX_INTERJECTIONS, FIX_RANKS, FIX_UNITS)
 FIX_EXPRESSIONS = DataList(file=DATA_FOLDER / "fix-expressions.txt", format=DataListFormat.EXPRESSION_TRIPLE)
 FIX_WORDS = DataList(file=DATA_FOLDER / "fix-words.txt", format=DataListFormat.TRIPLE)
 FIX_PORTUGAL = DataList(file=DATA_FOLDER / "fix-portugal.txt", format=DataListFormat.PORTUGAL_TRIPLE)

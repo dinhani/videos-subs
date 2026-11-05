@@ -37,7 +37,8 @@ QUOTES = fix_translations.QuotesFix(enabled=True)
 DASHES = fix_translations.DashesFix(enabled=True)
 SYMBOLS = fix_translations.SymbolsFix(enabled=True)
 DESCRIPTIONS = fix_translations.DescriptionsFix(enabled=True, sounds=fix_translations.FIX_SOUND_LISTS, subjects=fix_translations.FIX_SUBJECTS, music_moods=fix_translations.FIX_MUSIC_MOODS, voice_moods=fix_translations.FIX_VOICE_MOODS, languages=fix_translations.FIX_LANGUAGES, channels=fix_translations.FIX_CHANNELS)
-KEPT_WORDS = fix_translations.KeptWordsFix(enabled=True, words=fix_translations.FIX_KEPT_LISTS)
+KEPT_WORDS = fix_translations.KeptWordsFix(enabled=True, words=(fix_translations.FIX_INTERJECTIONS, fix_translations.FIX_RANKS), english_case=fix_translations.EnglishCase.ANY)
+KEPT_UNITS = fix_translations.KeptWordsFix(enabled=True, words=(fix_translations.FIX_UNITS,), english_case=fix_translations.EnglishCase.LOWERCASE)
 EXPRESSIONS = fix_translations.ExpressionsFix(enabled=True, expressions=fix_translations.FIX_EXPRESSIONS)
 
 
@@ -135,15 +136,22 @@ def test_labels(english: str, translated: str, expected: str) -> None:
     ("Um, I bought one.", "Hum, comprei um.", "Hum, comprei um."),
     ("A car!", "Um carro!", "Um carro!"),
     ("Yes, Sergeant.", "Sim, Sergeant.", "Sim, Sargento."),
-    ("It's 30 miles away.", "Fica a 30 miles daqui.", "Fica a 30 milhas daqui."),
+    ("-Mm-hmm.\n-Hey, Allen!", "-Mm-hmm.\n-Ei, Allen!", "-Aham.\n-Ei, Allen!"),
+    ("♪ A-whoo-hoo ♪", "♪ A-whoo-hoo ♪", "♪ A-whoo-hoo ♪"),
+    ("Whoo-hoo-hoo!", "Whoo-hoo-hoo!", "Whoo-hoo-hoo!"),
     ("You're too late, Lance corporal.", "Você está atrasado, Lance corporal.", "Você está atrasado, Cabo."),
 ])
 def test_kept_words(english: str, translated: str, expected: str) -> None:
     assert fix(KEPT_WORDS, english, translated) == expected
 
 
-def test_kept_words_leave_names() -> None:
-    assert fix(KEPT_WORDS, "Colonel Miles Quaritch.", "Coronel Miles Quaritch.", names=frozenset({"miles"})) == "Coronel Miles Quaritch."
+@pytest.mark.parametrize(("english", "translated", "expected"), [
+    ("It's 30 miles away.", "Fica a 30 miles daqui.", "Fica a 30 milhas daqui."),
+    ("Colonel Miles Quaritch.", "Coronel Miles Quaritch.", "Coronel Miles Quaritch."),
+    ("Miles?", "Miles?", "Miles?"),
+])
+def test_kept_units(english: str, translated: str, expected: str) -> None:
+    assert fix(KEPT_UNITS, english, translated) == expected
 
 
 @pytest.mark.parametrize(("english", "translated", "expected"), [

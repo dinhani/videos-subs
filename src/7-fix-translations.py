@@ -10,6 +10,7 @@ import re
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, replace
+from enum import Enum
 from typing import ClassVar
 
 import readchar
@@ -17,7 +18,7 @@ import srt
 from rich.text import Text
 
 from shared.console import Action, Batch, Color, console
-from shared.data_lists import FIX_CHANNELS, FIX_EXPRESSIONS, FIX_KEPT_LISTS, FIX_LANGUAGES, FIX_MUSIC_MOODS, FIX_PORTUGAL, FIX_SOUND_LISTS, FIX_SUBJECTS, FIX_VOICE_MOODS, FIX_WORDS, DataList
+from shared.data_lists import FIX_CHANNELS, FIX_EXPRESSIONS, FIX_INTERJECTIONS, FIX_LANGUAGES, FIX_MUSIC_MOODS, FIX_PORTUGAL, FIX_RANKS, FIX_SOUND_LISTS, FIX_SUBJECTS, FIX_UNITS, FIX_VOICE_MOODS, FIX_WORDS, DataList
 from shared.descriptions import DESCRIPTION_SIMPLE, SPEAKER_LABEL, DescriptionTable, MovieNames, match_case
 from shared.files import Backups, SubtitleFile, SubtitleFormat, find_subtitles, parse_srt, write_text_replacing
 from shared.languages import WORD
@@ -299,12 +300,18 @@ class DescriptionsFix:
         return line
 
 
+class EnglishCase(Enum):
+    ANY = "any"
+    LOWERCASE = "lowercase"
+
+
 @dataclass(frozen=True)
 class KeptWordsFix:
     name: ClassVar[str] = "kept words"
     SONG: ClassVar[re.Pattern[str]] = re.compile(r"[♪♫]")
     enabled: bool
     words: tuple[DataList, ...]
+    english_case: EnglishCase
 
     def fix(self, entry: "TranslationEntry", movie_names: MovieNames) -> tuple[str, ...]:
         if not entry.is_aligned:
@@ -313,14 +320,14 @@ class KeptWordsFix:
         if pattern is None:
             return entry.target_lines
 
-        # an interjection, rank or unit the model kept in English is replaced on the line whose English has it, unless it is a name in the movie, such as Miles; song lines stay as they are
+        # an interjection, rank or unit the model kept in English is replaced on the line whose English has it; a unit only in lowercase, since a capitalized one can be a name, such as Miles; song lines stay as they are
         lines: list[str] = []
         for source_line, line in zip(entry.source_lines, entry.target_lines):
-            source_words = {match[0].lower() for match in pattern.finditer(source_line)}
+            source_words = {match[0].lower() for match in pattern.finditer(source_line) if self.english_case is EnglishCase.ANY or match[0].islower()}
             if self.SONG.search(source_line) or not source_words:
                 lines.append(line)
                 continue
-            lines.append(pattern.sub(lambda match: match_case(words_kept[" ".join(match[0].lower().split())], match[0]) if match[0].lower() in source_words and not any(movie_names.is_name(word) for word in match[0].lower().split()) else match[0], line))
+            lines.append(pattern.sub(lambda match: match_case(words_kept[" ".join(match[0].lower().split())], match[0]) if match[0].lower() in source_words and (self.english_case is EnglishCase.ANY or match[0].islower()) else match[0], line))
         return tuple(lines)
 
 
@@ -382,7 +389,8 @@ FIXES: tuple[TranslationFix, ...] = (
     DashesFix(enabled=True),
     SymbolsFix(enabled=True),
     DescriptionsFix(enabled=True, sounds=FIX_SOUND_LISTS, subjects=FIX_SUBJECTS, music_moods=FIX_MUSIC_MOODS, voice_moods=FIX_VOICE_MOODS, languages=FIX_LANGUAGES, channels=FIX_CHANNELS),
-    KeptWordsFix(enabled=True, words=FIX_KEPT_LISTS),
+    KeptWordsFix(enabled=True, words=(FIX_INTERJECTIONS, FIX_RANKS), english_case=EnglishCase.ANY),
+    KeptWordsFix(enabled=True, words=(FIX_UNITS,), english_case=EnglishCase.LOWERCASE),
     ExpressionsFix(enabled=True, expressions=FIX_EXPRESSIONS),
     WordsFix(enabled=True, words=FIX_WORDS),
     WordsFix(enabled=True, words=FIX_PORTUGAL),
@@ -485,7 +493,7 @@ def load_kept_words(files: tuple[DataList, ...]) -> tuple[dict[str, str], re.Pat
     if not interjections:
         return interjections, None
     alternatives = "|".join(r"\s+".join(re.escape(word) for word in english.split()) for english in sorted(interjections, key=len, reverse=True))
-    return interjections, re.compile(rf"(?<![\w-])(?:{alternatives})(?![\w-])", re.IGNORECASE)
+    return interjections, re.compile(rf"(?<!\w)(?<!\w-)(?:{alternatives})(?![\w-])", re.IGNORECASE)
 
 
 @functools.cache
