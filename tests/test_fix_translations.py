@@ -89,6 +89,9 @@ def test_quotes(english: str, translated: str, expected: str) -> None:
     ("♪ Wow, wow ♪", "♪ Wow, wow ♪", "♪ Wow, wow ♪"),
     ("Nice.", "Wow.", "Wow."),
     ("Wow.", "Nossa.", "Nossa."),
+    ("Um... I don't know.", "Um... Não sei.", "Hum... Não sei."),
+    ("Um, I bought one.", "Hum, comprei um.", "Hum, comprei um."),
+    ("A car!", "Um carro!", "Um carro!"),
 ])
 def test_interjections(english: str, translated: str, expected: str) -> None:
     assert fix(INTERJECTIONS, english, translated) == expected
@@ -101,6 +104,8 @@ def test_interjections(english: str, translated: str, expected: str) -> None:
     ("Hold your fire!", "Não atirem!", "Não atirem!"),
     ("Keep firing!", "Mantenham o fogo!", "Mantenham o fogo!"),
     ("Hold fire for what?", "Mantenham o fogo para quê?", "Mantenham o fogo para quê?"),
+    ("And eventually, much bigger fish.", "E, eventualmente, peixes muito maiores.", "E, com o tempo, peixes muito maiores."),
+    ('I wish I had time for "eventually."', 'Queria ter tempo para o "eventualmente".', 'Queria ter tempo para o "eventualmente".'),
 ])
 def test_expressions(english: str, translated: str, expected: str) -> None:
     assert fix(EXPRESSIONS, english, translated) == expected

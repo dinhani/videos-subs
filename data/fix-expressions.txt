@@ -1,3 +1,4 @@
+eventually = eventualmente = com o tempo
 hold fire = mantenha o fogo = não atire
 hold fire = mantenha o fogo retido = não atire
 hold fire = mantenha o fogo suspenso = não atire
