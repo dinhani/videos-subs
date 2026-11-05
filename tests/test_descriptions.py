@@ -2,10 +2,10 @@ from pathlib import Path
 
 import pytest
 
-from shared.data_lists import FIX_CHANNELS, FIX_LANGUAGES, FIX_MOODS, FIX_SOUND_LISTS, FIX_SUBJECTS
+from shared.data_lists import FIX_CHANNELS, FIX_LANGUAGES, FIX_MUSIC_MOODS, FIX_SOUND_LISTS, FIX_SUBJECTS, FIX_VOICE_MOODS
 from shared.descriptions import DescriptionTable, MovieNames
 
-TABLE = DescriptionTable.from_lists(sounds=FIX_SOUND_LISTS, subjects=FIX_SUBJECTS, moods=FIX_MOODS, languages=FIX_LANGUAGES, channels=FIX_CHANNELS)
+TABLE = DescriptionTable.from_lists(sounds=FIX_SOUND_LISTS, subjects=FIX_SUBJECTS, music_moods=FIX_MUSIC_MOODS, voice_moods=FIX_VOICE_MOODS, languages=FIX_LANGUAGES, channels=FIX_CHANNELS)
 
 
 @pytest.mark.parametrize(("description", "text", "name"), [
@@ -27,6 +27,8 @@ TABLE = DescriptionTable.from_lists(sounds=FIX_SOUND_LISTS, subjects=FIX_SUBJECT
     ("MAN 2 SCREAMS", "HOMEM 2 GRITA", ""),
     ("CONTINUES LAUGHING", "CONTINUA RINDO", ""),
     ("DISTANT EXPLOSION", "EXPLOSÃO AO LONGE", ""),
+    ("IN A DEEP VOICE", "COM UMA VOZ GRAVE", ""),
+    ("whispering in normal voice", "sussurrando com voz normal", ""),
 ])
 def test_find_translation(description: str, text: str, name: str) -> None:
     translation = TABLE.find_translation(description)
@@ -40,6 +42,7 @@ def test_find_translation(description: str, text: str, name: str) -> None:
     "jake grunts",
     "GRUNTS, WHIMPERS",
     "EMOTIONAL MUSIC PLAYING",
+    "SOFT PENSIVE MUSIC PLAYING",
     "SOLDIERS ON RADIO SCREAMS",
 ])
 def test_find_translation_refused(description: str) -> None:

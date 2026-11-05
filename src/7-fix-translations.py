@@ -17,7 +17,7 @@ import srt
 from rich.text import Text
 
 from shared.console import Action, Batch, Color, console
-from shared.data_lists import FIX_CHANNELS, FIX_INTERJECTIONS, FIX_LANGUAGES, FIX_MOODS, FIX_SOUND_LISTS, FIX_SUBJECTS, FIX_WORDS, DataList
+from shared.data_lists import FIX_CHANNELS, FIX_INTERJECTIONS, FIX_LANGUAGES, FIX_MUSIC_MOODS, FIX_SOUND_LISTS, FIX_SUBJECTS, FIX_VOICE_MOODS, FIX_WORDS, DataList
 from shared.descriptions import DESCRIPTION_SIMPLE, DescriptionTable, MovieNames, match_case
 from shared.files import Backups, SubtitleFile, SubtitleFormat, find_subtitles, parse_srt, write_text_replacing
 from shared.languages import WORD
@@ -186,14 +186,15 @@ class DescriptionsFix:
     enabled: bool
     sounds: tuple[DataList, ...]
     subjects: DataList
-    moods: DataList
+    music_moods: DataList
+    voice_moods: DataList
     languages: DataList
     channels: DataList
 
     def fix(self, entry: "TranslationEntry", movie_names: MovieNames) -> tuple[str, ...]:
         if not entry.is_aligned:
             return entry.target_lines
-        table = load_description_table(self.sounds, self.subjects, self.moods, self.languages, self.channels)
+        table = load_description_table(self.sounds, self.subjects, self.music_moods, self.voice_moods, self.languages, self.channels)
         lines = list(entry.target_lines)
         for n, (source_line, line) in enumerate(zip(entry.source_lines, entry.target_lines)):
             descriptions = list(DESCRIPTION_SIMPLE.finditer(source_line))
@@ -290,7 +291,7 @@ FIXES: tuple[TranslationFix, ...] = (
     LeftoversFix(enabled=True),
     BracketsFix(enabled=True),
     QuotesFix(enabled=True),
-    DescriptionsFix(enabled=True, sounds=FIX_SOUND_LISTS, subjects=FIX_SUBJECTS, moods=FIX_MOODS, languages=FIX_LANGUAGES, channels=FIX_CHANNELS),
+    DescriptionsFix(enabled=True, sounds=FIX_SOUND_LISTS, subjects=FIX_SUBJECTS, music_moods=FIX_MUSIC_MOODS, voice_moods=FIX_VOICE_MOODS, languages=FIX_LANGUAGES, channels=FIX_CHANNELS),
     InterjectionsFix(enabled=True, interjections=FIX_INTERJECTIONS),
     WordsFix(enabled=True, words=FIX_WORDS),
 )
@@ -377,8 +378,8 @@ class Translation:
 
 
 @functools.cache
-def load_description_table(sounds: tuple[DataList, ...], subjects: DataList, moods: DataList, languages: DataList, channels: DataList) -> DescriptionTable:
-    return DescriptionTable.from_lists(sounds=sounds, subjects=subjects, moods=moods, languages=languages, channels=channels)
+def load_description_table(sounds: tuple[DataList, ...], subjects: DataList, music_moods: DataList, voice_moods: DataList, languages: DataList, channels: DataList) -> DescriptionTable:
+    return DescriptionTable.from_lists(sounds=sounds, subjects=subjects, music_moods=music_moods, voice_moods=voice_moods, languages=languages, channels=channels)
 
 
 @functools.cache

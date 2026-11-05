@@ -64,6 +64,10 @@ A second request that asks a model for the entries with a wrong meaning, after t
 
 Table entries whose Portuguese depends on the scene were written wrong in some entries: a sound that is different for a person, an animal or a machine (`barks`, `hisses`), a word with several meanings (`choking`, `blows`), and a subject whose gender the English does not tell (`both`, `everyone`). Two independent reviews found them, and they were removed. A fix that needs the scene belongs to the fix skill.
 
+### Object sounds as whole phrases with one form
+
+About 200 phrases of an object and its sound, such as `engine humming` or `camera clicks`, were added to the tables with the verb form only. In a sample of 8 movies, 9 of every 10 entries they changed were already right: the model writes these sounds as nouns, such as `ZUMBIDO DO MOTOR`, `BIP DE ALARME` and `CLIQUE DE CÂMERA`, and the fix replaced them with `MOTOR ZUMBINDO`. An object sound goes in the tables only with every right form the model writes for it.
+
 ### Human subtitles or a review at watch time
 
 Human subtitles do not matter here: when a movie has one, picking it is the viewer's choice at watch time, and every English subtitle is still translated. The goal is every translation ready to watch, so a review that runs when a movie is picked to watch is out too.

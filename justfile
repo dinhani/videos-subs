@@ -255,12 +255,30 @@ add-fix-channels +pairs:
     exit $LASTEXITCODE
 
 [group('data/fix')]
+[doc('Add object sounds to fix-translations')]
+[script]
+[extension('.ps1')]
+[positional-arguments]
+add-fix-objects +pairs:
+    uv run src/fix-tools/add-to-dictionary.py fix-objects @args
+    exit $LASTEXITCODE
+
+[group('data/fix')]
 [doc('Add music moods to fix-translations')]
 [script]
 [extension('.ps1')]
 [positional-arguments]
-add-fix-moods +pairs:
-    uv run src/fix-tools/add-to-dictionary.py fix-moods @args
+add-fix-music-moods +pairs:
+    uv run src/fix-tools/add-to-dictionary.py fix-music-moods @args
+    exit $LASTEXITCODE
+
+[group('data/fix')]
+[doc('Add voice moods to fix-translations')]
+[script]
+[extension('.ps1')]
+[positional-arguments]
+add-fix-voice-moods +pairs:
+    uv run src/fix-tools/add-to-dictionary.py fix-voice-moods @args
     exit $LASTEXITCODE
 
 [group('data/fix')]

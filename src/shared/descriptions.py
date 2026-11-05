@@ -65,19 +65,20 @@ class DescriptionTranslation:
 class DescriptionTable:
     sounds: dict[str, tuple[str, ...]]
     subjects: dict[str, str]
-    moods: dict[str, tuple[str, ...]]
+    moods: dict[str, tuple[str, dict[str, tuple[str, ...]]]]
     languages: dict[str, tuple[str, ...]]
     channels: dict[str, tuple[str, ...]]
 
     @classmethod
-    def from_lists(cls, sounds: tuple[DataList, ...], subjects: DataList, moods: DataList, languages: DataList, channels: DataList) -> "DescriptionTable":
+    def from_lists(cls, sounds: tuple[DataList, ...], subjects: DataList, music_moods: DataList, voice_moods: DataList, languages: DataList, channels: DataList) -> "DescriptionTable":
         phrases: dict[str, tuple[str, ...]] = {}
         for sound_list in sounds:
             for key, forms in parse_forms(sound_list).items():
                 if key in phrases:
                     raise ValueError(f"{sound_list.file.name}: phrase listed in another sound list: {key!r}")
                 phrases[key] = forms
-        return cls(sounds=phrases, subjects=dict(subjects.parse()), moods=parse_forms(moods), languages=parse_forms(languages), channels=parse_forms(channels))
+        moods = {"music": ("música", parse_forms(music_moods)), "voice": ("voz", parse_forms(voice_moods))}
+        return cls(sounds=phrases, subjects=dict(subjects.parse()), moods=moods, languages=parse_forms(languages), channels=parse_forms(channels))
 
     def find_translation(self, description: str) -> DescriptionTranslation | None:
         words = description.split()
@@ -130,9 +131,14 @@ class DescriptionTable:
         words = phrase.split(" ")
         rest = " ".join(words[1:])
 
-        # a mood before music: GRIM MUSIC PLAYING
-        if words[0] in self.moods and words[1:2] == ["music"] and (forms := self.find_forms(rest)):
-            return tuple(form.replace("música", f"música {mood}", 1) for mood in self.moods[words[0]] for form in forms if "música" in form) or None
+        # one mood before music or a voice: GRIM MUSIC PLAYING, IN A DEEP VOICE; two moods are left out, since their order and the "e" between them change in Portuguese
+        for n, (mood, noun) in enumerate(zip(words, words[1:])):
+            noun_portuguese, moods = self.moods.get(noun, ("", {}))
+            if n > 0 and words[n - 1].rstrip(",") in moods:
+                return None
+            forms = self.find_forms(" ".join(words[:n] + words[n + 1:])) if mood in moods else None
+            if forms:
+                return tuple(form.replace(noun_portuguese, f"{noun_portuguese} {mood_portuguese}", 1) for mood_portuguese in moods[mood] for form in forms if noun_portuguese in form) or None
 
         # a language after speaking or in: SPEAKING SWEDISH
         for prefix, prefixes_portuguese in LANGUAGE_PHRASES:

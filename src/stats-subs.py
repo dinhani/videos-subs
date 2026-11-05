@@ -18,7 +18,7 @@ from typing import NamedTuple
 import spacy
 
 from shared.console import Action, Batch, Color, cancel_on_interrupt, log_heading
-from shared.data_lists import DATA_FOLDER, FIX_CHANNELS, FIX_LANGUAGES, FIX_MOODS, FIX_SOUND_LISTS, FIX_SUBJECTS
+from shared.data_lists import DATA_FOLDER, FIX_CHANNELS, FIX_LANGUAGES, FIX_MUSIC_MOODS, FIX_SOUND_LISTS, FIX_SUBJECTS, FIX_VOICE_MOODS
 from shared.descriptions import DESCRIPTION_SIMPLE, DESCRIPTION_SUBJECT_WORDS_MAX, NLP_MODEL, SPEAKER_LABEL, DescriptionTable
 from shared.files import SubtitleFile, SubtitleFormat, find_subtitles, parse_srt, write_text_replacing
 from shared.languages import WORD
@@ -384,7 +384,7 @@ class Library:
 
 @functools.cache
 def load_description_table() -> DescriptionTable:
-    return DescriptionTable.from_lists(sounds=FIX_SOUND_LISTS, subjects=FIX_SUBJECTS, moods=FIX_MOODS, languages=FIX_LANGUAGES, channels=FIX_CHANNELS)
+    return DescriptionTable.from_lists(sounds=FIX_SOUND_LISTS, subjects=FIX_SUBJECTS, music_moods=FIX_MUSIC_MOODS, voice_moods=FIX_VOICE_MOODS, languages=FIX_LANGUAGES, channels=FIX_CHANNELS)
 
 
 @functools.cache

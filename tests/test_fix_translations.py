@@ -34,7 +34,7 @@ TAGS = fix_translations.TagsFix(enabled=True)
 LEFTOVERS = fix_translations.LeftoversFix(enabled=True)
 BRACKETS = fix_translations.BracketsFix(enabled=True)
 QUOTES = fix_translations.QuotesFix(enabled=True)
-DESCRIPTIONS = fix_translations.DescriptionsFix(enabled=True, sounds=fix_translations.FIX_SOUND_LISTS, subjects=fix_translations.FIX_SUBJECTS, moods=fix_translations.FIX_MOODS, languages=fix_translations.FIX_LANGUAGES, channels=fix_translations.FIX_CHANNELS)
+DESCRIPTIONS = fix_translations.DescriptionsFix(enabled=True, sounds=fix_translations.FIX_SOUND_LISTS, subjects=fix_translations.FIX_SUBJECTS, music_moods=fix_translations.FIX_MUSIC_MOODS, voice_moods=fix_translations.FIX_VOICE_MOODS, languages=fix_translations.FIX_LANGUAGES, channels=fix_translations.FIX_CHANNELS)
 INTERJECTIONS = fix_translations.InterjectionsFix(enabled=True, interjections=fix_translations.FIX_INTERJECTIONS)
 
 
