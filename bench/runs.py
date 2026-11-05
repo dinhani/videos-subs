@@ -23,7 +23,7 @@ from shared.subtitles import parse_plain_text, replace_text
 
 BENCH_DIR = Path(__file__).parent
 SRC_DIR = BENCH_DIR.parent / "src"
-ENGLISH_DIR = BENCH_DIR / "1-english"
+SOURCES_DIR = BENCH_DIR / "1-sources"
 REFERENCES_DIR = BENCH_DIR / "2-references"
 RUNS_DIR = BENCH_DIR / "3-runs"
 SCORES_FOLDER = "_scores"
@@ -147,7 +147,7 @@ class Source:
 
     @property
     def english(self) -> Path:
-        return ENGLISH_DIR / self.movie / self.library_english.name
+        return SOURCES_DIR / self.movie / self.library_english.name
 
     @property
     def name(self) -> str:
@@ -155,7 +155,7 @@ class Source:
 
     @property
     def second_languages(self) -> tuple[Path, ...]:
-        return tuple(ENGLISH_DIR / self.movie / file.name for file in self.library_second_languages)
+        return tuple(SOURCES_DIR / self.movie / file.name for file in self.library_second_languages)
 
     @property
     def library_nfo(self) -> Path:
@@ -163,7 +163,7 @@ class Source:
 
     @property
     def nfo(self) -> Path:
-        return ENGLISH_DIR / self.movie / self.library_nfo.name
+        return SOURCES_DIR / self.movie / self.library_nfo.name
 
     @property
     def title(self) -> str:

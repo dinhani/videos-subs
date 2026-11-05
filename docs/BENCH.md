@@ -4,7 +4,7 @@
 
 ## Folders
 
-- `1-english/`: the English copy of each source, with the `.nfo` and the second-language subtitles of the source next to it.
+- `1-sources/`: the copy of each source: its English subtitle, its `.nfo` and its second-language subtitles.
 - `2-references/`: the reference translations. Only `2-references/*/<name>.claude.srt` is committed.
 - `3-runs/`: one folder per run with its translations. The bench copies the `.nfo` of each source into the movie folder of each run, so translate finds it as in the library.
 - `4-compare/`: the output of `just bench compare`.
