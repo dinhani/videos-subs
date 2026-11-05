@@ -13,6 +13,7 @@ DESCRIPTION_SIMPLE = re.compile(r"\[([^\[\]()<>{}]+)\]|\(([^\[\]()<>{}]+)\)")
 DESCRIPTION_SUBJECT_WORDS_MAX = 2
 DESCRIPTION_PUNCTUATION = re.compile(r"[\[\]()\-–—]")
 DESCRIPTION_ARTICLE = re.compile(r"^(?:o|a|os|as)\s+")
+DESCRIPTION_ADJECTIVE_SINGULAR = re.compile(r"nte\b")
 DESCRIPTION_NUMBERED = re.compile(r"(?P<subject>.+) (?P<number>#?\d+)")
 DESCRIPTION_TAIL_WORDS = ("in", "on", "over")
 DESCRIPTION_FAR = ("ao longe", "distante", "distantes")
@@ -48,6 +49,7 @@ class DescriptionTranslation:
     text: str
     name: str
     forms: tuple[frozenset[str], ...]
+    texts_by_subject: tuple[tuple[str, str], ...] = ()
 
     def is_confirmed_by(self, translation: str, movie_names: "MovieNames") -> bool:
         if not self.name:
@@ -55,6 +57,11 @@ class DescriptionTranslation:
         words = normalize_description(translation)
         name = normalize_description(self.name)
         return words != normalize_description(self.source) and f" {name} " in f" {words} " and all(movie_names.is_name(word) for word in name.split())
+
+    def to_text(self, translation: str) -> str:
+        # the subject the model wrote, when the table lists it for this subject, so a right subject stays and only the phrase is written
+        words = f"{DESCRIPTION_ARTICLE.sub('', normalize_description(translation))} "
+        return next((text for subject, text in self.texts_by_subject if words.startswith(f"{normalize_description(subject)} ")), self.text)
 
     def is_already_in(self, translation: str) -> bool:
         parts = [DESCRIPTION_ARTICLE.sub("", part.strip()) for part in normalize_description(translation).split(",")]
@@ -87,7 +94,7 @@ class DescriptionTable:
         forms = self.find_forms(key)
         if forms is not None:
             return DescriptionTranslation(source=description, text=match_case(forms[0], description), name="", forms=(self.to_forms(forms, ""),))
-        subject_forms = self.find_subject(key) if DESCRIPTION_NUMBERED.fullmatch(key) else None
+        subject_forms = self.find_subject(key)
         if subject_forms is not None:
             return DescriptionTranslation(source=description, text=match_case(subject_forms[0], description), name="", forms=(self.to_forms(subject_forms, ""),))
 
@@ -113,8 +120,9 @@ class DescriptionTable:
             if subject_forms is not None:
                 if verb.endswith("s") and subject_forms[0].endswith("s"):
                     continue
-                text = match_case(f"{subject_forms[0]} {phrase_forms[0]}", description)
-                return DescriptionTranslation(source=description, text=text, name="", forms=(frozenset().union(*(self.to_forms(phrase_forms, subject_portuguese) for subject_portuguese in subject_forms)),))
+                texts_by_subject = tuple((subject_portuguese, match_case(f"{subject_portuguese} {phrase_forms[0]}", description)) for subject_portuguese in subject_forms)
+                forms = frozenset().union(*(self.to_forms(phrase_forms, subject_portuguese) for subject_portuguese in subject_forms))
+                return DescriptionTranslation(source=description, text=texts_by_subject[0][1], name="", forms=(forms,), texts_by_subject=texts_by_subject)
             if any(word.lower().endswith(("'s", "’s")) or word.lower() in self.subjects or word.lower() in self.sounds or (not description.isupper() and word[0].islower()) for word in subject):
                 continue
             name = " ".join(subject)
@@ -173,7 +181,11 @@ class DescriptionTable:
         return None
 
     def to_forms(self, phrases: tuple[str, ...], subject: str) -> frozenset[str]:
-        return frozenset(DESCRIPTION_ARTICLE.sub("", normalize_description(f"{subject} {phrase}")) for phrase in phrases)
+        # after a plural subject, an adjective in -nte also agrees with it: ESTUDANTES OFEGANTES
+        forms = {DESCRIPTION_ARTICLE.sub("", normalize_description(f"{subject} {phrase}")) for phrase in phrases}
+        if subject.endswith("s"):
+            forms |= {DESCRIPTION_ADJECTIVE_SINGULAR.sub("ntes", form) for form in forms}
+        return frozenset(forms)
 
 
 def parse_forms(data_list: DataList) -> dict[str, tuple[str, ...]]:

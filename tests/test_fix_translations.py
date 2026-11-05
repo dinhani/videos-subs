@@ -126,6 +126,15 @@ def test_labels(english: str, translated: str, expected: str) -> None:
 
 
 @pytest.mark.parametrize(("english", "translated", "expected"), [
+    ("(ALL GRUNTING)", "(TODOS GEMENDO)", "(TODOS GRUNHINDO)"),
+    ("(ALL GRUNTING)", "(GEMIDOS)", "(TODO MUNDO GRUNHINDO)"),
+    ("(STUDENTS GASPING)", "(ESTUDANTES OFEGANTES)", "(ESTUDANTES OFEGANTES)"),
+])
+def test_descriptions_keep_subject(english: str, translated: str, expected: str) -> None:
+    assert fix(DESCRIPTIONS, english, translated) == expected
+
+
+@pytest.mark.parametrize(("english", "translated", "expected"), [
     ("Wow.", "Wow.", "Uau."),
     ("Uh-huh. Sure.", "UH-HUH. CLARO.", "AHAM. CLARO."),
     ("Ow, ow!", "Ow, ow!", "Ai, ai!"),

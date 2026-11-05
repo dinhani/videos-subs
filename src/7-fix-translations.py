@@ -272,7 +272,7 @@ class DescriptionsFix:
                     continue
                 inner = spacing[0][1:-1]
                 space_before, space_after = inner[:len(inner) - len(inner.lstrip())], inner[len(inner.rstrip()):]
-                texts.append(f"{description[0][0]}{space_before}{translation.text}{space_after}{description[0][-1]}")
+                texts.append(f"{description[0][0]}{space_before}{translation.to_text(model)}{space_after}{description[0][-1]}")
 
             # a line that is only descriptions is the English line with the descriptions translated
             line_whole = not self.LINE_REST.sub("", FORMATTING_TAGS.sub("", DESCRIPTION_SIMPLE.sub("", source_line)))

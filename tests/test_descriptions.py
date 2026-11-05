@@ -29,6 +29,8 @@ TABLE = DescriptionTable.from_lists(sounds=FIX_SOUND_LISTS, subjects=FIX_SUBJECT
     ("DISTANT EXPLOSION", "EXPLOSÃO AO LONGE", ""),
     ("IN A DEEP VOICE", "COM UMA VOZ GRAVE", ""),
     ("GROANS IN PAIN", "GEME DE DOR", ""),
+    ("ALL LAUGHING", "TODO MUNDO RINDO", ""),
+    ("crowd", "multidão", ""),
     ("Sighs in relief", "Suspira de alívio", ""),
     ("IN SIGN LANGUAGE", "EM LÍNGUA DE SINAIS", ""),
     ("whispering in normal voice", "sussurrando com voz normal", ""),
