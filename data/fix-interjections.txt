@@ -12,6 +12,7 @@ mm-hmm = aham
 mmm-hmm = aham
 nah = não
 nope = não
+okay = ok
 oops = opa
 ouch = ai
 ow = ai

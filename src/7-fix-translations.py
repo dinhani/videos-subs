@@ -18,7 +18,7 @@ import srt
 from rich.text import Text
 
 from shared.console import Action, Batch, Color, console
-from shared.data_lists import FIX_CHANNELS, FIX_EXPRESSIONS, FIX_INTERJECTIONS, FIX_LANGUAGES, FIX_MUSIC_MOODS, FIX_PORTUGAL, FIX_RANKS, FIX_SOUND_LISTS, FIX_SUBJECTS, FIX_UNITS, FIX_VOICE_MOODS, FIX_WORDS, DataList
+from shared.data_lists import FIX_ADDRESSES, FIX_CHANNELS, FIX_EXPRESSIONS, FIX_INTERJECTIONS, FIX_LANGUAGES, FIX_MUSIC_MOODS, FIX_PORTUGAL, FIX_RANKS, FIX_SOUND_LISTS, FIX_SUBJECTS, FIX_UNITS, FIX_VOICE_MOODS, FIX_WORDS, DataList
 from shared.descriptions import DESCRIPTION_SIMPLE, SPEAKER_LABEL, DescriptionTable, MovieNames, match_case
 from shared.files import Backups, SubtitleFile, SubtitleFormat, find_subtitles, parse_srt, write_text_replacing
 from shared.languages import WORD
@@ -320,7 +320,7 @@ class KeptWordsFix:
         if pattern is None:
             return entry.target_lines
 
-        # an interjection, rank or unit the model kept in English is replaced on the line whose English has it; a unit only in lowercase, since a capitalized one can be a name, such as Miles; song lines stay as they are
+        # an interjection, rank, form of address or unit the model kept in English is replaced on the line whose English has it; a unit only in lowercase, since a capitalized one can be a name, such as Miles; song lines stay as they are
         lines: list[str] = []
         for source_line, line in zip(entry.source_lines, entry.target_lines):
             source_words = {match[0].lower() for match in pattern.finditer(source_line) if self.english_case is EnglishCase.ANY or match[0].islower()}
@@ -389,7 +389,7 @@ FIXES: tuple[TranslationFix, ...] = (
     DashesFix(enabled=True),
     SymbolsFix(enabled=True),
     DescriptionsFix(enabled=True, sounds=FIX_SOUND_LISTS, subjects=FIX_SUBJECTS, music_moods=FIX_MUSIC_MOODS, voice_moods=FIX_VOICE_MOODS, languages=FIX_LANGUAGES, channels=FIX_CHANNELS),
-    KeptWordsFix(enabled=True, words=(FIX_INTERJECTIONS, FIX_RANKS), english_case=EnglishCase.ANY),
+    KeptWordsFix(enabled=True, words=(FIX_INTERJECTIONS, FIX_RANKS, FIX_ADDRESSES), english_case=EnglishCase.ANY),
     KeptWordsFix(enabled=True, words=(FIX_UNITS,), english_case=EnglishCase.LOWERCASE),
     ExpressionsFix(enabled=True, expressions=FIX_EXPRESSIONS),
     WordsFix(enabled=True, words=FIX_WORDS),

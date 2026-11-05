@@ -318,6 +318,15 @@ add-fix-ranks +pairs:
     exit $LASTEXITCODE
 
 [group('data/fix')]
+[doc('Add forms of address to fix-translations')]
+[script]
+[extension('.ps1')]
+[positional-arguments]
+add-fix-addresses +pairs:
+    uv run src/fix-tools/add-to-dictionary.py fix-addresses @args
+    exit $LASTEXITCODE
+
+[group('data/fix')]
 [doc('Add units to fix-translations')]
 [script]
 [extension('.ps1')]

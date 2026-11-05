@@ -1,3 +1,7 @@
+cent = centavo
+cents = centavos
+dollar = dólar
+dollars = dólares
 feet = pés
 foot = pé
 gallon = galão

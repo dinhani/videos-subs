@@ -1,0 +1,11 @@
+dad = pai
+daddy = papai
+gentlemen = senhores
+grandma = vovó
+grandpa = vovô
+ladies and gentlemen = senhoras e senhores
+ma'am = senhora
+madam = senhora
+mom = mãe
+mommy = mamãe
+mum = mãe
