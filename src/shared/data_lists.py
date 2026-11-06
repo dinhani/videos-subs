@@ -9,7 +9,7 @@ from spylls.hunspell import Dictionary
 
 from shared.files import write_text_replacing
 
-DATA_FOLDER = Path(__file__).parents[2] / "data"
+DATA_FOLDER = Path(__file__).parents[2] / "_data"
 DICTIONARY_HUNSPELL = Path(os.environ["LOCALAPPDATA"]) / "hunspell" / "pt_BR"
 
 SEPARATOR = " = "

@@ -78,12 +78,12 @@ The virtual environment lives outside the project, under the local data director
 
 ## Code layout
 
-All code is in `src`: the pipeline scripts, `crosscheck-subs.py`, `stats-subs.py`, `shared` and `fix-tools`. The data lists are in `data`, the tests in `tests`.
+All code is in `src`: the pipeline scripts, `crosscheck-subs.py`, `stats-subs.py`, `shared` and `fix-tools`. The data lists are in `_data`, the tests in `tests`.
 
-- `shared/`: code used by more than one script, one module per subject. Use it instead of writing another version: `files.py` (`SubtitleFile`, the names of a subtitle and its related files), `subtitles.py` (language codes, kinds, tags, markers), `image_subtitles.py`, `languages.py`, `descriptions.py`, `data_lists.py` (`DataList`, the one reader and writer of the lists in `data`), `reports.py`, `console.py` (`Action`, the one list of log verbs; `Batch`), `llm.py` (the llama server, `JsonReply` and traces).
+- `shared/`: code used by more than one script, one module per subject. Use it instead of writing another version: `files.py` (`SubtitleFile`, the names of a subtitle and its related files), `subtitles.py` (language codes, kinds, tags, markers), `image_subtitles.py`, `languages.py`, `descriptions.py`, `data_lists.py` (`DataList`, the one reader and writer of the lists in `_data`), `reports.py`, `console.py` (`Action`, the one list of log verbs; `Batch`), `llm.py` (the llama server, `JsonReply` and traces).
 - `fix-tools/`: the tools of the app-fix-ocr and app-fix-translate skills, run through the `data/fix` recipes. `data/fix` holds only recipes a skill uses; a tool no skill mentions is removed.
 - `crosscheck-subs.py`: not a pipeline step; it only reads, and reports the files of one track that do not match each other.
-- `stats-subs.py`: not a pipeline step; it only reads the English text subtitles and writes one report file per subject to `data/stats`, which is not committed, with what repeats across titles in the dialogue and the descriptions, and what the description tables do not cover: input for new fixed rules and for the translation prompt.
+- `stats-subs.py`: not a pipeline step; it only reads the English text subtitles and writes one report file per subject to `_data/stats`, which is not committed, with what repeats across titles in the dialogue and the descriptions, and what the description tables do not cover: input for new fixed rules and for the translation prompt.
 - Each script has, in order: constants, its own types, then the execution loop. The check scripts put their rules between the constants and the types, and fix-translations its fixes.
 - Every script follows the same per-file pattern: find its files with `find_subtitles`, loop with `batch.walk`, skip when already done, do the work inside `with batch.attempt(...)`, log through `Action`, and write output through a `.part` file that is then renamed.
 
@@ -101,5 +101,5 @@ All code is in `src`: the pipeline scripts, `crosscheck-subs.py`, `stats-subs.py
 ## Collaboration
 
 - Never tell the user that files written before a change, such as reports, traces or translations, keep the old format or the old results. The user knows.
-- Never hand translation content or data lists (`data/*.txt`, translations, reports) to the user to review. Judging them against the purpose this file states is the agent's job: review them, decide, and fix them.
+- Never hand translation content or data lists (`_data/*.txt`, translations, reports) to the user to review. Judging them against the purpose this file states is the agent's job: review them, decide, and fix them.
 - The agent runs the bench (`just bench run`, `just bench score`) when the user asks for it, and never on its own initiative.

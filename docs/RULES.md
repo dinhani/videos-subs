@@ -12,7 +12,7 @@ When a flag is wrong, mark its entry so the check does not report that flag agai
 
 - Mark only the kind that is wrong; the other kinds of the entry are still reported.
 - When the entry's text changes, remove its marker, so the entry is judged again.
-- Words and expressions that are right everywhere go to `data/check-words.txt` and `data/check-expressions.txt` instead (rules 2.9 to 2.11).
+- Words and expressions that are right everywhere go to `_data/check-words.txt` and `_data/check-expressions.txt` instead (rules 2.9 to 2.11).
 
 # 1. OCR
 
@@ -280,7 +280,7 @@ The warning entries at the start of a translation, `[Legenda SDH...]` and `[Lege
 
 ## 2.9 grammar gender: gender agreement
 
-- **About**: LanguageTool `GENERAL_GENDER_AGREEMENT_ERRORS` and `ERRO_DE_CONCORDNCIA_DO_GÉNERO_MASCULINO_O`. A flag on a name, or inside an expression of `data/check-expressions.txt`, is not reported.
+- **About**: LanguageTool `GENERAL_GENDER_AGREEMENT_ERRORS` and `ERRO_DE_CONCORDNCIA_DO_GÉNERO_MASCULINO_O`. A flag on a name, or inside an expression of `_data/check-expressions.txt`, is not reported.
 - **Examples**:
   ```
   en   Get in a trench!
@@ -292,11 +292,11 @@ The warning entries at the start of a translation, `[Legenda SDH...]` and `[Lege
   fix  Está na porra do teto!
   ```
 - **Correction**: fix the article or adjective, with the LanguageTool suggestion when it is right. `porra` as an intensifier is feminine: `a porra do`, `na porra do`, `uma porra de`.
-- **Caution**: `seu porra!` as an insult to a man, and feminine forms for women (`uma ciborgue`), are right. Add a right expression to `data/check-expressions.txt` as it is in the entry, in lowercase and whole (`os relés`, `luta corpo a corpo`), so it is not flagged again.
+- **Caution**: `seu porra!` as an insult to a man, and feminine forms for women (`uma ciborgue`), are right. Add a right expression to `_data/check-expressions.txt` as it is in the entry, in lowercase and whole (`os relés`, `luta corpo a corpo`), so it is not flagged again.
 
 ## 2.10 unknown word
 
-- **About**: a rare word missing from the pt_BR dictionary and from `data/check-words.txt`: a typo, a broken word or a word of another language. A word of the English entry is not flagged, nor a name there without its `'s` (`Helmsley's`, `Helmsley`).
+- **About**: a rare word missing from the pt_BR dictionary and from `_data/check-words.txt`: a typo, a broken word or a word of another language. A word of the English entry is not flagged, nor a name there without its `'s` (`Helmsley's`, `Helmsley`).
 - **Examples**:
   ```
   en   A growl.
@@ -308,7 +308,7 @@ The warning entries at the start of a translation, `[Legenda SDH...]` and `[Lege
   fix  Você percebe?
   ```
 - **Correction**: write the right Brazilian Portuguese word, keeping its case.
-- **Caution**: interjections (`uhuu`), names, terms of the movie's world (`wakandanos`, `tulkun`, `droide`, `hipersono`), valid coinages (`criogênese`) and diminutives (`homemzinho`) are right. Add a right word to `data/check-words.txt`, so it is not flagged again.
+- **Caution**: interjections (`uhuu`), names, terms of the movie's world (`wakandanos`, `tulkun`, `droide`, `hipersono`), valid coinages (`criogênese`) and diminutives (`homemzinho`) are right. Add a right word to `_data/check-words.txt`, so it is not flagged again.
 
 ## 2.11 unknown word in caps
 
@@ -332,7 +332,7 @@ The warning entries at the start of a translation, `[Legenda SDH...]` and `[Lege
   fix  TRIPULANTES
   ```
 - **Correction**: write the right word in capitals.
-- **Caution**: a shouted word or a name in capitals can be right. Add a right word to `data/check-words.txt` in lowercase, so it is not flagged again.
+- **Caution**: a shouted word or a name in capitals can be right. Add a right word to `_data/check-words.txt` in lowercase, so it is not flagged again.
 
 ## 2.12 portugal portuguese
 
