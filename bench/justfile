@@ -1,7 +1,7 @@
 set windows-shell := ["pwsh.exe", "-NoLogo", "-NoProfile", "-Command"]
 set script-interpreter := ["pwsh.exe", "-NoLogo", "-NoProfile"]
 
-export UV_PROJECT_ENVIRONMENT := data_local_directory() / "uv" / "envs" / "videos-subs"
+export UV_PROJECT_ENVIRONMENT := data_local_directory() / "_dev" / "uv" / "envs" / "videos-subs"
 export PYTHONPATH := source_directory() / ".." / "src"
 
 [group('project')]
