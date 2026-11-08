@@ -11,7 +11,7 @@ import httpx
 
 from shared.console import Action
 
-MODELS_GGUF_DIR = Path("D:/AI-Models-LMStudio")
+MODELS_GGUF_DIR = Path("D:/AI")
 MODELS_CTRANSLATE2_DIR = Path("D:/AI-Models-CTranslate2")
 MODELS_PYTORCH_DIR = Path("D:/AI-Models-PyTorch")
 PYTORCH_ENV = {"HF_HUB_CACHE": str(MODELS_PYTORCH_DIR), "HF_HUB_OFFLINE": "1"}

@@ -27,7 +27,7 @@
 
 The bench justfile puts `src` on `PYTHONPATH` so these modules import `shared`.
 
-Models are stored by type: GGUF in `D:/AI-Models-LMStudio`, CTranslate2 in `D:/AI-Models-CTranslate2`, PyTorch in `D:/AI-Models-PyTorch`.
+Models are stored by type: GGUF in `D:/AI`, CTranslate2 in `D:/AI-Models-CTranslate2`, PyTorch in `D:/AI-Models-PyTorch`.
 
 ## Models
 

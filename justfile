@@ -113,8 +113,8 @@ warn *paths:
 [env('GGML_CUDA_GRAPH_OPT', '1')]
 llama-ocr:
     C:/_scoop/apps/llama.cpp-cu133/current/llama-server.exe \
-        --model D:/AI-Models-LMStudio/lmstudio-community/gemma-4-12B-it-QAT-GGUF/gemma-4-12B-it-QAT-Q4_0.gguf \
-        --mmproj D:/AI-Models-LMStudio/lmstudio-community/gemma-4-12B-it-QAT-GGUF/mmproj-gemma-4-12B-it-QAT-BF16.gguf \
+        --model D:/AI/lmstudio-community/gemma-4-12B-it-QAT-GGUF/gemma-4-12B-it-QAT-Q4_0.gguf \
+        --mmproj D:/AI/lmstudio-community/gemma-4-12B-it-QAT-GGUF/mmproj-gemma-4-12B-it-QAT-BF16.gguf \
         --device CUDA0 --n-gpu-layers all --fit off --flash-attn on --jinja --reasoning-budget 0 \
         --ctx-size 32768 --parallel 8 --top-p 0.95 --top-k 64 --port 9931
 
@@ -124,7 +124,7 @@ llama-ocr:
 [env('GGML_CUDA_GRAPH_OPT', '1')]
 llama-translate:
     C:/_scoop/apps/llama.cpp-cu133/current/llama-server.exe \
-        --model D:/AI-Models-LMStudio/lmstudio-community/gemma-4-26B-A4B-it-QAT-GGUF/gemma-4-26B-A4B-it-QAT-Q4_0.gguf \
+        --model D:/AI/lmstudio-community/gemma-4-26B-A4B-it-QAT-GGUF/gemma-4-26B-A4B-it-QAT-Q4_0.gguf \
         --device CUDA0 --n-gpu-layers all --fit off --flash-attn on --jinja --reasoning-budget 0 --no-mmproj \
         --ctx-size 16384 --parallel 1 --top-p 0.95 --top-k 64 --port 9931
 
