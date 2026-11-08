@@ -2,6 +2,7 @@ set windows-shell := ["pwsh.exe", "-NoLogo", "-NoProfile", "-Command"]
 set script-interpreter := ["pwsh.exe", "-NoLogo", "-NoProfile"]
 
 export UV_PROJECT_ENVIRONMENT := data_local_directory() / "_dev" / "uv" / "envs" / "videos-subs"
+export UV_FROZEN := "1"
 export PYTHONPATH := source_directory() / "src"
 dictionary_dir := data_local_directory() / "hunspell"
 
@@ -15,7 +16,7 @@ default:
 [group('project')]
 [doc('Install dependencies and Brazilian Portuguese dictionary')]
 setup:
-    uv sync
+    Remove-Item Env:UV_FROZEN; uv sync
     New-Item -ItemType Directory -Force -Path '{{dictionary_dir}}' | Out-Null
     Invoke-WebRequest -Uri https://raw.githubusercontent.com/LibreOffice/dictionaries/master/pt_BR/pt_BR.dic -OutFile '{{dictionary_dir}}/pt_BR.dic'
     Invoke-WebRequest -Uri https://raw.githubusercontent.com/LibreOffice/dictionaries/master/pt_BR/pt_BR.aff -OutFile '{{dictionary_dir}}/pt_BR.aff'
