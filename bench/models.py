@@ -11,7 +11,7 @@ import httpx
 
 from shared.console import Action
 
-MODELS_DIR = Path("Z:/apps/ai")
+MODELS_DIR = Path("D:/ai")
 PYTORCH_ENV = {"HF_HUB_OFFLINE": "1"}
 
 LLAMA_SERVER = Path("C:/_scoop/apps/llama.cpp-cu133/current/llama-server.exe")

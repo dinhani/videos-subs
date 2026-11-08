@@ -27,7 +27,7 @@
 
 The bench justfile puts `src` on `PYTHONPATH` so these modules import `shared`.
 
-Models are stored in `Z:/apps/ai/<repo>`.
+Models are read from `D:/ai/<repo>`; copy them there from `Z:/apps/ai`.
 
 ## Models
 
