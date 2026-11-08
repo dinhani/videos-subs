@@ -11,10 +11,8 @@ import httpx
 
 from shared.console import Action
 
-MODELS_GGUF_DIR = Path("D:/AI")
-MODELS_CTRANSLATE2_DIR = Path("D:/AI-Models-CTranslate2")
-MODELS_PYTORCH_DIR = Path("D:/AI-Models-PyTorch")
-PYTORCH_ENV = {"HF_HUB_CACHE": str(MODELS_PYTORCH_DIR), "HF_HUB_OFFLINE": "1"}
+MODELS_DIR = Path("Z:/apps/ai")
+PYTORCH_ENV = {"HF_HUB_OFFLINE": "1"}
 
 LLAMA_SERVER = Path("C:/_scoop/apps/llama.cpp-cu133/current/llama-server.exe")
 LLAMA_ENV = {"GGML_CUDA_PDL": "1", "GGML_CUDA_GRAPH_OPT": "1"}
@@ -32,7 +30,7 @@ class LlamaModel:
 
     @property
     def path(self) -> Path:
-        return MODELS_GGUF_DIR / self.repo / self.file
+        return MODELS_DIR / self.repo / self.file
 
     def is_downloaded(self) -> bool:
         return self.path.exists()
@@ -47,7 +45,7 @@ class LlamaModel:
         from huggingface_hub import hf_hub_download
 
         Action.DOWNLOAD.log(f"{self.name}: {self.repo}/{self.file}")
-        hf_hub_download(repo_id=self.repo, filename=self.file, local_dir=MODELS_GGUF_DIR / self.repo)
+        hf_hub_download(repo_id=self.repo, filename=self.file, local_dir=MODELS_DIR / self.repo)
 
     @contextmanager
     def serving(self, log: Path) -> Generator[None]:
@@ -102,7 +100,7 @@ class NmtModel:
 
     @property
     def path(self) -> Path:
-        return MODELS_CTRANSLATE2_DIR / self.repo
+        return MODELS_DIR / self.repo
 
     def is_downloaded(self) -> bool:
         return (self.path / "model.bin").exists()
@@ -126,9 +124,12 @@ class ScoringModel:
     repo: str
     files: tuple[str, ...]
 
+    @property
+    def path(self) -> Path:
+        return MODELS_DIR / self.repo
+
     def is_downloaded(self) -> bool:
-        snapshots = MODELS_PYTORCH_DIR / f"models--{self.repo.replace('/', '--')}" / "snapshots"
-        return all(any(snapshots.glob(f"*/{file}")) for file in self.files)
+        return all((self.path / file).exists() for file in self.files)
 
     def download(self) -> None:
         if self.is_downloaded():
@@ -137,4 +138,4 @@ class ScoringModel:
         from huggingface_hub import snapshot_download
 
         Action.DOWNLOAD.log(f"{self.name}: {self.repo}")
-        snapshot_download(repo_id=self.repo, cache_dir=MODELS_PYTORCH_DIR, allow_patterns=list(self.files))
+        snapshot_download(repo_id=self.repo, local_dir=self.path, allow_patterns=list(self.files))

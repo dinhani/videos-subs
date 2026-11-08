@@ -26,12 +26,11 @@ from pathlib import Path
 
 import sacrebleu
 import torch
-from comet import download_model, load_from_checkpoint
+from comet.models import RegressionMetric
 
 # ------------------------------------------------------------------------------
 # Constants
 # ------------------------------------------------------------------------------
-COMET_MODEL = "Unbabel/wmt22-comet-da"
 COMET_BATCH_SIZE = 32
 
 # ------------------------------------------------------------------------------
@@ -39,6 +38,8 @@ COMET_BATCH_SIZE = 32
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Scores translations against references. Each job gives its aligned segments, with src, mt and ref, and the file to write its scores to.")
+    parser.add_argument("--comet", type=Path, required=True, help="folder of the COMET model")
+    parser.add_argument("--encoder", type=Path, required=True, help="folder of the encoder the COMET model was trained on")
     parser.add_argument("jobs", type=Path, help="JSON file with a list of jobs: {\"output\": path, \"segments\": [{\"src\", \"mt\", \"ref\"}, ...]}")
     arguments = parser.parse_args()
 
@@ -46,7 +47,7 @@ if __name__ == "__main__":
     if not jobs:
         raise SystemExit(0)
 
-    model = load_from_checkpoint(download_model(COMET_MODEL))
+    model = RegressionMetric.load_from_checkpoint(arguments.comet / "checkpoints" / "model.ckpt", load_pretrained_weights=False, map_location=torch.device("cpu"), strict=False, pretrained_model=str(arguments.encoder))
     for job in jobs:
         segments = job["segments"]
         comet = model.predict(segments, batch_size=COMET_BATCH_SIZE, gpus=1 if torch.cuda.is_available() else 0, progress_bar=True)

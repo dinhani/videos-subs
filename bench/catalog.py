@@ -67,7 +67,7 @@ NMT_MODELS = (MADLAD_400_10B, MADLAD_400_7B, MADLAD_400_3B, NLLB_200_3_3B, NLLB_
 MODELS = (*NMT_MODELS, GEMMA_4_26B, GEMMA_4_12B, MISTRAL_SMALL_3_2_24B, MINISTRAL_3_14B, QWEN_3_14B, GPT_OSS_20B, ERNIE_4_5_21B, COMMAND_R7B, AYA_EXPANSE_8B, MAGISTRAL_SMALL_24B, GEMMA_3_12B, GEMMA_4_31B, HY_MT2_7B, TOWER_PLUS_9B, TRANSLATEGEMMA_12B, HY_MT2_30B)
 
 COMET_WMT22 = ScoringModel(name="comet-wmt22", repo="Unbabel/wmt22-comet-da", files=("checkpoints/model.ckpt", "hparams.yaml"))
-XLM_ROBERTA_LARGE = ScoringModel(name="xlm-roberta-large", repo="xlm-roberta-large", files=("config.json", "sentencepiece.bpe.model", "tokenizer.json", "tokenizer_config.json"))
+XLM_ROBERTA_LARGE = ScoringModel(name="xlm-roberta-large", repo="FacebookAI/xlm-roberta-large", files=("config.json", "sentencepiece.bpe.model", "tokenizer.json", "tokenizer_config.json"))
 SCORING_MODELS = (COMET_WMT22, XLM_ROBERTA_LARGE)
 
 RUNS_ACTIVE = (
