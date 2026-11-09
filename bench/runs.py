@@ -40,6 +40,7 @@ class PipelineTranslator:
     mode: ClassVar[str] = "pipeline"
     model: LlamaModel
     temperatures: tuple[float, ...] = ()
+    justify: bool = False
 
     def serving(self, log: Path) -> contextlib.AbstractContextManager[None]:
         return self.model.serving(log)
@@ -47,6 +48,7 @@ class PipelineTranslator:
     def translate(self, english: Path, translation: Path) -> None:
         options = [
             *(["--temperatures", *map(str, self.temperatures)] if self.temperatures else []),
+            *(["--justify"] if self.justify else []),
         ]
         subprocess.run([sys.executable, str(SRC_DIR / "6-translate-subs.py"), str(english), *options], check=True)
 
@@ -343,6 +345,10 @@ class Run:
                 return cls(name=model.name, translator=PipelineTranslator(model=model))
             case NmtModel():
                 return cls(name=model.name, translator=NmtTranslator(model=model))
+
+    @classmethod
+    def from_justification(cls, model: LlamaModel) -> "Run":
+        return cls(name=f"{model.name}+why", translator=PipelineTranslator(model=model, justify=True))
 
     @classmethod
     def from_fixes(cls, base: "Run") -> "Run":

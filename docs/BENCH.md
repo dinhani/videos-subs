@@ -13,6 +13,7 @@
 
 - A run of a model translates as the translate step does, with the second language of each source when it has one, and scores the raw model output, without fix-translations.
 - Each run copies the second-language subtitles of every source into its `_subs`, as they are in the library.
+- A run `gemma-4-26b+why` translates with `--justify`: the model writes a short justification of each entry before its translation, kept only in the trace.
 - A run `<run>-fix` copies the translations of its base run, applies fix-translations and scores the result. It keeps the translation time of the base run.
 - `catalog.py` splits the runs into `RUNS_ACTIVE` and `RUNS_DISABLED`. Only the `gemma-4-26b` runs are active. `just bench run` translates only active runs and refuses a disabled one; `just bench compare` and `just bench models` default to the active runs. A disabled run keeps its translations, reports and scores: `just bench score`, `just bench report` and `just bench runs` still cover every run.
 

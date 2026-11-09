@@ -72,6 +72,7 @@ SCORING_MODELS = (COMET_WMT22, XLM_ROBERTA_LARGE)
 RUNS_ACTIVE = (
     Run.from_model(GEMMA_4_26B),
     Run.from_fixes(Run.from_model(GEMMA_4_26B)),
+    Run.from_justification(GEMMA_4_26B),
 )
 RUNS_DISABLED = (
     *(Run.from_model(model) for model in NMT_MODELS),
