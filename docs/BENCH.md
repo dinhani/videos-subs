@@ -11,8 +11,8 @@
 
 ## Runs
 
-- A run of a model translates with `LLM_PROMPT` and the English alone, and scores the raw model output, without fix-translations.
-- A run `gemma-4-26b+<language code>`, such as `gemma-4-26b+spa`, translates with `--second-languages <language code>`. Each run copies the second-language subtitles of every source into its `_subs`, as they are in the library; a source without one in that language is translated from the English alone.
+- A run of a model translates as the translate step does, with the second language of each source when it has one, and scores the raw model output, without fix-translations.
+- Each run copies the second-language subtitles of every source into its `_subs`, as they are in the library.
 - A run `<run>-fix` copies the translations of its base run, applies fix-translations and scores the result. It keeps the translation time of the base run.
 - `catalog.py` splits the runs into `RUNS_ACTIVE` and `RUNS_DISABLED`. Only the `gemma-4-26b` runs are active. `just bench run` translates only active runs and refuses a disabled one; `just bench compare` and `just bench models` default to the active runs. A disabled run keeps its translations, reports and scores: `just bench score`, `just bench report` and `just bench runs` still cover every run.
 

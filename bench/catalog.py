@@ -2,7 +2,6 @@ from pathlib import Path
 
 from models import LlamaModel, NmtFamily, NmtModel, ScoringModel
 from runs import PipelineTranslator, Run, Source
-from shared.languages import SecondLanguage
 
 SOURCES = (
     Source(library_english=Path("Z:/midias/filmes/Fall - 1 - Fall (2022)/_subs/Fall (2022, Web-DL, 1080p, SDR, h264, 5.1, EAC3).embed.3.eng.sdh.srt")),
@@ -73,10 +72,6 @@ SCORING_MODELS = (COMET_WMT22, XLM_ROBERTA_LARGE)
 RUNS_ACTIVE = (
     Run.from_model(GEMMA_4_26B),
     Run.from_fixes(Run.from_model(GEMMA_4_26B)),
-    Run.from_second_language(GEMMA_4_26B, SecondLanguage.SPANISH),
-    Run.from_fixes(Run.from_second_language(GEMMA_4_26B, SecondLanguage.SPANISH)),
-    Run.from_second_language(GEMMA_4_26B, SecondLanguage.EUROPEAN_PORTUGUESE),
-    Run.from_fixes(Run.from_second_language(GEMMA_4_26B, SecondLanguage.EUROPEAN_PORTUGUESE)),
 )
 RUNS_DISABLED = (
     *(Run.from_model(model) for model in NMT_MODELS),

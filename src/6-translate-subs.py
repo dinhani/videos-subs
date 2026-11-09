@@ -336,12 +336,10 @@ class SubtitleTranslation:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Translates English subtitles to Brazilian Portuguese; folders only English ones.")
     parser.add_argument("--temperatures", nargs="+", type=float, default=LLM_TEMPERATURES, help=f"temperature of each attempt of a chunk, in order (default: {' '.join(map(str, LLM_TEMPERATURES))})")
-    parser.add_argument("--second-languages", nargs="*", choices=[language.code for language in SecondLanguage], default=[language.code for language in SecondLanguage], help=f"language codes of text subtitles of the same video, in its _subs folder, in order of preference; the first one that matches enough entries has its lines on screen with each English entry sent with it; with no codes, or when none matches, the English is sent alone (default: {' '.join(language.code for language in SecondLanguage)})")
     parser.add_argument("--print-prompt", action="store_true", help="print the system prompt and the first chunk of each subtitle, even one already translated, without translating it")
     subs_src = find_subtitles(parser, formats=(SubtitleFormat.TEXT,), languages=(LANGUAGE_SOURCE,))
     arguments = parser.parse_args()
     temperatures = tuple(arguments.temperatures)
-    second_languages = tuple(next(language for language in SecondLanguage if language.code == code) for code in arguments.second_languages)
     llama = None if arguments.print_prompt else connect_llama()
 
     with Batch() as batch:
@@ -367,7 +365,7 @@ if __name__ == "__main__":
 
                 # match second language
                 second_subtitle = None
-                for second_language in second_languages:
+                for second_language in SecondLanguage:
                     candidate = SecondLanguageSubtitle.find(second_language, english=sub_src, english_entries=sub_entries)
                     if candidate is None:
                         Action.SKIP.log(f"no {second_language.label} text subtitle")
@@ -378,7 +376,7 @@ if __name__ == "__main__":
                         continue
                     second_subtitle = candidate
                     break
-                if second_languages and second_subtitle is None:
+                if second_subtitle is None:
                     Action.SKIP.log("no second language, translating from the English alone")
                 second_parts = second_subtitle.to_prompt_parts() if second_subtitle else dict.fromkeys(SECOND_LANGUAGE_PLACEHOLDERS, "")
 

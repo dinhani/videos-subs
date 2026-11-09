@@ -19,7 +19,6 @@ from models import LlamaModel, NmtModel
 from shared.alignment import ALIGNMENT_OVERLAP_MIN, AlignedSubtitle
 from shared.console import Action
 from shared.files import SUBS_FOLDER, SubtitleFile, SubtitleFormat, move_replacing, parse_srt, write_text_replacing
-from shared.languages import SecondLanguage
 from shared.subtitles import parse_plain_text, replace_text
 
 BENCH_DIR = Path(__file__).parent
@@ -41,7 +40,6 @@ class PipelineTranslator:
     mode: ClassVar[str] = "pipeline"
     model: LlamaModel
     temperatures: tuple[float, ...] = ()
-    second_languages: tuple[SecondLanguage, ...] = ()
 
     def serving(self, log: Path) -> contextlib.AbstractContextManager[None]:
         return self.model.serving(log)
@@ -49,7 +47,6 @@ class PipelineTranslator:
     def translate(self, english: Path, translation: Path) -> None:
         options = [
             *(["--temperatures", *map(str, self.temperatures)] if self.temperatures else []),
-            "--second-languages", *(language.code for language in self.second_languages),
         ]
         subprocess.run([sys.executable, str(SRC_DIR / "6-translate-subs.py"), str(english), *options], check=True)
 
@@ -346,10 +343,6 @@ class Run:
                 return cls(name=model.name, translator=PipelineTranslator(model=model))
             case NmtModel():
                 return cls(name=model.name, translator=NmtTranslator(model=model))
-
-    @classmethod
-    def from_second_language(cls, model: LlamaModel, language: SecondLanguage) -> "Run":
-        return cls(name=f"{model.name}+{language.code}", translator=PipelineTranslator(model=model, second_languages=(language,)))
 
     @classmethod
     def from_fixes(cls, base: "Run") -> "Run":
