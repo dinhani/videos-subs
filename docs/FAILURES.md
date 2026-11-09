@@ -46,6 +46,12 @@ A prompt whose examples come from the movies being benchmarked is overfit to the
 
 The second-language prompt told the model that the second language shows formal or casual address. Spanish `usted` and European Portuguese `a senhora` are used far more often than the Brazilian forms, and the model copied them: in The Silence of the Lambs, Lecter called Clarice `a senhora` where the translation without a second language had `você`, and `senhora` went from 11 entries to 16 with Spanish and 17 with European Portuguese, against 0 in the official translation. Forms of address come from the register rules of the prompt, never from the second language.
 
+### A justification of each entry to improve the translation
+
+A `why` field in the reply, one sentence that justifies each translation, was tested on The Silence of the Lambs before `pt-BR` and after it. The scores did not change (COMET -0.06, the same check score) and the translation took 31% longer. It did not fix the two entries it was aimed at: `mouthpiece` (Lecter's mask) came out as `boina`, `bocal` or made-up words, and `save one of her eyes` as `exceto um dos olhos`. The justifications show why: for `mouthpiece` the model knows the object is a device that keeps him from biting but has no Portuguese word for it, and for `save` it reads the old preposition meaning `except`. More context does not help either: the Spanish subtitle with `bozal` in the request did not change `boina`. `--justify` stays as a diagnostic, not as a way to improve the translation.
+
+A single run cannot judge one entry: the same request at temperature 0, with the prompt cache off, gives a different translation in about 7 of 50 entries on each run.
+
 ### Wrapping translated lines
 
 Wrapping the translated lines at 42 characters left orphan words on their own line. Lines are not wrapped; the player wraps them.
