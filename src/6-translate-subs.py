@@ -47,8 +47,8 @@ Use both contexts to understand the scene, but never translate them or put them 
 # Reply
 
 A JSON object that maps every id in "entries", and no other id, to an object with:
-- "en": the English lines of that entry, copied unchanged.{justify_field}
-- "pt-BR": the translation, one Brazilian Portuguese line per English line.
+- "en": the English lines of that entry, copied unchanged.
+- "pt-BR": the translation, one Brazilian Portuguese line per English line.{justify_field}
 
 Each id gets its own translation: never merge, split, move, skip or refuse an entry. Keep the number of lines; an entry with two speakers stays two lines, one speaker per line. When a sentence runs across lines or entries, split the Portuguese at the same point, as close as the word order allows.
 
@@ -95,15 +95,15 @@ Reply:
 {example_reply}{second_language_example}
 """
 LLM_JUSTIFY_FIELD = """
-- "why": one short sentence, written before the translation, that says what the English means in the scene and how Brazilian Portuguese says it. Then translate as it says."""
+- "why": one short sentence that justifies the translation: what the English means in the scene and why the Portuguese words say it."""
 LLM_EXAMPLE_REPLY = {
-    "1": {"en": ["[FAUCET DRIPS]"], "why": "A sound description, translated word for word in capitals.", "pt-BR": ["[TORNEIRA PINGA]"]},
-    "2": {"en": ["- We need a boat.", "- Okay."], "why": "Two speakers in casual speech, so \"a gente\" and \"Tá\".", "pt-BR": ["- A gente precisa de um barco.", "- Tá."]},
-    "3": {"en": ["I think he took", "the old highway north,"], "why": "The sentence continues in the next entry, so it is split at the same point.", "pt-BR": ["Acho que ele pegou", "a rodovia velha pro norte,"]},
-    "4": {"en": ["but he's gonna run out of gas."], "why": "\"Run out of gas\" means the car's fuel ends: \"ficar sem gasolina\".", "pt-BR": ["mas vai ficar sem gasolina."]},
-    "5": {"en": ["<i>Fuck, we're out of gas.</i>"], "why": "\"Fuck\" as an exclamation of anger is \"Porra\"; the tags stay.", "pt-BR": ["<i>Porra, a gasolina acabou.</i>"]},
-    "6": {"en": ["Good afternoon, sir.", "May I see your boarding pass?"], "why": "An airline employee speaks formally to a passenger.", "pt-BR": ["Boa tarde, senhor.", "Posso ver seu cartão de embarque?"]},
-    "7": {"en": ["♪ Fly me to the moon ♪"], "why": "Song lyrics stay in English.", "pt-BR": ["♪ Fly me to the moon ♪"]},
+    "1": {"en": ["[FAUCET DRIPS]"], "pt-BR": ["[TORNEIRA PINGA]"], "why": "A sound description, translated word for word in capitals."},
+    "2": {"en": ["- We need a boat.", "- Okay."], "pt-BR": ["- A gente precisa de um barco.", "- Tá."], "why": "Two speakers in casual speech, so \"a gente\" and \"Tá\"."},
+    "3": {"en": ["I think he took", "the old highway north,"], "pt-BR": ["Acho que ele pegou", "a rodovia velha pro norte,"], "why": "The sentence continues in the next entry, so it is split at the same point."},
+    "4": {"en": ["but he's gonna run out of gas."], "pt-BR": ["mas vai ficar sem gasolina."], "why": "\"Run out of gas\" means the car's fuel ends: \"ficar sem gasolina\"."},
+    "5": {"en": ["<i>Fuck, we're out of gas.</i>"], "pt-BR": ["<i>Porra, a gasolina acabou.</i>"], "why": "\"Fuck\" as an exclamation of anger is \"Porra\"; the tags stay."},
+    "6": {"en": ["Good afternoon, sir.", "May I see your boarding pass?"], "pt-BR": ["Boa tarde, senhor.", "Posso ver seu cartão de embarque?"], "why": "An airline employee speaks formally to a passenger."},
+    "7": {"en": ["♪ Fly me to the moon ♪"], "pt-BR": ["♪ Fly me to the moon ♪"], "why": "Song lyrics stay in English."},
 }
 
 SECOND_LANGUAGE_MATCHED_MIN = 0.9
@@ -223,7 +223,7 @@ class SecondLanguageSubtitle:
         forms = SECOND_LANGUAGE_FORMS.get(self.language)
         examples = SECOND_LANGUAGE_EXAMPLES[self.language]
         example_request = {"context_before": [], "entries": {str(n): {"en": [english], self.language.tag: [second]} for n, (english, second, _, _) in enumerate(examples, start=1)}, "context_after": []}
-        example_reply = {str(n): {"en": [english], **({"why": why} if justify else {}), "pt-BR": [translation]} for n, (english, _, translation, why) in enumerate(examples, start=1)}
+        example_reply = {str(n): {"en": [english], "pt-BR": [translation], **({"why": why} if justify else {})} for n, (english, _, translation, why) in enumerate(examples, start=1)}
         texts = (
             SECOND_LANGUAGE_INPUT,
             SECOND_LANGUAGE_SECTION.replace("{forms}", f"\n- {forms}" if forms else ""),
@@ -279,15 +279,15 @@ class SubtitleTranslation:
                     "type": "object",
                     "properties": {
                         "en": {"type": "array", "items": {"type": "string"}, "minItems": len(self.lines[i]), "maxItems": len(self.lines[i])},
-                        **({"why": {"type": "string", "minLength": 1}} if self.justify else {}),
                         "pt-BR": {
                             "type": "array",
                             "items": {"type": "string", "minLength": 1, "maxLength": max(60, 3 * max(len(line) for line in self.lines[i]))},
                             "minItems": len(self.lines[i]),
                             "maxItems": len(self.lines[i]),
                         },
+                        **({"why": {"type": "string", "minLength": 1}} if self.justify else {}),
                     },
-                    "required": ["en", *(["why"] if self.justify else []), "pt-BR"],
+                    "required": ["en", "pt-BR", *(["why"] if self.justify else [])],
                     "additionalProperties": False,
                 }
                 for id, i in zip(ids, chunk)
@@ -349,7 +349,7 @@ class SubtitleTranslation:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Translates English subtitles to Brazilian Portuguese; folders only English ones.")
     parser.add_argument("--temperatures", nargs="+", type=float, default=LLM_TEMPERATURES, help=f"temperature of each attempt of a chunk, in order (default: {' '.join(map(str, LLM_TEMPERATURES))})")
-    parser.add_argument("--justify", action="store_true", help="ask for a short justification of each entry, written before its translation and kept only in the trace")
+    parser.add_argument("--justify", action="store_true", help="ask for a short justification of each entry, written after its translation and kept only in the trace")
     parser.add_argument("--print-prompt", action="store_true", help="print the system prompt and the first chunk of each subtitle, even one already translated, without translating it")
     subs_src = find_subtitles(parser, formats=(SubtitleFormat.TEXT,), languages=(LANGUAGE_SOURCE,))
     arguments = parser.parse_args()
