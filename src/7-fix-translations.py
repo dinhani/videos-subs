@@ -19,7 +19,7 @@ from rich.text import Text
 from shared.console import Action, Answer, Batch, Color, confirm, console
 from shared.data_lists import FIX_ADDRESSES, FIX_CHANNELS, FIX_EXPRESSIONS, FIX_INTERJECTIONS, FIX_LANGUAGES, FIX_MUSIC_MOODS, FIX_PORTUGAL, FIX_RANKS, FIX_SOUND_LISTS, FIX_SUBJECTS, FIX_UNITS, FIX_VERBS, FIX_VOICE_MOODS, FIX_WORDS, DataList
 from shared.descriptions import DESCRIPTION_SIMPLE, SPEAKER_LABEL, DescriptionTable, MovieNames, match_case
-from shared.files import TRANSLATION_FORMATS, Backups, SubtitleFile, find_subtitles, parse_srt, write_text_replacing
+from shared.files import Backups, SubtitleFile, SubtitleFormat, find_subtitles, parse_srt, write_text_replacing
 from shared.languages import WORD
 from shared.subtitles import BRACKETS, FORMATTING_TAGS, LANGUAGE_TRANSLATION, QUOTES, parse_lines, replace_text
 
@@ -546,7 +546,7 @@ def load_words(file: DataList) -> tuple[dict[str, list[tuple[str, str]]], re.Pat
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
     parser = create_parser()
-    subs = find_subtitles(parser, formats=TRANSLATION_FORMATS, languages=(LANGUAGE_TRANSLATION,))
+    subs = [sub for sub in find_subtitles(parser, formats=(SubtitleFormat.TRANSLATION,), languages=(LANGUAGE_TRANSLATION,)) if sub.format is SubtitleFormat.TRANSLATION]
     arguments = parser.parse_args()
     backups = Backups.start(arguments.backups)
 

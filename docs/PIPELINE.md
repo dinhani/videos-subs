@@ -61,7 +61,7 @@ Translates every `.eng.srt` with Gemma 4 26B A4B, thinking disabled, into `<name
 
 ## 7. fix-translations
 
-Fixes every `.pob.translated.srt` and `.pob.claude.translated.srt` where the fix is mechanical, by comparing each entry with its English source, and deletes the report of every translation it changes.
+Fixes every `.pob.translated.srt` where the fix is mechanical, by comparing each entry with its English source, and deletes the report of every translation it changes. Claude translations, `.pob.claude.translated.srt`, are not touched.
 
 fix-translations is deterministic and changes only what the English source decides; a second run changes nothing. Before writing, it shows each changed entry and asks, and backs up the translation. A changed entry loses its `ignore:` marker, so check-translate judges it again. An entry that looks broken, such as one with a blank line or a number its English entry does not have, is not changed at all, so check-translate still sees it whole.
 
