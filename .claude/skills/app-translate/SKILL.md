@@ -24,17 +24,21 @@ For each video:
 1. Choose the canonical English. Look at the base `.eng.srt` files of the video in `_subs`, extracted or made by OCR. The canonical one has the full dialogue of the video: not a forced-only or foreign-parts track, a commentary, or another cut. Compare entry counts, timings, and how each starts and ends. When none is clearly canonical, or there is only SDH, stop and ask the user, showing the candidates and what you found.
 2. Read the translation rules in `src/shared/translation_rules.py`, the same rules the llama translation uses. In `RULES_ENTRIES`, `{unit}` is "entry".
 3. Read the context: the `.nfo` of the video, with the plot and the credited characters. For an episode, also the `tvshow.nfo` of the series, and the `.pob.claude.translated.srt` and `_drafts/<video>/notes.md` of the earlier episodes.
-4. Read the references: the base `.por`, `.spa`, `.fra` and `.ita` text subtitles of the same video in `_subs`, extracted or made by OCR. Match their entries to the English entries by timing; a reference can be shifted by a constant offset.
-5. Translate in parts of about 100 entries, in order, into `<movie folder>/_drafts/<video>/0001.txt`, `0002.txt`, and so on. Each entry is in `.srt` form: the number and timing line of the English entry, copied exactly but without any `ignore:` marker after the end time, then the Portuguese, with the same number of lines as the English, then a blank line. The parts are `.txt` so the media server shows nothing from `_drafts`.
+4. Read the references: the base `.por`, `.spa`, `.fra` and `.ita` text subtitles of the same video in `_subs`, extracted or made by OCR, matched to the English entries by timing with a tool.
+5. Translate in parts of about 100 entries, in order, into `<movie folder>/_drafts/<video>/0001.txt`, `0002.txt`, and so on. Each entry is `#<number>` of the English entry on its own line, then the Portuguese, with the same number of lines as the English. The join tool takes the timings from the English. The parts are `.txt` so the media server shows nothing from `_drafts`.
    - Keep `notes.md` in the same folder: the gender of each character, the form of address between each pair of characters, and the translation of recurring terms.
    - To continue a translation that stopped, such as at a usage limit, read `notes.md` and the last part, and continue from the next entry.
-6. Check before joining:
-   - Every English entry is in the parts once, in order, with its number and timing, and with the same number of lines as the English.
+6. Check the parts with a tool before joining:
+   - Every English entry is in the parts once, with the same number of lines as the English.
    - Judge each entry whose tags or digits differ from the English: fix the translation, or leave it when the English is wrong, as the `1` in `you1re`.
-7. Join the parts in name order into `<movie folder>/<track>.pob.claude.translated.srt`, where `<track>` is the name of the English `_subs/<track>.eng.srt` without `.eng.srt`.
+7. Join the parts with a tool into `<movie folder>/<track>.pob.claude.translated.srt`, where `<track>` is the name of the English `_subs/<track>.eng.srt` without `.eng.srt`: each entry with the number and timing of its English entry, without the `ignore:` markers.
 8. Go to the next video, when several were named.
 
 At the end, list the translations written, the videos skipped and why, and the questions for the user.
+
+## Tools
+
+What has one right answer is done by tools, never by hand: matching the references to the English entries by timing, checking the parts against the English, and joining them into the `.srt`. The tools live in `src/translate-tools/` and run through the `data/translate` recipes of the justfile. When a tool you need does not exist, or does not do what you need, build it or change it there, following `AGENTS.md`, and reuse `src/shared/` (`parse_srt`, `SubtitleFile`, `AlignedSubtitle`, `replace_text`). A tool never writes Portuguese text: it only reads, aligns, checks and joins what you wrote. Commit a new or changed tool on its own.
 
 ## The English source
 
