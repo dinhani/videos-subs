@@ -53,9 +53,6 @@ class Action(Enum):
     ALIGN = ("align", Color.GREEN)
     COMPARE = ("compare", Color.GREEN)
     PROMPT = ("prompt", Color.GREEN)
-    READ = ("read", Color.GREEN)
-    WRITE = ("write", Color.GREEN)
-    EDIT = ("edit", Color.GREEN)
 
     UNKNOWN = ("unknown", Color.YELLOW)
     EMPTY = ("empty", Color.YELLOW)

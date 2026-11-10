@@ -4,7 +4,7 @@ Personal scripts that extract the tracks of the videos in the media library, ide
 
 ## Principle
 
-The only subtitle this project makes for viewers is the Brazilian Portuguese translation, `<name>.pob.translated.srt`, or `<name>.pob.claude.translated.srt` when translate-claude made it. Its source is an English text subtitle, either extracted from a text track or made by OCR from an image subtitle. Viewers who want English watch the original track inside the video, which the media server shows as it is; nobody watches an extracted or OCR text subtitle.
+The only subtitle this project makes for viewers is the Brazilian Portuguese translation, `<name>.pob.translated.srt`, or `<name>.pob.claude.translated.srt` when Claude made it. Its source is an English text subtitle, either extracted from a text track or made by OCR from an image subtitle. Viewers who want English watch the original track inside the video, which the media server shows as it is; nobody watches an extracted or OCR text subtitle.
 
 So an OCR output is only input for translation: an English one is translated, and one in a second language is sent with the English for the model to read. Judge an OCR issue, a check-ocr rule or a fix by whether it changes the translation: wrong or missing text, lines in the wrong order, and markup that can reach the translated `.srt` matter; punctuation style that is faithful to the image, such as `....` for an ellipsis, does not.
 
@@ -31,8 +31,6 @@ Use these terms, and only these, in code, logs, docs and conversation. Do not ro
 - **issue**: one problem a check step flags in an entry, with a kind (`wrong order`, `untranslated`, ...) and a weight.
 - **report**: the text file in `_checks` with the issues of one OCR output or translation, and its score: weighted issues per 100 entries.
 - **second language**: a text subtitle of the same video in a language other than English, such as Spanish, that translate sends with the English so the model sees how people translated each entry.
-- **draft**: the translation that translate-claude's agent writes in its work folder, numbered like the English entries and without timings, before the script composes it into the `.srt`.
-- **reference**: for translate-claude, an English SDH, Brazilian Portuguese, European Portuguese, Spanish, French or Italian text subtitle of the same video, extracted or made by OCR, aligned by timing to the English entry numbers, for the agent to consult.
 
 ## Pipeline
 
@@ -44,7 +42,6 @@ Run the steps in order; each step skips files it already processed, so every ste
 4. `4-ocr-subs.py`: transcribes the English and second-language image subtitles into text subtitles with Gemma vision.
 5. `5-check-ocr-subs.py`: checks each OCR output against its image subtitle and writes a report.
 6. `6-translate-subs-llama.py`: translates each `.eng.srt`, with a second language when the video has one, into `<name>.pob.translated.srt` in the movie folder.
-   `6-translate-subs-claude.py` does the same step with a Claude Code agent (`claude -p`, on the subscription), for the base `.eng.srt` with the most entries of each video, with its English SDH, Portuguese, Spanish, French and Italian text subtitles as references, into `<name>.pob.claude.translated.srt`.
 7. `7-fix-translations.py`: applies the mechanical fixes to each translation.
 8. `8-check-translations.py`: checks each translation against its English source and writes a report.
 9. `9-warn-subs.py`: adds warning entries at the start of each translation.
@@ -55,28 +52,26 @@ Run the steps in order; each step skips files it already processed, so every ste
 Z:/midias/filmes/<movie>/                 (series use the same layout under Z:/midias/series/)
   <video>.mkv
   <video>.embed.2.pob.translated.srt      translation output
-  <video>.embed.2.pob.claude.translated.srt   translation output of translate-claude
+  <video>.embed.2.pob.claude.translated.srt   translation output of Claude
   _subs/<video>.embed.2.eng.srt           text subtitle, extracted and identified
   _subs/<video>.embed.3.eng.sup           image subtitle, extracted and identified
   _subs/<video>.embed.3.eng.srt           text subtitle made from that image subtitle by ocr
-  _traces/<video>.embed.2.pob.translated.json   translation trace (.pob.claude.translated.json for translate-claude)
+  _traces/<video>.embed.2.pob.translated.json   translation trace
   _traces/<video>.embed.3.eng.ocr.json          OCR trace
-  _checks/<video>.embed.2.pob.translated.txt    translation report (.pob.claude.translated.txt for translate-claude)
+  _checks/<video>.embed.2.pob.translated.txt    translation report (.pob.claude.translated.txt for a Claude translation)
   _checks/<video>.embed.3.eng.ocr.txt           OCR report
-  _drafts/<video>/                              translate-claude work folder
 ```
 
 - `_subs` holds the extracted text subtitles and image subtitles, and the text subtitles made from image subtitles. They stay out of the movie folder because the media server already reads the tracks inside the video and would show them twice.
 - `_traces` holds one trace per OCR and per translation: every request, reply, retry and accepted problem. It is valid and current during a run. Traces are never deleted.
 - `_checks` holds one report per checked OCR output and translation.
-- `_drafts` holds one work folder per video translated by translate-claude: the English, the references, the agent's draft and notes, and while the agent works its session. It holds no `.srt`, so the media server shows nothing from it. Work folders are kept after the translation; a new translation of the video rebuilds its folder.
 - `Z:/midias/_backups/<run>/` holds a copy of every file that fix-translations, warn and `just apply-fixes` overwrite, made before writing it, under its path from `Z:/midias`. The other steps write only new files. Each run has its own folder, named by its start time. Backups are never deleted.
 
 ## Running
 
 Use the `justfile`; it is the source of truth for how to run things.
 
-ocr and translate need their llama server, `just llama-ocr` and `just llama-translate`. Both servers use port 9931, so run one at a time. translate-claude needs no llama server, only `claude` on the PATH, logged in. The check steps need no llama server; check-translate starts its own LanguageTool server.
+ocr and translate need their llama server, `just llama-ocr` and `just llama-translate`. Both servers use port 9931, so run one at a time. The check steps need no llama server; check-translate starts its own LanguageTool server.
 
 Without paths, a step processes both `Z:/midias/filmes` and `Z:/midias/series`. Every step also accepts files and folders. A folder is searched recursively, inside `_subs` folders except for videos and translations, and the step applies its filter, such as `.eng.srt` only for translate. A file passed by hand skips the filter, so translate accepts a text subtitle in any language.
 
@@ -84,11 +79,10 @@ The virtual environment lives outside the project, under the local data director
 
 ## Code layout
 
-All code is in `src`: the pipeline scripts, `check-draft.py`, `check-subs.py`, `analyse-subs.py`, `shared` and `fix-tools`. The data lists are in `_data`, the tests in `tests`.
+All code is in `src`: the pipeline scripts, `check-subs.py`, `analyse-subs.py`, `shared` and `fix-tools`. The data lists are in `_data`, the tests in `tests`.
 
-- `shared/`: code used by more than one script, one module per subject. Use it instead of writing another version: `files.py` (`SubtitleFile`, the names of a subtitle and its related files), `subtitles.py` (language codes, kinds, tags, markers), `image_subtitles.py`, `languages.py`, `alignment.py` (`AlignedSubtitle`, the timing match of two subtitles), `movies.py` (`MovieInfo`, from the `.nfo`), `drafts.py` (the work folder and draft of translate-claude), `translation_rules.py` (the translation rules both translate prompts use: edit them there, never in a prompt), `descriptions.py`, `data_lists.py` (`DataList`, the one reader and writer of the lists in `_data`), `reports.py`, `console.py` (`Action`, the one list of log verbs; `Batch`), `llm.py` (the llama server, `JsonReply` and traces).
+- `shared/`: code used by more than one script, one module per subject. Use it instead of writing another version: `files.py` (`SubtitleFile`, the names of a subtitle and its related files), `subtitles.py` (language codes, kinds, tags, markers), `image_subtitles.py`, `languages.py`, `alignment.py` (`AlignedSubtitle`, the timing match of two subtitles), `movies.py` (`MovieInfo`, from the `.nfo`), `translation_rules.py` (the translation rules of the translate prompt: edit them there, never in the prompt), `descriptions.py`, `data_lists.py` (`DataList`, the one reader and writer of the lists in `_data`), `reports.py`, `console.py` (`Action`, the one list of log verbs; `Batch`), `llm.py` (the llama server, `JsonReply` and traces).
 - `fix-tools/`: the tools of the app-fix-ocr and app-fix-translate skills, run through the `data/fix` recipes. `data/fix` holds only recipes a skill uses; a tool no skill mentions is removed.
-- `check-draft.py`: not a pipeline step; the check that translate-claude's agent runs on its draft through `just check-draft`.
 - `check-subs.py`: not a pipeline step; it only reads, and reports the files of one track that do not match each other.
 - `analyse-subs.py`: not a pipeline step; it only reads the English text subtitles and writes one report file per subject to `_data/stats`, which is not committed, with what repeats across titles in the dialogue and the descriptions, and what the description tables do not cover: input for new fixed rules and for the translation prompt.
 - Each script has, in order: constants, its argument parser in `create_parser()`, its own types, its functions, then the execution loop. The check scripts put their rules between the parser and the types, and fix-translations its fixes.

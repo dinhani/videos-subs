@@ -59,25 +59,6 @@ Translates every `.eng.srt` with Gemma 4 26B A4B, thinking disabled, into `<name
 - Translated lines keep the source line breaks and are not wrapped; the player wraps lines that do not fit the screen.
 - The translation is written without renumbering, so its entries keep the numbers of the source.
 
-## 6. translate-claude
-
-Does the translate step with a Claude Code agent instead of Gemma: `claude -p` on the subscription, opus at effort high by default (`--model`, `--effort`). It writes `<name>.pob.claude.translated.srt`, with its trace and report named the same way, so it never replaces a translation of translate; fix-translations, check-translate and warn read both names.
-
-The script does what has one right answer; the agent does what needs judgment.
-
-- One translation per video, from the base `.eng.srt` with the most entries; a video without a base English subtitle is skipped, and so is a video with a `.pob.claude.translated.srt` of any of its base English subtitles. A translation of translate does not count.
-- The task prompt has the title and what the `.nfo` says (plot, and the credited characters named in the subtitle, as in translate), and the paths of the movie folder, the `.nfo`, and for an episode the series folder, `tvshow.nfo` and the translated episodes, for the agent to open if it wants more.
-- The work folder, `_drafts/<video>` in the movie folder, has `english.txt` (each entry with text as `#<number>` and its lines, the number being its position in the `.srt`) and one file per reference in `references/`: the English SDH, Brazilian Portuguese, European Portuguese, Spanish, French and Italian text subtitles of the video, extracted or made by ocr, in that order and by track within a language, with the lines on screen during each English entry under its number (`AlignedSubtitle`, as translate matches its second language). `references.md` lists each one with its language code, kind, origin and how many English entries it matched. Those languages mark what English leaves open and Portuguese must decide (who speaks, gender, one or several "you", formal address); other languages add nothing to that and cost tokens on every lookup.
-- The system prompt replaces the default Claude Code one with the goal, the files, the result the check enforces, how to use references (to understand the English, never to copy them), and the translation rules of translate, from the same `shared/translation_rules.py`. It suggests, without dictating, reading the English first and keeping notes in `notes.md`.
-- The agent runs with `--safe-mode` (no CLAUDE.md, skills, hooks or MCP); it may read anywhere, write only in the work folder, and run only `just check-draft`. It writes the draft in `translation/`, any number of `.txt` files in the format of `english.txt`, joined in name order.
-- `check-draft` (`src/check-draft.py`) reports as problems only what breaks the `.srt`: an entry not in the source or written twice, and a line count different from the English. Tags or digits different from the English entry are warnings the agent judges, since the English is not perfect: in `you1re` the `1` is an OCR error, not a digit to keep. It also says how many entries are translated.
-- After the agent finishes, the script checks the whole draft, missing entries included. On problems it resumes the session with the problem list, up to 3 runs in total; then it fails the video and keeps the work folder.
-- `--home` picks the account: the Claude home `~/.<home>`, such as `claude`, `claude-2` or `claude-3`; without it, the home of `CLAUDE_CONFIG_DIR`, or `claude`. The agent runs with `CLAUDE_CONFIG_DIR` set to that home, and without it for `~/.claude`, whose config file is `~/.claude.json`.
-- At the usage limit the run stops and keeps the work folder with the session id and its home in `session.json`. The next run on the same home resumes that session; on another home it starts a new session there, which reads the draft and `notes.md` the earlier one left and continues from the first entry not translated.
-- The trace has the system and task prompts, the reference list, every event of every run, the problems of each check and `notes.md`. An existing trace of an earlier translate-claude run is copied to the backups before it is replaced.
-- The translation is composed onto the timings of the English source, which keeps the numbers of its entries, and the work folder is kept, without its `session.json`, so a later translation of the video starts a new session in a rebuilt folder.
-- `--print-prompt` (`just print-prompt-claude`) prints, for each video, the system and task prompts exactly as the agent gets them, then the files of the work folder it can read (the English entry count and the reference list, not their contents) and the `claude` options, without writing a work folder or running the agent.
-
 ## 7. fix-translations
 
 Fixes every `.pob.translated.srt` and `.pob.claude.translated.srt` where the fix is mechanical, by comparing each entry with its English source, and deletes the report of every translation it changes.
@@ -113,7 +94,7 @@ The tables are written by hand: each phrase is translated once, with the verb in
 
 ## 8. check-translate
 
-Checks every translation against its English source and writes a report. Its rules are in [RULES.md](RULES.md), section 2.
+Checks every translation, `.pob.translated.srt` and `.pob.claude.translated.srt`, against its English source and writes a report. Its rules are in [RULES.md](RULES.md), section 2.
 
 check-translate is deterministic: word frequency, the pt_BR hunspell dictionary, a LanguageTool server, and comparisons with the English source. A rule is kept only when most of its flags on real translations are errors a viewer would see. A rule may skip a word or a flag only when the skip cannot hide an error; anything else goes to the data lists in `_data`. Most grammar errors it finds are broken at a line break, since the model translates each line of an entry on its own. An entry **reads as** a language when most of its words are clearly more frequent in that language.
 
@@ -121,4 +102,4 @@ The main process starts one LanguageTool server, only when a file needs checking
 
 ## 9. warn
 
-Adds warning entries at the start of every translation: one when it is SDH, and one when its trace records an entry accepted with a problem. Each warning is entry 0, so the other entries keep the numbers of the English source.
+Adds warning entries at the start of every translation, `.pob.translated.srt` and `.pob.claude.translated.srt`: one when it is SDH, and one when its trace records an entry accepted with a problem. Each warning is entry 0, so the other entries keep the numbers of the English source.
