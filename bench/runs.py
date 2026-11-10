@@ -23,9 +23,10 @@ from shared.subtitles import parse_plain_text, replace_text
 
 BENCH_DIR = Path(__file__).parent
 SRC_DIR = BENCH_DIR.parent / "src"
-SOURCES_DIR = BENCH_DIR / "1-sources"
-REFERENCES_DIR = BENCH_DIR / "2-references"
-RUNS_DIR = BENCH_DIR / "3-runs"
+DATA_DIR = BENCH_DIR / "_data"
+SOURCES_DIR = DATA_DIR / "sources"
+REFERENCES_DIR = DATA_DIR / "references"
+RUNS_DIR = DATA_DIR / "runs"
 SCORES_FOLDER = "_scores"
 TIMINGS_FILE = "timings.json"
 SCORE_JOBS_FILE = "score-jobs.json"
@@ -66,7 +67,7 @@ class NmtTranslator:
             raise FileNotFoundError(f"{self.model.name} not downloaded: {self.model.path}")
         entries = parse_srt(english)
         replies_file = RUNS_DIR / NMT_REPLIES_FILE
-        subprocess.run(["uv", "run", "--script", str(BENCH_DIR / "nmt.py"), "--family", self.model.family, "--model", str(self.model.path), str(english), str(replies_file)], check=True)
+        subprocess.run(["uv", "run", "--script", str(BENCH_DIR / "translate-nmt-subs.py"), "--family", self.model.family, "--model", str(self.model.path), str(english), str(replies_file)], check=True)
         replies_by_index: dict[str, str] = json.loads(replies_file.read_text(encoding="utf-8"))
         replies_file.unlink()
 

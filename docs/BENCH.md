@@ -4,10 +4,10 @@
 
 ## Folders
 
-- `1-sources/`: the copy of each source: its English subtitle, its `.nfo` and its second-language subtitles.
-- `2-references/`: the reference translations. Only `2-references/*/<name>.claude.srt` is committed.
-- `3-runs/`: one folder per run with its translations. The bench copies the `.nfo` of each source into the movie folder of each run, so translate finds it as in the library.
-- `4-compare/`: the output of `just bench compare`.
+- `_data/sources/`: the copy of each source: its English subtitle, its `.nfo` and its second-language subtitles.
+- `_data/references/`: the reference translations. Only `_data/references/*/<name>.claude.srt` is committed.
+- `_data/runs/`: one folder per run with its translations. The bench copies the `.nfo` of each source into the movie folder of each run, so translate finds it as in the library.
+- `_data/compare/`: the output of `just bench compare`.
 
 ## Runs
 
@@ -19,12 +19,12 @@
 
 ## Code
 
-- `bench.py`: the command line.
+- `benchmark-models.py`: the command line.
 - `catalog.py`: the sources, models and runs.
 - `models.py`: the model types and the llama server.
 - `runs.py`: the translators, sources, runs and scoring.
 - `report.py`: the report and compare tables.
-- `nmt.py` (CTranslate2) and `score.py` (COMET and chrF++): standalone uv scripts with their own environments, since unbabel-comet needs numpy 1.
+- `translate-nmt-subs.py` (CTranslate2) and `score-translations.py` (COMET and chrF++): standalone uv scripts with their own environments, since unbabel-comet needs numpy 1.
 
 The bench justfile puts `src` on `PYTHONPATH` so these modules import `shared`.
 

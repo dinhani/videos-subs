@@ -1,6 +1,6 @@
-1-sources/
-2-references/*/*.official.srt
-2-references/*/_scores/
-2-references/_work/
-3-runs/
-4-compare/
+_data/sources/
+_data/references/*/*.official.srt
+_data/references/*/_scores/
+_data/references/_work/
+_data/runs/
+_data/compare/

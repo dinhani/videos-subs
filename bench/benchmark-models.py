@@ -15,14 +15,14 @@ from rich.table import Table
 from catalog import BASELINE_RUN, COMET_WMT22, MODELS, RUNS, RUNS_ACTIVE, SCORING_MODELS, SOURCES, XLM_ROBERTA_LARGE
 from models import PYTORCH_ENV
 from report import Comparison, SourceReport
-from runs import BENCH_DIR, RUNS_DIR, SCORE_JOBS_FILE, SRC_DIR, Existing
+from runs import BENCH_DIR, DATA_DIR, RUNS_DIR, SCORE_JOBS_FILE, SRC_DIR, Existing
 from shared.console import Action, Batch, console
 from shared.files import write_text_replacing
 
 # ------------------------------------------------------------------------------
 # Constants
 # ------------------------------------------------------------------------------
-COMPARE_DIR = BENCH_DIR / "4-compare"
+COMPARE_DIR = DATA_DIR / "compare"
 
 # ------------------------------------------------------------------------------
 # Execution
@@ -100,7 +100,7 @@ if __name__ == "__main__":
                 if jobs:
                     jobs_file = RUNS_DIR / SCORE_JOBS_FILE
                     write_text_replacing(jobs_file, json.dumps(jobs, ensure_ascii=False))
-                    subprocess.run(["uv", "run", "--script", str(BENCH_DIR / "score.py"), "--comet", str(COMET_WMT22.path), "--encoder", str(XLM_ROBERTA_LARGE.path), str(jobs_file)], env={**os.environ, **PYTORCH_ENV}, check=True)
+                    subprocess.run(["uv", "run", "--script", str(BENCH_DIR / "score-translations.py"), "--comet", str(COMET_WMT22.path), "--encoder", str(XLM_ROBERTA_LARGE.path), str(jobs_file)], env={**os.environ, **PYTORCH_ENV}, check=True)
                     jobs_file.unlink()
 
         case "runs":

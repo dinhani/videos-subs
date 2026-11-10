@@ -16,7 +16,7 @@ default:
 [extension('.ps1')]
 [positional-arguments]
 models *names:
-    uv run --with huggingface_hub bench.py download @args
+    uv run --with huggingface_hub benchmark-models.py download @args
     exit $LASTEXITCODE
 
 [group('run')]
@@ -25,18 +25,18 @@ models *names:
 [extension('.ps1')]
 [positional-arguments]
 run *arguments:
-    uv run bench.py run @args
+    uv run benchmark-models.py run @args
     exit $LASTEXITCODE
 
 [group('run')]
 [doc('Check and score pending translations')]
 score:
-    uv run bench.py score
+    uv run benchmark-models.py score
 
 [group('run')]
 [doc('Show scores, issues and times of all runs')]
 report:
-    uv run bench.py report
+    uv run benchmark-models.py report
 
 [group('run')]
 [doc('Write entries of runs side by side')]
@@ -44,10 +44,10 @@ report:
 [extension('.ps1')]
 [positional-arguments]
 compare *arguments:
-    uv run bench.py compare @args
+    uv run benchmark-models.py compare @args
     exit $LASTEXITCODE
 
 [group('run')]
 [doc('List runs and their progress')]
 runs:
-    uv run bench.py runs
+    uv run benchmark-models.py runs
