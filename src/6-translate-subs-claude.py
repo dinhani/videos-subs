@@ -17,7 +17,7 @@ from typing import Any
 from rich.text import Text
 
 from shared.console import Action, Answer, Batch, Color, confirm, console, log_heading
-from shared.drafts import WORK_ENGLISH, WORK_REFERENCES, WORK_REFERENCES_INDEX, Reference, Session, Source, WorkFolder, format_references_index
+from shared.drafts import WORK_ENGLISH, WORK_REFERENCES_INDEX, Reference, Session, Source, WorkFolder, format_references_index
 from shared.files import SEASON_PREFIX, Backups, SubtitleFile, SubtitleFormat, find_subtitles, list_folder, parse_srt, write_text_replacing
 from shared.llm import Trace
 from shared.movies import NFO_SHOW, MovieInfo
@@ -42,7 +42,6 @@ AGENT_ALLOWED = ("Read", "Grep", "Glob", "Write(./**)", "Edit(./**)", f"Bash({CH
 AGENT_TOOL_ACTIONS = {"Read": Action.READ, "Write": Action.WRITE, "Edit": Action.EDIT}
 AGENT_EVENTS_SKIPPED = frozenset({"thinking_tokens"})
 RATE_LIMIT_ALLOWED = "allowed"
-PRINT_ENTRIES = 50
 
 AGENT_TASK = """\
 Translate the subtitle in this folder. It is from {movie}.{movie_info}
@@ -225,7 +224,7 @@ if __name__ == "__main__":
     parser.add_argument("--effort", default=AGENT_EFFORT, choices=AGENT_EFFORTS, help=f"effort of the agent (default: {AGENT_EFFORT})")
     home_default = Path(os.environ[HOME_CONFIG_VARIABLE]).name.removeprefix(".") if os.environ.get(HOME_CONFIG_VARIABLE) else HOME_DEFAULT
     parser.add_argument("--home", default=home_default, help=f"Claude home of the account that runs the agent, the folder ~/.<home>, such as claude, claude-2 or claude-3 (default: {home_default}, from {HOME_CONFIG_VARIABLE} or claude)")
-    parser.add_argument("--print-prompt", action="store_true", help="print the prompts, the reference index, the first entries with their references and the agent options of each video, even one already translated, without translating it")
+    parser.add_argument("--print-prompt", action="store_true", help="print the system and task prompts sent to the agent for each video, even one already translated, with the files it can read and the claude options, without translating it")
     Backups.add_argument(parser)
     subs_src = find_subtitles(parser, formats=(SubtitleFormat.TEXT,), languages=(LANGUAGE_SOURCE,))
     arguments = parser.parse_args()
@@ -292,33 +291,24 @@ if __name__ == "__main__":
                     subs_reference = [file for name in sorted(list_folder(sub_src.folder)) if (file := SubtitleFile.find(sub_src.folder / name)) and file.is_text() and file.video_name == video_name and file != sub_src]
                     references = [Reference.from_file(file, english_entries=sub_entries) for file in subs_reference]
 
-                # print the prompts, the references and the agent options, without translating
+                # print the prompts sent to the agent, without translating
                 if arguments.print_prompt:
-                    log_heading(f"system: {sub_src.name}", Color.YELLOW)
+                    log_heading(f"system prompt: {sub_src.name}", Color.YELLOW)
                     console.print(system, soft_wrap=True)
                     task_text = Text(task)
                     task_text.highlight_words([movie_info_text] if movie_info_text else [], style=Color.GREEN)
                     task_text.highlight_words([sub_src.movie_title], style=Color.CYAN)
-                    log_heading("task", Color.YELLOW)
+                    log_heading("task prompt", Color.YELLOW)
                     console.print(task_text, soft_wrap=True)
-                    log_heading(WORK_REFERENCES_INDEX, Color.YELLOW)
+                    # files the agent can read, not sent
+                    log_heading(f"work folder, read only if the agent opens them: {work.path}", Color.YELLOW)
+                    console.print(f"- `{WORK_ENGLISH}`: {len(Source.from_entries(sub_entries).english)} entries")
+                    console.print(f"- `{WORK_REFERENCES_INDEX}`, one line per reference:")
                     console.print(format_references_index(references), soft_wrap=True, end="")
-
-                    # each English entry with the lines of every reference on screen with it, as Grep shows them to the agent
-                    source = Source.from_entries(sub_entries)
-                    numbers = list(source.english)[:PRINT_ENTRIES]
-                    labels = {reference.name: reference.name.removesuffix(".txt") for reference in references}
-                    label_width = max((len(label) for label in (WORK_ENGLISH, *labels.values())), default=0)
-                    log_heading(f"{WORK_ENGLISH} and {WORK_REFERENCES}, first {len(numbers)} of {len(source.english)} entries", Color.YELLOW)
-                    for number in numbers:
-                        console.print(f"#{number}", style=Color.CYAN)
-                        for label, lines in ((WORK_ENGLISH, source.english[number]), *((labels[reference.name], reference.lines[number]) for reference in references if number in reference.lines)):
-                            for line in lines:
-                                console.print(Text.assemble("  ", (f"{label:<{label_width}}", Color.BLUE), "  ", line), soft_wrap=True)
 
                     # claude options, with the prompts printed above left out
                     command = agent.to_command(system=system, prompt=task, session_id=None, folders=folders)
-                    log_heading(f"agent, run in {work.path}, claude home {agent.home}", Color.YELLOW)
+                    log_heading(f"claude, home {agent.home}", Color.YELLOW)
                     console.print(subprocess.list2cmdline("<system>" if part is system else "<task>" if part is task else part for part in command), soft_wrap=True)
 
                     # ask before showing the next video

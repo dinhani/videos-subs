@@ -76,7 +76,7 @@ The script does what has one right answer; the agent does what needs judgment.
 - At the usage limit the run stops and keeps the work folder with the session id and its home in `session.json`. The next run on the same home resumes that session; on another home it starts a new session there, which reads the draft and `notes.md` the earlier one left and continues from the first entry not translated.
 - The trace has the system and task prompts, the reference list, every event of every run, the problems of each check and `notes.md`. An existing trace of an earlier translate-claude run is copied to the backups before it is replaced.
 - The translation is composed onto the timings of the English source, which keeps the numbers of its entries, and the work folder is deleted.
-- `--print-prompt` (`just print-prompt-claude`) prints, for each video, the system and task prompts, the reference index, the first 50 English entries with the lines of every reference, and the `claude` options, without writing a work folder or running the agent.
+- `--print-prompt` (`just print-prompt-claude`) prints, for each video, the system and task prompts exactly as the agent gets them, then the files of the work folder it can read (the English entry count and the reference list, not their contents) and the `claude` options, without writing a work folder or running the agent.
 
 ## 7. fix-translations
 
