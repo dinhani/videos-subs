@@ -84,13 +84,13 @@ The virtual environment lives outside the project, under the local data director
 
 ## Code layout
 
-All code is in `src`: the pipeline scripts, `check-draft.py`, `crosscheck-subs.py`, `stats-subs.py`, `shared` and `fix-tools`. The data lists are in `_data`, the tests in `tests`.
+All code is in `src`: the pipeline scripts, `check-draft.py`, `check-subs.py`, `analyse-subs.py`, `shared` and `fix-tools`. The data lists are in `_data`, the tests in `tests`.
 
 - `shared/`: code used by more than one script, one module per subject. Use it instead of writing another version: `files.py` (`SubtitleFile`, the names of a subtitle and its related files), `subtitles.py` (language codes, kinds, tags, markers), `image_subtitles.py`, `languages.py`, `alignment.py` (`AlignedSubtitle`, the timing match of two subtitles), `movies.py` (`MovieInfo`, from the `.nfo`), `drafts.py` (the work folder and draft of translate-claude), `translation_rules.py` (the translation rules both translate prompts use: edit them there, never in a prompt), `descriptions.py`, `data_lists.py` (`DataList`, the one reader and writer of the lists in `_data`), `reports.py`, `console.py` (`Action`, the one list of log verbs; `Batch`), `llm.py` (the llama server, `JsonReply` and traces).
 - `fix-tools/`: the tools of the app-fix-ocr and app-fix-translate skills, run through the `data/fix` recipes. `data/fix` holds only recipes a skill uses; a tool no skill mentions is removed.
 - `check-draft.py`: not a pipeline step; the check that translate-claude's agent runs on its draft through `just check-draft`.
-- `crosscheck-subs.py`: not a pipeline step; it only reads, and reports the files of one track that do not match each other.
-- `stats-subs.py`: not a pipeline step; it only reads the English text subtitles and writes one report file per subject to `_data/stats`, which is not committed, with what repeats across titles in the dialogue and the descriptions, and what the description tables do not cover: input for new fixed rules and for the translation prompt.
+- `check-subs.py`: not a pipeline step; it only reads, and reports the files of one track that do not match each other.
+- `analyse-subs.py`: not a pipeline step; it only reads the English text subtitles and writes one report file per subject to `_data/stats`, which is not committed, with what repeats across titles in the dialogue and the descriptions, and what the description tables do not cover: input for new fixed rules and for the translation prompt.
 - Each script has, in order: constants, its own types, then the execution loop. The check scripts put their rules between the constants and the types, and fix-translations its fixes.
 - Every script follows the same per-file pattern: find its files with `find_subtitles`, loop with `batch.walk`, skip when already done, do the work inside `with batch.attempt(...)`, log through `Action`, and write output through a `.part` file that is then renamed.
 

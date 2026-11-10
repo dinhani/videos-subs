@@ -394,7 +394,7 @@ add-fix-words +triples:
 [extension('.ps1')]
 [positional-arguments]
 crosscheck *paths:
-    uv run src/crosscheck-subs.py @args
+    uv run src/check-subs.py @args
     exit $LASTEXITCODE
 
 [group('debug')]
@@ -403,7 +403,7 @@ crosscheck *paths:
 [extension('.ps1')]
 [positional-arguments]
 stats *paths:
-    uv run src/stats-subs.py @args
+    uv run src/analyse-subs.py @args
     exit $LASTEXITCODE
 
 [group('debug')]
