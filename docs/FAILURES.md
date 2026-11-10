@@ -64,6 +64,10 @@ Google Translate gave good translations, but it depends on Google. The project t
 
 Models from OpenRouter or other cloud services cost too much to translate the whole library, and there is no reason to expect them to translate better: Claude's own reference translations lost to Gemma.
 
+### A Claude Code agent run from a script
+
+translate-claude ran `claude -p` unattended from a Python script, one video at a time. Most of its code went to running the agent, not to translating: parsing the stream of events, detecting the usage limit, resuming sessions across accounts, and a sandboxed system prompt. Claude translation belongs in a skill run in a Claude Code session, which handles all of that itself.
+
 ## Reviewing and fixing translations
 
 ### An LLM review pass after translation
