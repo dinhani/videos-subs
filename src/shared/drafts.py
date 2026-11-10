@@ -79,6 +79,10 @@ class Reference:
         return f"- `{WORK_REFERENCES}/{self.name}`: {self.file.language or LANGUAGE_UNDETECTED}, {kind}, {origin}, {len(self.lines)} of {self.entries_english} English entries matched"
 
 
+def format_references_index(references: list[Reference]) -> str:
+    return "\n".join(reference.describe() for reference in references) + "\n" if references else "No other subtitles.\n"
+
+
 @dataclass(frozen=True)
 class Draft:
     translated: dict[int, tuple[str, ...]]
@@ -141,8 +145,7 @@ class WorkFolder:
         (self.path / WORK_ENGLISH).write_text(source.to_text(), encoding="utf-8", newline="\n")
         for reference in references:
             (self.path / WORK_REFERENCES / reference.name).write_text(reference.to_text(), encoding="utf-8", newline="\n")
-        index = "\n".join(reference.describe() for reference in references) if references else "No other subtitles."
-        (self.path / WORK_REFERENCES_INDEX).write_text(f"{index}\n", encoding="utf-8", newline="\n")
+        (self.path / WORK_REFERENCES_INDEX).write_text(format_references_index(references), encoding="utf-8", newline="\n")
 
     def save_session(self, session_id: str) -> None:
         (self.path / WORK_SESSION).write_text(session_id, encoding="utf-8", newline="\n")

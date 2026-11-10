@@ -407,11 +407,20 @@ stats *paths:
     exit $LASTEXITCODE
 
 [group('debug')]
-[doc('Print system prompt and first chunk of each English subtitle')]
+[doc('Print Claude agent prompts, references and options of each video')]
 [script]
 [extension('.ps1')]
 [positional-arguments]
-print-prompt *paths:
+print-prompt-claude *paths:
+    uv run src/6-translate-subs-claude.py --print-prompt @args
+    exit $LASTEXITCODE
+alias pp := print-prompt-claude
+
+[group('debug')]
+[doc('Print llama system prompt and first chunk of each English subtitle')]
+[script]
+[extension('.ps1')]
+[positional-arguments]
+print-prompt-llama *paths:
     uv run src/6-translate-subs-llama.py --print-prompt @args
     exit $LASTEXITCODE
-alias pp := print-prompt

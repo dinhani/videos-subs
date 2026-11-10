@@ -13,8 +13,10 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from shared.console import Action, Batch
-from shared.drafts import Reference, Source, WorkFolder
+from rich.text import Text
+
+from shared.console import Action, Answer, Batch, Color, confirm, console, log_heading
+from shared.drafts import WORK_ENGLISH, WORK_REFERENCES, WORK_REFERENCES_INDEX, Reference, Source, WorkFolder, format_references_index
 from shared.files import SEASON_PREFIX, Backups, SubtitleFile, SubtitleFormat, find_subtitles, list_folder, parse_srt, write_text_replacing
 from shared.llm import Trace
 from shared.movies import NFO_SHOW, MovieInfo
@@ -35,6 +37,7 @@ AGENT_ALLOWED = ("Read", "Grep", "Glob", "Write(./**)", "Edit(./**)", f"Bash({CH
 AGENT_TOOL_ACTIONS = {"Read": Action.READ, "Write": Action.WRITE, "Edit": Action.EDIT}
 AGENT_EVENTS_SKIPPED = frozenset({"thinking_tokens"})
 RATE_LIMIT_ALLOWED = "allowed"
+PRINT_ENTRIES = 50
 
 AGENT_TASK = """\
 Translate the subtitle in this folder. It is from {movie}.{movie_info}
@@ -164,13 +167,7 @@ class Agent:
     effort: str
 
     def run(self, work: WorkFolder, system: str, prompt: str, session_id: str | None, folders: list[Path]) -> AgentRun:
-        command = [
-            self.executable, "-p", prompt,
-            "--model", self.model, "--effort", self.effort, "--system-prompt", system, *AGENT_OPTIONS,
-            *(("--resume", session_id) if session_id else ()),
-            *(option for folder in folders for option in ("--add-dir", str(folder))),
-            "--allowedTools", *AGENT_ALLOWED,
-        ]
+        command = self.to_command(system=system, prompt=prompt, session_id=session_id, folders=folders)
 
         # stream the events, logging what the agent reads, writes and checks
         events: list[dict[str, Any]] = []
@@ -195,6 +192,15 @@ class Agent:
             stderr = process.stderr.read() if process.stderr else ""
         return AgentRun(events=tuple(events), stderr=stderr)
 
+    def to_command(self, system: str, prompt: str, session_id: str | None, folders: list[Path]) -> list[str]:
+        return [
+            self.executable, "-p", prompt,
+            "--model", self.model, "--effort", self.effort, "--system-prompt", system, *AGENT_OPTIONS,
+            *(("--resume", session_id) if session_id else ()),
+            *(option for folder in folders for option in ("--add-dir", str(folder))),
+            "--allowedTools", *AGENT_ALLOWED,
+        ]
+
 # ------------------------------------------------------------------------------
 # Execution
 # ------------------------------------------------------------------------------
@@ -202,24 +208,27 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Translates the base English subtitle of each video to Brazilian Portuguese with a Claude Code agent; folders only English ones.")
     parser.add_argument("--model", default=AGENT_MODEL, help=f"Claude model of the agent (default: {AGENT_MODEL})")
     parser.add_argument("--effort", default=AGENT_EFFORT, choices=AGENT_EFFORTS, help=f"effort of the agent (default: {AGENT_EFFORT})")
+    parser.add_argument("--print-prompt", action="store_true", help="print the prompts, the reference index, the first entries with their references and the agent options of each video, even one already translated, without translating it")
     Backups.add_argument(parser)
     subs_src = find_subtitles(parser, formats=(SubtitleFormat.TEXT,), languages=(LANGUAGE_SOURCE,))
     arguments = parser.parse_args()
     executable = shutil.which("claude")
-    if executable is None:
+    if executable is None and not arguments.print_prompt:
         parser.error("claude not found on PATH")
-    agent = Agent(executable=executable, model=arguments.model, effort=arguments.effort)
+    agent = Agent(executable=executable or "claude", model=arguments.model, effort=arguments.effort)
     backups = Backups.start(arguments.backups)
+    videos = [next(video_subs) for _, video_subs in itertools.groupby(subs_src, key=lambda sub: (sub.movie_dir, sub.video_name))]
 
     with Batch() as batch:
-        for (_, video_name), video_subs in itertools.groupby(batch.walk(subs_src), key=lambda sub: (sub.movie_dir, sub.video_name)):
+        for position, video_sub in enumerate(batch.walk(videos), start=1):
             # skip videos without a base English subtitle, or already translated
-            video_sub = next(video_subs)
+            video_name = video_sub.video_name
             subs_english = [sub for sub in video_sub.find_text_subtitles(LANGUAGE_SOURCE) if not sub.is_sdh()]
             if not subs_english:
                 Action.SKIP.log(f"{video_name}: no base English subtitle")
                 continue
-            if translated := next((sub.to_translation() for sub in subs_english if sub.to_translation().path.exists()), None):
+            translated = next((sub.to_translation() for sub in subs_english if sub.to_translation().path.exists()), None)
+            if translated is not None and not arguments.print_prompt:
                 Action.EXISTS.log(translated.name)
                 continue
 
@@ -229,7 +238,11 @@ if __name__ == "__main__":
                 sub_src = max(subs_english, key=lambda sub: len(entries_by_sub[sub]))
                 sub_entries = entries_by_sub[sub_src]
                 sub_dst = sub_src.to_translation()
-                Action.TRANSLATE.log(sub_dst.name)
+                if arguments.print_prompt:
+                    batch.clear_screen()
+                    Action.PROMPT.log(sub_src.name)
+                else:
+                    Action.TRANSLATE.log(sub_dst.name)
 
                 # context: movie info, and the files the agent may open for more
                 movie_info = MovieInfo.find(sub_src)
@@ -249,17 +262,58 @@ if __name__ == "__main__":
                 task = AGENT_TASK.replace("{movie_info}", f"\n\n{movie_info_text}" if movie_info_text else "").replace("{files}", "\n".join(files)).replace("{movie}", sub_src.movie_title)
                 system = AGENT_PROMPT.replace("{check}", CHECK_COMMAND)
 
-                # work folder: resume the session a usage limit stopped, or prepare the English and every other subtitle of the video aligned to it
+                # references: every other text subtitle of the video aligned to the English, unless resuming a session a usage limit stopped
                 work = WorkFolder.for_video(video_name)
+                session_id = None if arguments.print_prompt else work.find_session()
+                references: list[Reference] = []
+                if session_id is None:
+                    subs_reference = [file for name in sorted(list_folder(sub_src.folder)) if (file := SubtitleFile.find(sub_src.folder / name)) and file.is_text() and file.video_name == video_name and file != sub_src]
+                    references = [Reference.from_file(file, english_entries=sub_entries) for file in subs_reference]
+
+                # print the prompts, the references and the agent options, without translating
+                if arguments.print_prompt:
+                    log_heading(f"system: {sub_src.name}", Color.YELLOW)
+                    console.print(system, soft_wrap=True)
+                    task_text = Text(task)
+                    task_text.highlight_words([movie_info_text] if movie_info_text else [], style=Color.GREEN)
+                    task_text.highlight_words([sub_src.movie_title], style=Color.CYAN)
+                    log_heading("task", Color.YELLOW)
+                    console.print(task_text, soft_wrap=True)
+                    log_heading(WORK_REFERENCES_INDEX, Color.YELLOW)
+                    console.print(format_references_index(references), soft_wrap=True, end="")
+
+                    # each English entry with the lines of every reference on screen with it, as Grep shows them to the agent
+                    source = Source.from_entries(sub_entries)
+                    numbers = list(source.english)[:PRINT_ENTRIES]
+                    labels = {reference.name: reference.name.removesuffix(".txt") for reference in references}
+                    label_width = max((len(label) for label in (WORK_ENGLISH, *labels.values())), default=0)
+                    log_heading(f"{WORK_ENGLISH} and {WORK_REFERENCES}, first {len(numbers)} of {len(source.english)} entries", Color.YELLOW)
+                    for number in numbers:
+                        console.print(f"#{number}", style=Color.CYAN)
+                        for label, lines in ((WORK_ENGLISH, source.english[number]), *((labels[reference.name], reference.lines[number]) for reference in references if number in reference.lines)):
+                            for line in lines:
+                                console.print(Text.assemble("  ", (f"{label:<{label_width}}", Color.BLUE), "  ", line), soft_wrap=True)
+
+                    # claude options, with the prompts printed above left out
+                    command = agent.to_command(system=system, prompt=task, session_id=None, folders=folders)
+                    log_heading(f"agent, run in {work.path}", Color.YELLOW)
+                    console.print(subprocess.list2cmdline("<system>" if part is system else "<task>" if part is task else part for part in command), soft_wrap=True)
+
+                    # ask before showing the next video
+                    if position == len(videos):
+                        continue
+                    console.print()
+                    if not confirm(f"Next video, {len(videos) - position} left: {videos[position].video_name}. Show it?", default=Answer.YES):
+                        break
+                    continue
+
+                # work folder: resume the session a usage limit stopped, or prepare the English and the references
                 trace_file = sub_dst.to_trace()
-                session_id = work.find_session()
                 if session_id is not None:
                     Action.RETRY.log(f"resuming the session stopped at the usage limit, in {work.path}")
                     prompt = AGENT_TASK_CONTINUE
                     trace = Trace(file=trace_file, records=json.loads(trace_file.read_text(encoding="utf-8")) if trace_file.exists() else [])
                 else:
-                    subs_reference = [file for name in sorted(list_folder(sub_src.folder)) if (file := SubtitleFile.find(sub_src.folder / name)) and file.is_text() and file.video_name == video_name and file != sub_src]
-                    references = [Reference.from_file(file, english_entries=sub_entries) for file in subs_reference]
                     work.create(source=Source.from_entries(sub_entries), references=references)
                     prompt = task
 

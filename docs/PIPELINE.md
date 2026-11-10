@@ -75,6 +75,7 @@ The script does what has one right answer; the agent does what needs judgment.
 - At the usage limit the run stops and keeps the work folder with the session id; the next run resumes that session.
 - The trace has the system and task prompts, the reference list, every event of every run, the problems of each check and `notes.md`. An existing trace, such as one from translate, is copied to the backups before it is replaced.
 - The translation is composed onto the timings of the English source, which keeps the numbers of its entries, and the work folder is deleted.
+- `--print-prompt` (`just print-prompt-claude`) prints, for each video, the system and task prompts, the reference index, the first 50 English entries with the lines of every reference, and the `claude` options, without writing a work folder or running the agent.
 
 ## 7. fix-translations
 
