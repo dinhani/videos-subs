@@ -6,6 +6,7 @@
 import argparse
 import itertools
 import json
+import os
 import shutil
 import subprocess
 from dataclasses import dataclass
@@ -16,7 +17,7 @@ from typing import Any
 from rich.text import Text
 
 from shared.console import Action, Answer, Batch, Color, confirm, console, log_heading
-from shared.drafts import WORK_ENGLISH, WORK_REFERENCES, WORK_REFERENCES_INDEX, Reference, Source, WorkFolder, format_references_index
+from shared.drafts import WORK_ENGLISH, WORK_REFERENCES, WORK_REFERENCES_INDEX, Reference, Session, Source, WorkFolder, format_references_index
 from shared.files import SEASON_PREFIX, Backups, SubtitleFile, SubtitleFormat, find_subtitles, list_folder, parse_srt, write_text_replacing
 from shared.llm import Trace
 from shared.movies import NFO_SHOW, MovieInfo
@@ -26,6 +27,10 @@ from shared.subtitles import LANGUAGE_SOURCE
 # Constants
 # ------------------------------------------------------------------------------
 PROJECT_DIR = Path(__file__).absolute().parent.parent
+
+HOME_DEFAULT = "claude"
+HOME_CONFIG_VARIABLE = "CLAUDE_CONFIG_DIR"
+HOME_CREDENTIALS = ".credentials.json"
 CHECK_COMMAND = f"just -f {PROJECT_DIR.as_posix()}/justfile check-draft"
 
 AGENT_MODEL = "opus"
@@ -45,6 +50,10 @@ Translate the subtitle in this folder. It is from {movie}.{movie_info}
 Files outside this folder, if you want more than this:
 {files}"""
 AGENT_TASK_CONTINUE = "Your last session stopped at the usage limit. Continue the translation where you stopped."
+AGENT_TASK_CONTINUE_DRAFT = """\
+{task}
+
+An earlier session stopped at the usage limit after writing part of `translation/`, and maybe `notes.md`. Run the check to see where it stopped, read what it wrote, and continue the translation from there."""
 AGENT_TASK_FIX = """\
 The check of the whole translation still finds these problems:
 {problems}
@@ -163,16 +172,22 @@ class AgentRun:
 @dataclass(frozen=True)
 class Agent:
     executable: str
+    home: Path
     model: str
     effort: str
 
     def run(self, work: WorkFolder, system: str, prompt: str, session_id: str | None, folders: list[Path]) -> AgentRun:
         command = self.to_command(system=system, prompt=prompt, session_id=session_id, folders=folders)
 
+        # environment of the home
+        environment = {name: value for name, value in os.environ.items() if name != HOME_CONFIG_VARIABLE}
+        if self.home != Path.home() / f".{HOME_DEFAULT}":
+            environment[HOME_CONFIG_VARIABLE] = str(self.home)
+
         # stream the events, logging what the agent reads, writes and checks
         events: list[dict[str, Any]] = []
         tools: dict[str, str] = {}
-        with subprocess.Popen(command, cwd=work.path, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf-8") as process:
+        with subprocess.Popen(command, cwd=work.path, env=environment, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf-8") as process:
             for line in process.stdout or ():
                 event = json.loads(line)
                 events.append(event)
@@ -208,6 +223,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Translates the base English subtitle of each video to Brazilian Portuguese with a Claude Code agent; folders only English ones.")
     parser.add_argument("--model", default=AGENT_MODEL, help=f"Claude model of the agent (default: {AGENT_MODEL})")
     parser.add_argument("--effort", default=AGENT_EFFORT, choices=AGENT_EFFORTS, help=f"effort of the agent (default: {AGENT_EFFORT})")
+    home_default = Path(os.environ[HOME_CONFIG_VARIABLE]).name.removeprefix(".") if os.environ.get(HOME_CONFIG_VARIABLE) else HOME_DEFAULT
+    parser.add_argument("--home", default=home_default, help=f"Claude home of the account that runs the agent, the folder ~/.<home>, such as claude, claude-2 or claude-3 (default: {home_default}, from {HOME_CONFIG_VARIABLE} or claude)")
     parser.add_argument("--print-prompt", action="store_true", help="print the prompts, the reference index, the first entries with their references and the agent options of each video, even one already translated, without translating it")
     Backups.add_argument(parser)
     subs_src = find_subtitles(parser, formats=(SubtitleFormat.TEXT,), languages=(LANGUAGE_SOURCE,))
@@ -215,8 +232,13 @@ if __name__ == "__main__":
     executable = shutil.which("claude")
     if executable is None and not arguments.print_prompt:
         parser.error("claude not found on PATH")
-    agent = Agent(executable=executable or "claude", model=arguments.model, effort=arguments.effort)
+    home = Path.home() / f".{arguments.home}"
+    if not (home / HOME_CREDENTIALS).exists():
+        parser.error(f"{home} is not a Claude home with a login ({HOME_CREDENTIALS} not found)")
+    agent = Agent(executable=executable or "claude", home=home, model=arguments.model, effort=arguments.effort)
     backups = Backups.start(arguments.backups)
+    if not arguments.print_prompt:
+        Action.START.log(f"claude home: {home}")
     videos = [next(video_subs) for _, video_subs in itertools.groupby(subs_src, key=lambda sub: (sub.movie_dir, sub.video_name))]
 
     with Batch() as batch:
@@ -262,11 +284,11 @@ if __name__ == "__main__":
                 task = AGENT_TASK.replace("{movie_info}", f"\n\n{movie_info_text}" if movie_info_text else "").replace("{files}", "\n".join(files)).replace("{movie}", sub_src.movie_title)
                 system = AGENT_PROMPT.replace("{check}", CHECK_COMMAND)
 
-                # references: every other text subtitle of the video aligned to the English, unless resuming a session a usage limit stopped
+                # references: every other text subtitle of the video aligned to the English, unless continuing a draft a usage limit stopped
                 work = WorkFolder.for_video(video_name)
-                session_id = None if arguments.print_prompt else work.find_session()
+                session = None if arguments.print_prompt else work.find_session()
                 references: list[Reference] = []
-                if session_id is None:
+                if session is None:
                     subs_reference = [file for name in sorted(list_folder(sub_src.folder)) if (file := SubtitleFile.find(sub_src.folder / name)) and file.is_text() and file.video_name == video_name and file != sub_src]
                     references = [Reference.from_file(file, english_entries=sub_entries) for file in subs_reference]
 
@@ -296,7 +318,7 @@ if __name__ == "__main__":
 
                     # claude options, with the prompts printed above left out
                     command = agent.to_command(system=system, prompt=task, session_id=None, folders=folders)
-                    log_heading(f"agent, run in {work.path}", Color.YELLOW)
+                    log_heading(f"agent, run in {work.path}, claude home {agent.home}", Color.YELLOW)
                     console.print(subprocess.list2cmdline("<system>" if part is system else "<task>" if part is task else part for part in command), soft_wrap=True)
 
                     # ask before showing the next video
@@ -307,11 +329,16 @@ if __name__ == "__main__":
                         break
                     continue
 
-                # work folder: resume the session a usage limit stopped, or prepare the English and the references
+                # work folder: continue the draft a usage limit stopped, in its session on the same home or a new session on another, or prepare the English and the references
                 trace_file = sub_dst.to_trace()
-                if session_id is not None:
+                session_id = None
+                if session is not None and session.home == agent.home:
                     Action.RETRY.log(f"resuming the session stopped at the usage limit, in {work.path}")
-                    prompt = AGENT_TASK_CONTINUE
+                    prompt, session_id = AGENT_TASK_CONTINUE, session.session_id
+                    trace = Trace(file=trace_file, records=json.loads(trace_file.read_text(encoding="utf-8")) if trace_file.exists() else [])
+                elif session is not None:
+                    Action.RETRY.log(f"continuing the draft of a session of {session.home} in a new session, in {work.path}")
+                    prompt = AGENT_TASK_CONTINUE_DRAFT.replace("{task}", task)
                     trace = Trace(file=trace_file, records=json.loads(trace_file.read_text(encoding="utf-8")) if trace_file.exists() else [])
                 else:
                     work.create(source=Source.from_entries(sub_entries), references=references)
@@ -322,16 +349,16 @@ if __name__ == "__main__":
                     if trace_file.exists():
                         backups.save(trace_file)
                     trace = Trace(file=trace_file)
-                    trace.record({"model": agent.model, "effort": agent.effort, "work_folder": str(work.path), "system": system, "task": task, "references": work.read_references_index()})
+                    trace.record({"model": agent.model, "effort": agent.effort, "home": str(agent.home), "work_folder": str(work.path), "system": system, "task": task, "references": work.read_references_index()})
 
                 # translate, resuming the session with the problems of the check of the whole translation
                 source = work.read_source()
                 problems: list[str] = []
                 for run_number in range(1, AGENT_RUNS + 1):
                     run = agent.run(work, system=system, prompt=prompt, session_id=session_id, folders=folders)
-                    trace.record({"run": run_number, "prompt": prompt, **run.to_record()})
+                    trace.record({"run": run_number, "home": str(agent.home), "prompt": prompt, **run.to_record()})
                     session_id = run.session_id
-                    work.save_session(session_id)
+                    work.save_session(Session(session_id=session_id, home=agent.home))
                     if run.hit_usage_limit():
                         break
                     run.ensure_completed()

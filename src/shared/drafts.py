@@ -1,3 +1,4 @@
+import json
 import re
 import shutil
 import tempfile
@@ -18,7 +19,7 @@ WORK_REFERENCES = "references"
 WORK_REFERENCES_INDEX = "references.md"
 WORK_TRANSLATION = "translation"
 WORK_NOTES = "notes.md"
-WORK_SESSION = "session.txt"
+WORK_SESSION = "session.json"
 
 ENTRY_HEADER = re.compile(r"^#(\d+)$")
 DIGITS = re.compile(r"\d+")
@@ -130,6 +131,12 @@ class Draft:
 
 
 @dataclass(frozen=True)
+class Session:
+    session_id: str
+    home: Path
+
+
+@dataclass(frozen=True)
 class WorkFolder:
     path: Path
 
@@ -147,12 +154,15 @@ class WorkFolder:
             (self.path / WORK_REFERENCES / reference.name).write_text(reference.to_text(), encoding="utf-8", newline="\n")
         (self.path / WORK_REFERENCES_INDEX).write_text(format_references_index(references), encoding="utf-8", newline="\n")
 
-    def save_session(self, session_id: str) -> None:
-        (self.path / WORK_SESSION).write_text(session_id, encoding="utf-8", newline="\n")
+    def save_session(self, session: Session) -> None:
+        (self.path / WORK_SESSION).write_text(json.dumps({"session_id": session.session_id, "home": str(session.home)}), encoding="utf-8", newline="\n")
 
-    def find_session(self) -> str | None:
-        session = self.path / WORK_SESSION
-        return session.read_text(encoding="utf-8").strip() if session.exists() else None
+    def find_session(self) -> Session | None:
+        file = self.path / WORK_SESSION
+        if not file.exists():
+            return None
+        record = json.loads(file.read_text(encoding="utf-8"))
+        return Session(session_id=record["session_id"], home=Path(record["home"]))
 
     def read_references_index(self) -> str:
         return (self.path / WORK_REFERENCES_INDEX).read_text(encoding="utf-8")

@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 import srt
 
-from shared.drafts import Draft, Reference, Source, WorkFolder
+from shared.drafts import Draft, Reference, Session, Source, WorkFolder
 from shared.files import SUBS_FOLDER, SubtitleFile
 
 
@@ -25,6 +25,14 @@ def test_work_folder_round_trip(tmp_path: Path) -> None:
     assert work.read_source() == source
     assert (work.path / "english.txt").read_text(encoding="utf-8") == "#1\nHi.\nYou okay?\n\n#3\nBye.\n"
     assert (work.path / "references" / "spa.embed.5.txt").read_text(encoding="utf-8") == "#3\nAdiós.\n"
+
+
+def test_work_folder_session_round_trip(tmp_path: Path) -> None:
+    work = WorkFolder(path=tmp_path)
+    assert work.find_session() is None
+    session = Session(session_id="abc", home=Path("C:/Users/me/.claude-2"))
+    work.save_session(session)
+    assert work.find_session() == session
 
 
 def test_reference_lines_go_to_the_number_of_their_english_entry(tmp_path: Path) -> None:
