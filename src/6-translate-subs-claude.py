@@ -256,7 +256,7 @@ if __name__ == "__main__":
                 system = AGENT_PROMPT.replace("{check}", CHECK_COMMAND)
 
                 # references: the English SDH and the Portuguese, Spanish, French and Italian text subtitles of the video aligned to the English, unless continuing a draft a usage limit stopped
-                work = WorkFolder.for_video(video_name)
+                work = WorkFolder.for_video(movie_dir=sub_src.movie_dir, video_name=video_name)
                 session = None if arguments.print_prompt else work.find_session()
                 references: list[Reference] = []
                 if session is None:
@@ -335,13 +335,13 @@ if __name__ == "__main__":
 
                 # stop at the usage limit, so the next run resumes this session
                 if run.hit_usage_limit():
-                    Action.STOP.log(f"{run.describe_limit()}; work folder kept: {work.path}")
+                    Action.STOP.log(f"{run.describe_limit()}; work folder: {work.path}")
                     break
                 if problems:
-                    raise RuntimeError(f"{len(problems)} problems after {AGENT_RUNS} runs; work folder kept: {work.path}")
+                    raise RuntimeError(f"{len(problems)} problems after {AGENT_RUNS} runs; work folder: {work.path}")
 
                 # write translated
                 trace.record({"notes": work.read_notes()})
                 write_text_replacing(sub_dst.path, draft.compose(sub_entries))
                 Action.TRANSLATE.log(f"{sub_dst.name}: {run.describe()}")
-                work.remove()
+                work.end_session()

@@ -63,11 +63,13 @@ Z:/midias/filmes/<movie>/                 (series use the same layout under Z:/m
   _traces/<video>.embed.3.eng.ocr.json          OCR trace
   _checks/<video>.embed.2.pob.translated.txt    translation report (.pob.claude.translated.txt for translate-claude)
   _checks/<video>.embed.3.eng.ocr.txt           OCR report
+  _drafts/<video>/                              translate-claude work folder
 ```
 
 - `_subs` holds the extracted text subtitles and image subtitles, and the text subtitles made from image subtitles. They stay out of the movie folder because the media server already reads the tracks inside the video and would show them twice.
 - `_traces` holds one trace per OCR and per translation: every request, reply, retry and accepted problem. It is valid and current during a run. Traces are never deleted.
 - `_checks` holds one report per checked OCR output and translation.
+- `_drafts` holds one work folder per video translated by translate-claude: the English, the references, the agent's draft and notes, and while the agent works its session. It holds no `.srt`, so the media server shows nothing from it. Work folders are kept after the translation; a new translation of the video rebuilds its folder.
 - `Z:/midias/_backups/<run>/` holds a copy of every file that fix-translations, warn and `just apply-fixes` overwrite, made before writing it, under its path from `Z:/midias`. The other steps write only new files. Each run has its own folder, named by its start time. Backups are never deleted.
 
 ## Running

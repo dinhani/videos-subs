@@ -33,6 +33,12 @@ def test_work_folder_session_round_trip(tmp_path: Path) -> None:
     session = Session(session_id="abc", home=Path("C:/Users/me/.claude-2"))
     work.save_session(session)
     assert work.find_session() == session
+    work.end_session()
+    assert work.find_session() is None
+
+
+def test_work_folder_is_in_the_movie_folder() -> None:
+    assert WorkFolder.for_video(movie_dir=Path("Z:/midias/filmes/Movie (2020)"), video_name="Movie (2020, 1080p)").path == Path("Z:/midias/filmes/Movie (2020)/_drafts/Movie (2020, 1080p)")
 
 
 def test_reference_lines_go_to_the_number_of_their_english_entry(tmp_path: Path) -> None:

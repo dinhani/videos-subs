@@ -1,7 +1,6 @@
 import json
 import re
 import shutil
-import tempfile
 from collections import Counter
 from collections.abc import Iterable
 from dataclasses import dataclass
@@ -10,10 +9,9 @@ from pathlib import Path
 import srt
 
 from shared.alignment import AlignedSubtitle
-from shared.files import SubtitleFile, parse_srt
+from shared.files import DRAFTS_FOLDER, SubtitleFile, parse_srt
 from shared.subtitles import FORMATTING_TAGS, LANGUAGE_UNDETECTED, parse_lines, replace_text
 
-WORK_ROOT = Path(tempfile.gettempdir()) / "translate-claude"
 WORK_ENGLISH = "english.txt"
 WORK_REFERENCES = "references"
 WORK_REFERENCES_INDEX = "references.md"
@@ -149,12 +147,12 @@ class WorkFolder:
     path: Path
 
     @classmethod
-    def for_video(cls, video_name: str) -> "WorkFolder":
-        return cls(path=WORK_ROOT / video_name)
+    def for_video(cls, movie_dir: Path, video_name: str) -> "WorkFolder":
+        return cls(path=movie_dir / DRAFTS_FOLDER / video_name)
 
     def create(self, source: Source, references: list[Reference]) -> None:
         if self.path.exists():
-            self.remove()
+            shutil.rmtree(self.path)
         (self.path / WORK_REFERENCES).mkdir(parents=True)
         (self.path / WORK_TRANSLATION).mkdir()
         (self.path / WORK_ENGLISH).write_text(source.to_text(), encoding="utf-8", newline="\n")
@@ -172,6 +170,9 @@ class WorkFolder:
         record = json.loads(file.read_text(encoding="utf-8"))
         return Session(session_id=record["session_id"], home=Path(record["home"]))
 
+    def end_session(self) -> None:
+        (self.path / WORK_SESSION).unlink(missing_ok=True)
+
     def read_references_index(self) -> str:
         return (self.path / WORK_REFERENCES_INDEX).read_text(encoding="utf-8")
 
@@ -184,6 +185,3 @@ class WorkFolder:
     def read_notes(self) -> str:
         notes = self.path / WORK_NOTES
         return notes.read_text(encoding="utf-8") if notes.exists() else ""
-
-    def remove(self) -> None:
-        shutil.rmtree(self.path)
