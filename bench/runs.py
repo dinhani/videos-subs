@@ -277,7 +277,7 @@ class RunTranslation:
 
     @property
     def translation(self) -> Path:
-        return SubtitleFile.from_path(self.english).to_translation().path
+        return SubtitleFile.from_path(self.english).to_translation(format=SubtitleFormat.TRANSLATION).path
 
     @property
     def report(self) -> Path:

@@ -19,7 +19,7 @@ from rich.text import Text
 from shared.console import Action, Answer, Batch, Color, confirm, console
 from shared.data_lists import FIX_ADDRESSES, FIX_CHANNELS, FIX_EXPRESSIONS, FIX_INTERJECTIONS, FIX_LANGUAGES, FIX_MUSIC_MOODS, FIX_PORTUGAL, FIX_RANKS, FIX_SOUND_LISTS, FIX_SUBJECTS, FIX_UNITS, FIX_VERBS, FIX_VOICE_MOODS, FIX_WORDS, DataList
 from shared.descriptions import DESCRIPTION_SIMPLE, SPEAKER_LABEL, DescriptionTable, MovieNames, match_case
-from shared.files import Backups, SubtitleFile, SubtitleFormat, find_subtitles, parse_srt, write_text_replacing
+from shared.files import TRANSLATION_FORMATS, Backups, SubtitleFile, find_subtitles, parse_srt, write_text_replacing
 from shared.languages import WORD
 from shared.subtitles import BRACKETS, FORMATTING_TAGS, LANGUAGE_TRANSLATION, QUOTES, parse_lines, replace_text
 
@@ -539,7 +539,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Fixes the mistakes of the translations that have a mechanical fix, by comparing each entry with its English source. Shows the changes of each translation and asks before writing it.")
     parser.add_argument("--yes", action="store_true", help="write every translation without showing its changes or asking")
     Backups.add_argument(parser)
-    subs = find_subtitles(parser, formats=(SubtitleFormat.TRANSLATION,), languages=(LANGUAGE_TRANSLATION,))
+    subs = find_subtitles(parser, formats=TRANSLATION_FORMATS, languages=(LANGUAGE_TRANSLATION,))
     arguments = parser.parse_args()
     backups = Backups.start(arguments.backups)
 

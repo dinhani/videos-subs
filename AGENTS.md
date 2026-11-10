@@ -4,7 +4,7 @@ Personal scripts that extract the tracks of the videos in the media library, ide
 
 ## Principle
 
-The only subtitle this project makes for viewers is the Brazilian Portuguese translation, `<name>.pob.translated.srt`. Its source is an English text subtitle, either extracted from a text track or made by OCR from an image subtitle. Viewers who want English watch the original track inside the video, which the media server shows as it is; nobody watches an extracted or OCR text subtitle.
+The only subtitle this project makes for viewers is the Brazilian Portuguese translation, `<name>.pob.translated.srt`, or `<name>.pob.claude.translated.srt` when translate-claude made it. Its source is an English text subtitle, either extracted from a text track or made by OCR from an image subtitle. Viewers who want English watch the original track inside the video, which the media server shows as it is; nobody watches an extracted or OCR text subtitle.
 
 So an OCR output is only input for translation: an English one is translated, and one in a second language is sent with the English for the model to read. Judge an OCR issue, a check-ocr rule or a fix by whether it changes the translation: wrong or missing text, lines in the wrong order, and markup that can reach the translated `.srt` matter; punctuation style that is faithful to the image, such as `....` for an ellipsis, does not.
 
@@ -25,7 +25,7 @@ Use these terms, and only these, in code, logs, docs and conversation. Do not ro
 - **image subtitle**: a `.sup` (PGS, Blu-ray) or `.mks` (VobSub, DVD) file: subtitles stored as pictures, which need OCR to become a text subtitle.
 - **entry**: one subtitle on screen, with a start and an end time; one numbered block in a `.srt`. `SubtitleEntry` is an entry of an image subtitle.
 - **language code**: the ISO 639-3 code that identify-text and identify-ocr put in a file name (`eng`, `por`, ...), plus `pob` for Brazilian Portuguese and `und` for undetected.
-- **kind**: base or SDH (subtitles for the deaf and hard of hearing, which describe sounds). identify-text and identify-ocr put `sdh` after the language code of an SDH subtitle: `<name>.eng.sdh.srt`. The translation of an SDH subtitle keeps the marker: `<name>.pob.sdh.translated.srt`. In this file, `.eng.srt`, `.eng.sup` and `.pob.translated.srt` also stand for `.eng.sdh.srt`, `.eng.sdh.sup` and `.pob.sdh.translated.srt`.
+- **kind**: base or SDH (subtitles for the deaf and hard of hearing, which describe sounds). identify-text and identify-ocr put `sdh` after the language code of an SDH subtitle: `<name>.eng.sdh.srt`. The translation of an SDH subtitle keeps the marker: `<name>.pob.sdh.translated.srt`. In this file, `.eng.srt`, `.eng.sup` and `.pob.translated.srt` also stand for `.eng.sdh.srt`, `.eng.sdh.sup` and `.pob.sdh.translated.srt`, and `.pob.translated.srt` also for `.pob.claude.translated.srt`.
 - **description**: text in `[...]` or `(...)` that describes a sound or names who speaks, such as `[GRUNTS]` or `(Avi)`; most of them are in SDH subtitles.
 - **trace**: the JSON record in `_traces` of every LLM request and reply for one OCR or translation.
 - **issue**: one problem a check step flags in an entry, with a kind (`wrong order`, `untranslated`, ...) and a weight.
@@ -44,7 +44,7 @@ Run the steps in order; each step skips files it already processed, so every ste
 4. `4-ocr-subs.py`: transcribes the English and second-language image subtitles into text subtitles with Gemma vision.
 5. `5-check-ocr-subs.py`: checks each OCR output against its image subtitle and writes a report.
 6. `6-translate-subs-llama.py`: translates each `.eng.srt`, with a second language when the video has one, into `<name>.pob.translated.srt` in the movie folder.
-   `6-translate-subs-claude.py` does the same step with a Claude Code agent (`claude -p`, on the subscription), for the base `.eng.srt` with the most entries of each video, with every other text subtitle of the video as a reference.
+   `6-translate-subs-claude.py` does the same step with a Claude Code agent (`claude -p`, on the subscription), for the base `.eng.srt` with the most entries of each video, with every other text subtitle of the video as a reference, into `<name>.pob.claude.translated.srt`.
 7. `7-fix-translations.py`: applies the mechanical fixes to each translation.
 8. `8-check-translations.py`: checks each translation against its English source and writes a report.
 9. `9-warn-subs.py`: adds warning entries at the start of each translation.
@@ -55,12 +55,13 @@ Run the steps in order; each step skips files it already processed, so every ste
 Z:/midias/filmes/<movie>/                 (series use the same layout under Z:/midias/series/)
   <video>.mkv
   <video>.embed.2.pob.translated.srt      translation output
+  <video>.embed.2.pob.claude.translated.srt   translation output of translate-claude
   _subs/<video>.embed.2.eng.srt           text subtitle, extracted and identified
   _subs/<video>.embed.3.eng.sup           image subtitle, extracted and identified
   _subs/<video>.embed.3.eng.srt           text subtitle made from that image subtitle by ocr
-  _traces/<video>.embed.2.pob.translated.json   translation trace
+  _traces/<video>.embed.2.pob.translated.json   translation trace (.pob.claude.translated.json for translate-claude)
   _traces/<video>.embed.3.eng.ocr.json          OCR trace
-  _checks/<video>.embed.2.pob.translated.txt    translation report
+  _checks/<video>.embed.2.pob.translated.txt    translation report (.pob.claude.translated.txt for translate-claude)
   _checks/<video>.embed.3.eng.ocr.txt           OCR report
 ```
 

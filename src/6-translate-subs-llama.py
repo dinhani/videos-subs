@@ -302,7 +302,7 @@ if __name__ == "__main__":
     with Batch() as batch:
         for position, sub_src in enumerate(batch.walk(subs_src), start=1):
             # prepare files
-            sub_dst = sub_src.to_translation()
+            sub_dst = sub_src.to_translation(format=SubtitleFormat.TRANSLATION)
             if llama is None:
                 batch.clear_screen()
                 Action.PROMPT.log(sub_src.name)

@@ -9,7 +9,7 @@ from datetime import timedelta
 import srt
 
 from shared.console import Action, Batch
-from shared.files import Backups, SubtitleFormat, find_subtitles, parse_srt, write_text_replacing
+from shared.files import TRANSLATION_FORMATS, Backups, find_subtitles, parse_srt, write_text_replacing
 from shared.llm import Trace
 from shared.subtitles import LANGUAGE_TRANSLATION
 
@@ -26,7 +26,7 @@ WARNING_DURATION = timedelta(seconds=5)
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Adds warnings at the start of every translation: SDH, and possible errors.")
     Backups.add_argument(parser)
-    subs = find_subtitles(parser, formats=(SubtitleFormat.TRANSLATION,), languages=(LANGUAGE_TRANSLATION,))
+    subs = find_subtitles(parser, formats=TRANSLATION_FORMATS, languages=(LANGUAGE_TRANSLATION,))
     backups = Backups.start(parser.parse_args().backups)
 
     with Batch() as batch:

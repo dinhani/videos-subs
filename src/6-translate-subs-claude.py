@@ -227,7 +227,7 @@ if __name__ == "__main__":
             if not subs_english:
                 Action.SKIP.log(f"{video_name}: no base English subtitle")
                 continue
-            translated = next((sub.to_translation() for sub in subs_english if sub.to_translation().path.exists()), None)
+            translated = next((translation for sub in subs_english if (translation := sub.to_translation(format=SubtitleFormat.TRANSLATION_CLAUDE)).path.exists()), None)
             if translated is not None and not arguments.print_prompt:
                 Action.EXISTS.log(translated.name)
                 continue
@@ -237,7 +237,7 @@ if __name__ == "__main__":
                 entries_by_sub = {sub: parse_srt(sub.path) for sub in subs_english}
                 sub_src = max(subs_english, key=lambda sub: len(entries_by_sub[sub]))
                 sub_entries = entries_by_sub[sub_src]
-                sub_dst = sub_src.to_translation()
+                sub_dst = sub_src.to_translation(format=SubtitleFormat.TRANSLATION_CLAUDE)
                 if arguments.print_prompt:
                     batch.clear_screen()
                     Action.PROMPT.log(sub_src.name)

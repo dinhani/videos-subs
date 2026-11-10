@@ -21,7 +21,7 @@ import srt
 
 from shared.console import Action, Batch, cancel_on_interrupt
 from shared.data_lists import CHECK_EXPRESSIONS, CHECK_WORDS, DICTIONARY_HUNSPELL, DataList, load_dictionary
-from shared.files import SubtitleFile, SubtitleFormat, find_subtitles, parse_srt
+from shared.files import TRANSLATION_FORMATS, SubtitleFile, find_subtitles, parse_srt
 from shared.languages import WORDS_PT_PT, TextLanguage, parse_words
 from shared.llm import Trace
 from shared.reports import CHECK_WORKERS, Issue, IssueKind, Report, ReportScore, log_ranking, quote_entries
@@ -339,7 +339,7 @@ def check_subtitle(subtitle: SubtitleFile, languagetool_server: str) -> ReportSc
 # Execution
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
-    subs = find_subtitles(argparse.ArgumentParser(description="Checks translated subtitles against their English source for common translation mistakes."), formats=(SubtitleFormat.TRANSLATION,), languages=(LANGUAGE_TRANSLATION,))
+    subs = find_subtitles(argparse.ArgumentParser(description="Checks translated subtitles against their English source for common translation mistakes."), formats=TRANSLATION_FORMATS, languages=(LANGUAGE_TRANSLATION,))
     scores_current = {sub: score for sub in subs if (score := ReportScore.find(sub.to_report())) is not None}
     scores = list(scores_current.values())
     subs_pending = [sub for sub in subs if sub not in scores_current]

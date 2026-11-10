@@ -91,6 +91,7 @@ def move_replacing(source: Path, target: Path) -> None:
 
 
 class SubtitleFormat(Enum):
+    TRANSLATION_CLAUDE = (".claude.translated.srt", ".claude.translated.json", ".claude.translated.txt")
     TRANSLATION = (".translated.srt", ".translated.json", ".translated.txt")
     TEXT = (".srt", ".ocr.json", ".ocr.txt")
     PGS = (".sup", ".ocr.json", ".ocr.txt")
@@ -107,13 +108,19 @@ class SubtitleFormat(Enum):
 
     @property
     def folder(self) -> str | None:
-        return None if self == SubtitleFormat.TRANSLATION else SUBS_FOLDER
+        return None if self.is_translation() else SUBS_FOLDER
+
+    def is_translation(self) -> bool:
+        return self in (SubtitleFormat.TRANSLATION_CLAUDE, SubtitleFormat.TRANSLATION)
 
     def is_image(self) -> bool:
         return self in (SubtitleFormat.PGS, SubtitleFormat.VOBSUB)
 
     def to_suffixes(self, language: str) -> tuple[str, ...]:
         return tuple(f".{language}{kind}{self.extension}" for kind in SubtitleKind)
+
+
+TRANSLATION_FORMATS = (SubtitleFormat.TRANSLATION_CLAUDE, SubtitleFormat.TRANSLATION)
 
 
 @dataclass(frozen=True)
@@ -200,7 +207,7 @@ class SubtitleFile:
         return self.format.is_image()
 
     def is_translation(self) -> bool:
-        return self.format == SubtitleFormat.TRANSLATION
+        return self.format.is_translation()
 
     def describe_language(self, language_name: str = "") -> str:
         if self.language is None:
@@ -231,8 +238,8 @@ class SubtitleFile:
     def find_text_subtitles(self, language: str) -> list["SubtitleFile"]:
         return [file for name in sorted(list_folder(self.folder)) if (file := SubtitleFile.find(self.folder / name)) and file.is_text() and file.video_name == self.video_name and file.language == language]
 
-    def to_translation(self) -> "SubtitleFile":
-        return SubtitleFile(folder=self.movie_dir, track=self.track, language=LANGUAGE_TRANSLATION, kind=self.kind, format=SubtitleFormat.TRANSLATION)
+    def to_translation(self, format: SubtitleFormat) -> "SubtitleFile":
+        return SubtitleFile(folder=self.movie_dir, track=self.track, language=LANGUAGE_TRANSLATION, kind=self.kind, format=format)
 
     def get_english_source(self) -> "SubtitleFile":
         if not self.is_translation():

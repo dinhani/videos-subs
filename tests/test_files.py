@@ -19,6 +19,8 @@ from shared.subtitles import IgnoreMarker, SubtitleKind, replace_text
     ("movie.embed.2.sdh.srt", "movie.embed.2.sdh", None, SubtitleKind.BASE, SubtitleFormat.TEXT),
     ("movie.embed.2.pob.translated.srt", "movie.embed.2", "pob", SubtitleKind.BASE, SubtitleFormat.TRANSLATION),
     ("movie.embed.2.pob.sdh.translated.srt", "movie.embed.2", "pob", SubtitleKind.SDH, SubtitleFormat.TRANSLATION),
+    ("movie.embed.2.pob.claude.translated.srt", "movie.embed.2", "pob", SubtitleKind.BASE, SubtitleFormat.TRANSLATION_CLAUDE),
+    ("movie.embed.2.pob.sdh.claude.translated.srt", "movie.embed.2", "pob", SubtitleKind.SDH, SubtitleFormat.TRANSLATION_CLAUDE),
     ("Movie (2019, 2160p, 5.1, AAC).eng.srt", "Movie (2019, 2160p, 5.1, AAC)", "eng", SubtitleKind.BASE, SubtitleFormat.TEXT),
 ])
 def test_subtitle_file_round_trip(name: str, track: str, language: str | None, kind: SubtitleKind, format: SubtitleFormat) -> None:
@@ -37,11 +39,23 @@ def test_subtitle_file_paths_of_ocr() -> None:
 
 def test_subtitle_file_paths_of_translation() -> None:
     source = SubtitleFile.from_path(Path("movie") / SUBS_FOLDER / "video.embed.2.eng.sdh.srt")
-    translation = source.to_translation()
+    translation = source.to_translation(format=SubtitleFormat.TRANSLATION)
     assert translation.path == Path("movie") / "video.embed.2.pob.sdh.translated.srt"
     assert translation.to_trace() == Path("movie") / TRACES_FOLDER / "video.embed.2.pob.sdh.translated.json"
     assert translation.to_report() == Path("movie") / CHECKS_FOLDER / "video.embed.2.pob.sdh.translated.txt"
     assert translation.video_name == "video"
+
+
+def test_subtitle_file_paths_of_claude_translation(tmp_path: Path) -> None:
+    source_path = tmp_path / "movie" / SUBS_FOLDER / "video.embed.2.eng.srt"
+    source_path.parent.mkdir(parents=True)
+    source_path.touch()
+    translation = SubtitleFile.from_path(source_path).to_translation(format=SubtitleFormat.TRANSLATION_CLAUDE)
+    assert translation.path == tmp_path / "movie" / "video.embed.2.pob.claude.translated.srt"
+    assert translation.to_trace() == tmp_path / "movie" / TRACES_FOLDER / "video.embed.2.pob.claude.translated.json"
+    assert translation.to_report() == tmp_path / "movie" / CHECKS_FOLDER / "video.embed.2.pob.claude.translated.txt"
+    assert SubtitleFile.from_path(translation.path) == translation
+    assert translation.get_english_source().path == source_path
 
 
 def test_subtitle_file_from_track() -> None:

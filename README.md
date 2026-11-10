@@ -2,7 +2,7 @@
 
 Scripts that make Brazilian Portuguese subtitles for the videos in a media library. They extract the subtitle tracks of each video, identify their languages, OCR English image subtitles (PGS and VobSub) into text subtitles with a local vision LLM, and translate English text subtitles to Brazilian Portuguese with a local LLM. A fix step corrects the translation mistakes that have a mechanical fix, such as misspelled sound descriptions, from the English source. Two check steps score the OCR outputs and the translations and write a report of the issues of each file.
 
-The output is `<video>.<track>.pob.translated.srt` next to each video, where the media server loads it.
+The output is `<video>.<track>.pob.translated.srt` (`.pob.claude.translated.srt` from translate-claude) next to each video, where the media server loads it.
 
 ## Requirements
 
