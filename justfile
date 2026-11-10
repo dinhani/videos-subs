@@ -6,6 +6,8 @@ export UV_FROZEN := "1"
 export PYTHONPATH := source_directory() / "src"
 dictionary_dir := data_local_directory() / "hunspell"
 
+[doc('Benchmark translation models')]
+[group('modules')]
 mod bench
 
 [group('project')]
