@@ -108,13 +108,21 @@ class Draft:
                 continue
             if len(lines) != len(english):
                 problems.append(f"#{number}: {len(lines)} lines, the English has {len(english)}")
+        return problems
+
+    def find_warnings(self, source: Source) -> list[str]:
+        warnings = []
+        for number, lines in sorted(self.translated.items()):
+            english = source.english.get(number)
+            if english is None:
+                continue
             tags, tags_english = FORMATTING_TAGS.findall(" ".join(lines)), FORMATTING_TAGS.findall(" ".join(english))
             if Counter(tags) != Counter(tags_english):
-                problems.append(f"#{number}: tags {' '.join(tags) or 'none'}, the English has {' '.join(tags_english) or 'none'}")
+                warnings.append(f"#{number}: tags {' '.join(tags) or 'none'}, the English has {' '.join(tags_english) or 'none'}")
             digits, digits_english = DIGITS.findall(" ".join(lines)), DIGITS.findall(" ".join(english))
             if Counter(digits) != Counter(digits_english):
-                problems.append(f"#{number}: digits {' '.join(digits) or 'none'}, the English has {' '.join(digits_english) or 'none'}")
-        return problems
+                warnings.append(f"#{number}: digits {' '.join(digits) or 'none'}, the English has {' '.join(digits_english) or 'none'}")
+        return warnings
 
     def find_missing(self, source: Source) -> list[int]:
         return [number for number in source.english if number not in self.translated]

@@ -46,8 +46,6 @@ def test_reference_lines_go_to_the_number_of_their_english_entry(tmp_path: Path)
 
 @pytest.mark.parametrize(("translation", "problem"), [
     ("#1\n<i>Oi, 42.</i>\nTudo bem?", "#1: 2 lines, the English has 1"),
-    ("#1\n<i>Oi, 42.", "#1: tags <i>, the English has <i> </i>"),
-    ("#1\n<i>Oi, 4.</i>", "#1: digits 4, the English has 42"),
     ("#1\n<i>Oi, 42.</i>\n#1\n<i>Oi, 42.</i>", "#1: written more than once"),
     ("#3\nOi.", "#3: not in the source"),
 ])
@@ -56,9 +54,27 @@ def test_draft_problems(translation: str, problem: str) -> None:
     assert draft(translation).find_problems(source) == [problem]
 
 
+@pytest.mark.parametrize(("translation", "warning"), [
+    ("#1\n<i>Oi, 42.", "#1: tags <i>, the English has <i> </i>"),
+    ("#1\n<i>Oi, 4.</i>", "#1: digits 4, the English has 42"),
+])
+def test_draft_warnings(translation: str, warning: str) -> None:
+    source = Source.from_entries(entries("<i>Hi, 42.</i>"))
+    assert draft(translation).find_warnings(source) == [warning]
+
+
+def test_draft_broken_source_only_warns() -> None:
+    source = Source.from_entries(entries("I know that you1re probably"))
+    translated = draft("#1\nEu sei que você provavelmente")
+    assert translated.find_problems(source) == []
+    assert translated.find_warnings(source) == ["#1: digits none, the English has 1"]
+
+
 def test_draft_right_has_no_problems() -> None:
     source = Source.from_entries(entries("<i>Hi, 42.</i>", "- Go.\n- Now!"))
-    assert draft("#1\n<i>Oi, 42.</i>\n\n#2\n- Vai.\n- Agora!\n").find_problems(source) == []
+    translated = draft("#1\n<i>Oi, 42.</i>\n\n#2\n- Vai.\n- Agora!\n")
+    assert translated.find_problems(source) == []
+    assert translated.find_warnings(source) == []
 
 
 def test_draft_missing_entries() -> None:

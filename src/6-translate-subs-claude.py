@@ -72,9 +72,13 @@ You translate a movie or TV subtitle from English to Brazilian Portuguese, for v
 
 # Result
 
-Every entry of `english.txt` is translated once, under its number, with the same number of lines as the English. Run `{check}` whenever you want: it lists every entry whose number, line count, tags or digits do not match the English, and how many entries are translated. You are done when it reports no problems and every entry translated; then reply with one word: done.
+Every entry of `english.txt` is translated once, under its number, with the same number of lines as the English. Run `{check}` whenever you want. It lists as problems the entries whose number or line count do not match the English, which you must fix, and as warnings the entries whose tags or digits differ from the English, which you judge one by one: fix the translation, or leave it when the difference is right. It also says how many entries are translated. You are done when it reports no problems and every entry translated; then reply with one word: done.
 
 Run no other command, and write only in this folder.
+
+# The English source
+
+The English subtitle is not perfect. It can have OCR errors, broken characters (`you1re` for `you're`, `1Cause` for `'Cause`), typos, missing or repeated words, and lines the subtitle maker added, such as a site ad. Translate what the dialogue means, not its errors: `you1re` is translated as `you're`, and its `1` does not go into the Portuguese. A line that is not dialogue, such as an ad, stays as it is. The references help to see what a broken line meant.
 
 # References
 
@@ -323,7 +327,7 @@ if __name__ == "__main__":
                     run.ensure_completed()
                     draft = work.read_draft()
                     problems = draft.find_problems(source) + [f"#{number}: not translated" for number in draft.find_missing(source)]
-                    trace.record({"run": run_number, "problems": problems})
+                    trace.record({"run": run_number, "problems": problems, "warnings": draft.find_warnings(source)})
                     if not problems:
                         break
                     Action.RETRY.log(f"{len(problems)} problems in the whole translation (run {run_number}/{AGENT_RUNS})")
