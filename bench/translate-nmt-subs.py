@@ -34,6 +34,17 @@ DECODING_LENGTH_MAX = 256
 FORMATTING_TAGS = re.compile(r"<[^>]+>|\{[^}]*\}")
 
 # ------------------------------------------------------------------------------
+# Args
+# ------------------------------------------------------------------------------
+def create_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="Translates each entry of an English subtitle to Portuguese with a CTranslate2 model and writes the replies as JSON, by entry number.")
+    parser.add_argument("--family", required=True, choices=("nllb", "madlad", "opus"))
+    parser.add_argument("--model", required=True, type=Path, help="folder of the CTranslate2 model")
+    parser.add_argument("source", type=Path)
+    parser.add_argument("replies", type=Path)
+    return parser
+
+# ------------------------------------------------------------------------------
 # Types
 # ------------------------------------------------------------------------------
 @dataclass(frozen=True)
@@ -73,12 +84,7 @@ class Tokenization:
 # Execution
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Translates each entry of an English subtitle to Portuguese with a CTranslate2 model and writes the replies as JSON, by entry number.")
-    parser.add_argument("--family", required=True, choices=("nllb", "madlad", "opus"))
-    parser.add_argument("--model", required=True, type=Path, help="folder of the CTranslate2 model")
-    parser.add_argument("source", type=Path)
-    parser.add_argument("replies", type=Path)
-    arguments = parser.parse_args()
+    arguments = create_parser().parse_args()
 
     if ctranslate2.get_cuda_device_count() == 0:
         raise SystemExit("no CUDA device for CTranslate2")

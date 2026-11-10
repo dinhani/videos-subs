@@ -21,11 +21,18 @@ WARNING_PROBLEM = "[Legenda traduzida automaticamente. Alguns trechos podem esta
 WARNING_DURATION = timedelta(seconds=5)
 
 # ------------------------------------------------------------------------------
+# Args
+# ------------------------------------------------------------------------------
+def create_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="Adds warnings at the start of every translation: SDH, and possible errors.")
+    Backups.add_argument(parser)
+    return parser
+
+# ------------------------------------------------------------------------------
 # Execution
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Adds warnings at the start of every translation: SDH, and possible errors.")
-    Backups.add_argument(parser)
+    parser = create_parser()
     subs = find_subtitles(parser, formats=TRANSLATION_FORMATS, languages=(LANGUAGE_TRANSLATION,))
     backups = Backups.start(parser.parse_args().backups)
 

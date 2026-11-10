@@ -10,12 +10,18 @@ from pathlib import Path
 from shared.drafts import WorkFolder
 
 # ------------------------------------------------------------------------------
+# Args
+# ------------------------------------------------------------------------------
+def create_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="Checks the translation draft in a translate-claude work folder and prints its problems and warnings.")
+    parser.add_argument("folder", type=Path, help="work folder with english.txt and translation/")
+    return parser
+
+# ------------------------------------------------------------------------------
 # Execution
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Checks the translation draft in a translate-claude work folder and prints its problems and warnings.")
-    parser.add_argument("folder", type=Path, help="work folder with english.txt and translation/")
-    arguments = parser.parse_args()
+    arguments = create_parser().parse_args()
 
     work = WorkFolder(path=arguments.folder)
     source = work.read_source()

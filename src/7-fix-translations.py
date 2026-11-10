@@ -32,6 +32,15 @@ NUMBER = re.compile(r"\d+")
 NAS_WORKERS = 8
 
 # ------------------------------------------------------------------------------
+# Args
+# ------------------------------------------------------------------------------
+def create_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="Fixes the mistakes of the translations that have a mechanical fix, by comparing each entry with its English source. Shows the changes of each translation and asks before writing it.")
+    parser.add_argument("--yes", action="store_true", help="write every translation without showing its changes or asking")
+    Backups.add_argument(parser)
+    return parser
+
+# ------------------------------------------------------------------------------
 # Fixes
 # ------------------------------------------------------------------------------
 @dataclass(frozen=True)
@@ -536,9 +545,7 @@ def load_words(file: DataList) -> tuple[dict[str, list[tuple[str, str]]], re.Pat
 # Execution
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Fixes the mistakes of the translations that have a mechanical fix, by comparing each entry with its English source. Shows the changes of each translation and asks before writing it.")
-    parser.add_argument("--yes", action="store_true", help="write every translation without showing its changes or asking")
-    Backups.add_argument(parser)
+    parser = create_parser()
     subs = find_subtitles(parser, formats=TRANSLATION_FORMATS, languages=(LANGUAGE_TRANSLATION,))
     arguments = parser.parse_args()
     backups = Backups.start(arguments.backups)

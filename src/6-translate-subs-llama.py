@@ -103,7 +103,17 @@ SECOND_LANGUAGE_EXAMPLES = {
 }
 
 # ------------------------------------------------------------------------------
-# Second language
+# Args
+# ------------------------------------------------------------------------------
+def create_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="Translates English subtitles to Brazilian Portuguese; folders only English ones.")
+    parser.add_argument("--temperatures", nargs="+", type=float, default=LLM_TEMPERATURES, help=f"temperature of each attempt of a chunk, in order (default: {' '.join(map(str, LLM_TEMPERATURES))})")
+    parser.add_argument("--justify", action="store_true", help="ask for a short justification of each entry, written after its translation and kept only in the trace")
+    parser.add_argument("--print-prompt", action="store_true", help="print the system prompt and the first chunk of each subtitle, even one already translated, without translating it")
+    return parser
+
+# ------------------------------------------------------------------------------
+# Types
 # ------------------------------------------------------------------------------
 @dataclass(frozen=True)
 class SecondLanguageSubtitle:
@@ -144,9 +154,7 @@ class SecondLanguageSubtitle:
     def to_record(self) -> dict[str, Any]:
         return {"second_language": self.file.name, "offset_seconds": self.offset.total_seconds(), "matched": len(self.lines), "entries": self.entries_english}
 
-# ------------------------------------------------------------------------------
-# Translation
-# ------------------------------------------------------------------------------
+
 @dataclass
 class SubtitleTranslation:
     entries: list[srt.Subtitle]
@@ -257,10 +265,7 @@ class SubtitleTranslation:
 # Execution
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Translates English subtitles to Brazilian Portuguese; folders only English ones.")
-    parser.add_argument("--temperatures", nargs="+", type=float, default=LLM_TEMPERATURES, help=f"temperature of each attempt of a chunk, in order (default: {' '.join(map(str, LLM_TEMPERATURES))})")
-    parser.add_argument("--justify", action="store_true", help="ask for a short justification of each entry, written after its translation and kept only in the trace")
-    parser.add_argument("--print-prompt", action="store_true", help="print the system prompt and the first chunk of each subtitle, even one already translated, without translating it")
+    parser = create_parser()
     subs_src = find_subtitles(parser, formats=(SubtitleFormat.TEXT,), languages=(LANGUAGE_SOURCE,))
     arguments = parser.parse_args()
     temperatures = tuple(arguments.temperatures)

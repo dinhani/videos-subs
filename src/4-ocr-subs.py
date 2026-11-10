@@ -47,7 +47,13 @@ Transcription rules:
 """
 
 # ------------------------------------------------------------------------------
-# OCR
+# Args
+# ------------------------------------------------------------------------------
+def create_parser() -> argparse.ArgumentParser:
+    return argparse.ArgumentParser(description="Transcribes image subtitles to text subtitles with a vision LLM; folders only English and second-language ones.")
+
+# ------------------------------------------------------------------------------
+# Types
 # ------------------------------------------------------------------------------
 class LlamaProps(BaseModel):
     total_slots: int
@@ -134,7 +140,7 @@ class SubtitleTranscription:
 # Execution
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
-    subs = find_subtitles(argparse.ArgumentParser(description="Transcribes image subtitles to text subtitles with a vision LLM; folders only English and second-language ones."), formats=(SubtitleFormat.PGS, SubtitleFormat.VOBSUB), languages=LANGUAGES_OCR)
+    subs = find_subtitles(create_parser(), formats=(SubtitleFormat.PGS, SubtitleFormat.VOBSUB), languages=LANGUAGES_OCR)
     llama = connect_llama()
     llama_slots = llama.get(LLM_PROPS_URL, cast_to=LlamaProps).total_slots
 

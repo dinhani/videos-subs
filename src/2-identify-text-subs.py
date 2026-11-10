@@ -11,10 +11,16 @@ from shared.languages import SubtitleLanguage
 from shared.subtitles import SubtitleKind
 
 # ------------------------------------------------------------------------------
+# Args
+# ------------------------------------------------------------------------------
+def create_parser() -> argparse.ArgumentParser:
+    return argparse.ArgumentParser(description="Identifies the language of text subtitles and renames each file with that language code.")
+
+# ------------------------------------------------------------------------------
 # Execution
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
-    subs = find_subtitles(argparse.ArgumentParser(description="Identifies the language of text subtitles and renames each file with that language code."), formats=(SubtitleFormat.TEXT,))
+    subs = find_subtitles(create_parser(), formats=(SubtitleFormat.TEXT,))
 
     with Batch() as batch:
         for sub in batch.walk(subs):

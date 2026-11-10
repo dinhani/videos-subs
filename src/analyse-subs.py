@@ -60,6 +60,16 @@ TEMPLATE_FILLERS_MIN = 3
 DETAILS_SHOWN = 6
 
 # ------------------------------------------------------------------------------
+# Args
+# ------------------------------------------------------------------------------
+def create_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="Collects statistics of the English text subtitles, to find what fix-translations could translate with fixed rules and what the translation prompt should cover.")
+    parser.add_argument("--output", type=Path, default=OUTPUT_DEFAULT, help=f"folder to write the report files to (default: {OUTPUT_DEFAULT})")
+    parser.add_argument("--titles-min", type=int, default=TITLES_MIN_DEFAULT, help=f"list only items found in at least this many movies or series (default: {TITLES_MIN_DEFAULT})")
+    parser.add_argument("--rows", type=int, default=ROWS_DEFAULT, help=f"most items listed in each section (default: {ROWS_DEFAULT})")
+    return parser
+
+# ------------------------------------------------------------------------------
 # Types
 # ------------------------------------------------------------------------------
 class Section(Enum):
@@ -395,10 +405,7 @@ def load_parser() -> spacy.language.Language:
 # Execution
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Collects statistics of the English text subtitles, to find what fix-translations could translate with fixed rules and what the translation prompt should cover.")
-    parser.add_argument("--output", type=Path, default=OUTPUT_DEFAULT, help=f"folder to write the report files to (default: {OUTPUT_DEFAULT})")
-    parser.add_argument("--titles-min", type=int, default=TITLES_MIN_DEFAULT, help=f"list only items found in at least this many movies or series (default: {TITLES_MIN_DEFAULT})")
-    parser.add_argument("--rows", type=int, default=ROWS_DEFAULT, help=f"most items listed in each section (default: {ROWS_DEFAULT})")
+    parser = create_parser()
     subs = sorted(set(find_subtitles(parser, formats=(SubtitleFormat.TEXT,), languages=(LANGUAGE_SOURCE,))), key=lambda sub: (sub.title_name, str(sub.movie_dir), sub.video_name, sub.name))
     arguments = parser.parse_args()
     library = Library.create()

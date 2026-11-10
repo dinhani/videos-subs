@@ -95,7 +95,20 @@ The translation is consistent across the whole subtitle: a character keeps their
 """ + RULES_ENTRIES.replace("{unit}", "entry") + "\n\n" + RULES_MEANING + "\n\n" + RULES_REGISTER + "\n\n" + RULES_KEPT + "\n"
 
 # ------------------------------------------------------------------------------
-# Agent
+# Args
+# ------------------------------------------------------------------------------
+def create_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="Translates the base English subtitle of each video to Brazilian Portuguese with a Claude Code agent; folders only English ones.")
+    parser.add_argument("--model", default=AGENT_MODEL, help=f"Claude model of the agent (default: {AGENT_MODEL})")
+    parser.add_argument("--effort", default=AGENT_EFFORT, choices=AGENT_EFFORTS, help=f"effort of the agent (default: {AGENT_EFFORT})")
+    home_default = Path(os.environ[HOME_CONFIG_VARIABLE]).name.removeprefix(".") if os.environ.get(HOME_CONFIG_VARIABLE) else HOME_DEFAULT
+    parser.add_argument("--home", default=home_default, help=f"Claude home of the account that runs the agent, the folder ~/.<home>, such as claude, claude-2 or claude-3 (default: {home_default}, from {HOME_CONFIG_VARIABLE} or claude)")
+    parser.add_argument("--print-prompt", action="store_true", help="print the system and task prompts sent to the agent for each video, even one already translated, with the files it can read and the claude options, without translating it")
+    Backups.add_argument(parser)
+    return parser
+
+# ------------------------------------------------------------------------------
+# Types
 # ------------------------------------------------------------------------------
 @dataclass(frozen=True)
 class AgentRun:
@@ -191,13 +204,7 @@ class Agent:
 # Execution
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Translates the base English subtitle of each video to Brazilian Portuguese with a Claude Code agent; folders only English ones.")
-    parser.add_argument("--model", default=AGENT_MODEL, help=f"Claude model of the agent (default: {AGENT_MODEL})")
-    parser.add_argument("--effort", default=AGENT_EFFORT, choices=AGENT_EFFORTS, help=f"effort of the agent (default: {AGENT_EFFORT})")
-    home_default = Path(os.environ[HOME_CONFIG_VARIABLE]).name.removeprefix(".") if os.environ.get(HOME_CONFIG_VARIABLE) else HOME_DEFAULT
-    parser.add_argument("--home", default=home_default, help=f"Claude home of the account that runs the agent, the folder ~/.<home>, such as claude, claude-2 or claude-3 (default: {home_default}, from {HOME_CONFIG_VARIABLE} or claude)")
-    parser.add_argument("--print-prompt", action="store_true", help="print the system and task prompts sent to the agent for each video, even one already translated, with the files it can read and the claude options, without translating it")
-    Backups.add_argument(parser)
+    parser = create_parser()
     subs_src = find_subtitles(parser, formats=(SubtitleFormat.TEXT,), languages=(LANGUAGE_SOURCE,))
     arguments = parser.parse_args()
     executable = shutil.which("claude")

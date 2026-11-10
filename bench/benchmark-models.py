@@ -25,6 +25,26 @@ from shared.files import write_text_replacing
 COMPARE_DIR = DATA_DIR / "compare"
 
 # ------------------------------------------------------------------------------
+# Args
+# ------------------------------------------------------------------------------
+def create_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="Benchmarks translation models on the same English sources.")
+    commands = parser.add_subparsers(dest="command", required=True)
+    command_run = commands.add_parser("run", help="copy the sources and translate every run not translated yet, each with its own llama server; checks and scores are left to score")
+    command_run.add_argument("runs", nargs="*", help=f"runs to translate: {', '.join(run.name for run in RUNS_ACTIVE)} (default: all active runs; disabled runs are kept in the report but never translated)")
+    command_run.add_argument("--pick", action="store_true", help="pick the runs to translate from a list; a picked run that is translated is translated again")
+    command_run.add_argument("--movie", default="", help="translate only the sources whose title contains this text, such as fall (default: all)")
+    command_run.add_argument("--force", action="store_true", help="translate the runs again; each new translation replaces the old one, its report and its scores only when it is done")
+    commands.add_parser("score", help="check and score every translation not checked or scored yet, without translating")
+    commands.add_parser("runs", help="list the runs and what each one has done")
+    command_download = commands.add_parser("download", help="download models from Hugging Face")
+    command_download.add_argument("models", nargs="*", help=f"models to download: {', '.join(model.name for model in (*MODELS, *SCORING_MODELS))} (default: the models of the active runs)")
+    commands.add_parser("report", help="show the scores, issues and time of every run")
+    command_compare = commands.add_parser("compare", help="write the entries of every run side by side")
+    command_compare.add_argument("runs", nargs="*", help=f"runs to compare: {', '.join(run.name for run in RUNS)} (default: all active runs)")
+    return parser
+
+# ------------------------------------------------------------------------------
 # Execution
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
@@ -33,20 +53,7 @@ if __name__ == "__main__":
     runs_active = {run.name: run for run in RUNS_ACTIVE}
     models_active = {model.name: model for model in (*(run.model for run in RUNS_ACTIVE), *SCORING_MODELS)}
 
-    parser = argparse.ArgumentParser(description="Benchmarks translation models on the same English sources.")
-    commands = parser.add_subparsers(dest="command", required=True)
-    command_run = commands.add_parser("run", help="copy the sources and translate every run not translated yet, each with its own llama server; checks and scores are left to score")
-    command_run.add_argument("runs", nargs="*", help=f"runs to translate: {', '.join(runs_active)} (default: all active runs; disabled runs are kept in the report but never translated)")
-    command_run.add_argument("--pick", action="store_true", help="pick the runs to translate from a list; a picked run that is translated is translated again")
-    command_run.add_argument("--movie", default="", help="translate only the sources whose title contains this text, such as fall (default: all)")
-    command_run.add_argument("--force", action="store_true", help="translate the runs again; each new translation replaces the old one, its report and its scores only when it is done")
-    commands.add_parser("score", help="check and score every translation not checked or scored yet, without translating")
-    commands.add_parser("runs", help="list the runs and what each one has done")
-    command_download = commands.add_parser("download", help="download models from Hugging Face")
-    command_download.add_argument("models", nargs="*", help=f"models to download: {', '.join(models)} (default: the models of the active runs)")
-    commands.add_parser("report", help="show the scores, issues and time of every run")
-    command_compare = commands.add_parser("compare", help="write the entries of every run side by side")
-    command_compare.add_argument("runs", nargs="*", help=f"runs to compare: {', '.join(runs)} (default: all active runs)")
+    parser = create_parser()
     arguments = parser.parse_args()
 
     match arguments.command:

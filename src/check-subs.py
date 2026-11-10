@@ -18,10 +18,16 @@ PART_SUFFIX = ".part"
 SUBTITLE_EXTENSIONS = tuple(format.extension for format in SubtitleFormat)
 
 # ------------------------------------------------------------------------------
+# Args
+# ------------------------------------------------------------------------------
+def create_parser() -> argparse.ArgumentParser:
+    return argparse.ArgumentParser(description="Crosschecks the subtitles, translations and reports of each movie folder.")
+
+# ------------------------------------------------------------------------------
 # Execution
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
-    files = find_files(argparse.ArgumentParser(description="Crosschecks the subtitles, translations and reports of each movie folder."), extensions_file=SUBTITLE_EXTENSIONS, extensions_folder=SUBTITLE_EXTENSIONS + (PART_SUFFIX,))
+    files = find_files(create_parser(), extensions_file=SUBTITLE_EXTENSIONS, extensions_folder=SUBTITLE_EXTENSIONS + (PART_SUFFIX,))
     movie_dirs = sorted({file.parent.parent if file.parent.name in WORK_FOLDERS else file.parent for file in files})
 
     with Batch() as batch:

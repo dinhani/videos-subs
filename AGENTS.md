@@ -91,7 +91,7 @@ All code is in `src`: the pipeline scripts, `check-draft.py`, `check-subs.py`, `
 - `check-draft.py`: not a pipeline step; the check that translate-claude's agent runs on its draft through `just check-draft`.
 - `check-subs.py`: not a pipeline step; it only reads, and reports the files of one track that do not match each other.
 - `analyse-subs.py`: not a pipeline step; it only reads the English text subtitles and writes one report file per subject to `_data/stats`, which is not committed, with what repeats across titles in the dialogue and the descriptions, and what the description tables do not cover: input for new fixed rules and for the translation prompt.
-- Each script has, in order: constants, its own types, then the execution loop. The check scripts put their rules between the constants and the types, and fix-translations its fixes.
+- Each script has, in order: constants, its argument parser in `create_parser()`, its own types, its functions, then the execution loop. The check scripts put their rules between the parser and the types, and fix-translations its fixes.
 - Every script follows the same per-file pattern: find its files with `find_subtitles`, loop with `batch.walk`, skip when already done, do the work inside `with batch.attempt(...)`, log through `Action`, and write output through a `.part` file that is then renamed.
 
 `bench` benchmarks translation models, with its own `justfile`, loaded as the `bench` module. Read [docs/BENCH.md](docs/BENCH.md) before changing the bench.

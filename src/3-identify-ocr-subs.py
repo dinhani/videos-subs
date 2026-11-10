@@ -28,7 +28,13 @@ TESSERACT_MODEL = "script/Latin"
 CPU_WORKERS = 8
 
 # ------------------------------------------------------------------------------
-# OCR
+# Args
+# ------------------------------------------------------------------------------
+def create_parser() -> argparse.ArgumentParser:
+    return argparse.ArgumentParser(description="Identifies the language of image subtitles (PGS .sup, DVD .mks) by reading their first entries with Tesseract, and renames each file with that language code.")
+
+# ------------------------------------------------------------------------------
+# Functions
 # ------------------------------------------------------------------------------
 def read_sample(sub: SubtitleFile) -> list[str] | None:
     # read the first entries
@@ -67,7 +73,7 @@ def read_sample(sub: SubtitleFile) -> list[str] | None:
 # Execution
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
-    subs = find_subtitles(argparse.ArgumentParser(description="Identifies the language of image subtitles (PGS .sup, DVD .mks) by reading their first entries with Tesseract, and renames each file with that language code."), formats=(SubtitleFormat.PGS, SubtitleFormat.VOBSUB))
+    subs = find_subtitles(create_parser(), formats=(SubtitleFormat.PGS, SubtitleFormat.VOBSUB))
 
     with Batch() as batch, cancel_on_interrupt(ThreadPoolExecutor(max_workers=NAS_WORKERS)) as executor:
         # read a sample of every sub not identified yet, NAS_WORKERS at a time across movies

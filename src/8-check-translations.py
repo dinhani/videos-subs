@@ -36,6 +36,12 @@ TARGET_LANGUAGE = TextLanguage.PORTUGUESE_BRAZIL
 QUOTE_CONTEXT_ENTRIES = 2
 
 # ------------------------------------------------------------------------------
+# Args
+# ------------------------------------------------------------------------------
+def create_parser() -> argparse.ArgumentParser:
+    return argparse.ArgumentParser(description="Checks translated subtitles against their English source for common translation mistakes.")
+
+# ------------------------------------------------------------------------------
 # Rules
 # ------------------------------------------------------------------------------
 @dataclass(frozen=True)
@@ -251,7 +257,7 @@ RULES: tuple[TranslationRule, ...] = (
 LANGUAGETOOL_RULES = frozenset(languagetool_rule for rule in RULES if isinstance(rule, GrammarRule) and rule.enabled for languagetool_rule in rule.languagetool_rules)
 
 # ------------------------------------------------------------------------------
-# Checks
+# Types
 # ------------------------------------------------------------------------------
 @dataclass(frozen=True)
 class TranslationEntry:
@@ -323,7 +329,9 @@ class TranslationCheck:
             issues += [Issue(entry=self.entries[i].target, kind=rule.kind, detail=detail, quote=self.quote(i)) for i, detail in rule.find_issues(self)]
         return Report.from_issues(subtitle=self.subtitle, entries_count=len(self.entries), issues=issues)
 
-
+# ------------------------------------------------------------------------------
+# Functions
+# ------------------------------------------------------------------------------
 @functools.cache
 def connect_languagetool(server: str, rules: frozenset[str]) -> language_tool_python.LanguageTool:
     languagetool = language_tool_python.LanguageTool(GrammarRule.LANGUAGE, remote_server=server)
@@ -339,7 +347,7 @@ def check_subtitle(subtitle: SubtitleFile, languagetool_server: str) -> ReportSc
 # Execution
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
-    subs = find_subtitles(argparse.ArgumentParser(description="Checks translated subtitles against their English source for common translation mistakes."), formats=TRANSLATION_FORMATS, languages=(LANGUAGE_TRANSLATION,))
+    subs = find_subtitles(create_parser(), formats=TRANSLATION_FORMATS, languages=(LANGUAGE_TRANSLATION,))
     scores_current = {sub: score for sub in subs if (score := ReportScore.find(sub.to_report())) is not None}
     scores = list(scores_current.values())
     subs_pending = [sub for sub in subs if sub not in scores_current]

@@ -38,6 +38,12 @@ QUOTE_CONTEXT_ENTRIES = 1
 QUOTES_PLAIN = str.maketrans("‘’‚“”„", "'''\"\"\"")
 
 # ------------------------------------------------------------------------------
+# Args
+# ------------------------------------------------------------------------------
+def create_parser() -> argparse.ArgumentParser:
+    return argparse.ArgumentParser(description="Checks text subtitles made by OCR against their image subtitles; only ones next to an image subtitle, folders only English and second-language ones.")
+
+# ------------------------------------------------------------------------------
 # Rules
 # ------------------------------------------------------------------------------
 @dataclass(frozen=True)
@@ -181,7 +187,7 @@ RULES: tuple[OcrRule, ...] = (
 )
 
 # ------------------------------------------------------------------------------
-# Checks
+# Types
 # ------------------------------------------------------------------------------
 @dataclass(frozen=True)
 class ImageLines:
@@ -277,7 +283,9 @@ class OcrCheck:
             issues += [Issue(entry=entry.subtitle, kind=rule.kind, detail=detail, quote=self.quote(entry)) for entry, detail in rule.find_issues(self)]
         return Report.from_issues(subtitle=self.subtitle, entries_count=len(self.entries), issues=issues)
 
-
+# ------------------------------------------------------------------------------
+# Functions
+# ------------------------------------------------------------------------------
 def measure_em(text: str) -> float:
     return FONT.getlength(text) / FONT_SIZE
 
@@ -291,7 +299,7 @@ def check_subtitle(subtitle: SubtitleFile) -> ReportScore:
 if __name__ == "__main__":
     subs = [
         sub
-        for sub in find_subtitles(argparse.ArgumentParser(description="Checks text subtitles made by OCR against their image subtitles; only ones next to an image subtitle, folders only English and second-language ones."), formats=(SubtitleFormat.TEXT,), languages=LANGUAGES_OCR)
+        for sub in find_subtitles(create_parser(), formats=(SubtitleFormat.TEXT,), languages=LANGUAGES_OCR)
         if sub.find_image_subtitle() is not None
     ]
     scores_current = {sub: score for sub in subs if (score := ReportScore.find(sub.to_report())) is not None}

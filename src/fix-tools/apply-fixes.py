@@ -23,6 +23,15 @@ IGNORE_KINDS = frozenset(kind.marker for kind in IssueKind)
 
 
 # ------------------------------------------------------------------------------
+# Args
+# ------------------------------------------------------------------------------
+def create_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="Applies fixes decided by hand to text subtitles, after checking every fix against its subtitle.")
+    parser.add_argument("fixes", type=Path, help="JSON file: a list of {subtitle, entries: [{entry, old, new?, ignore?}]}")
+    Backups.add_argument(parser)
+    return parser
+
+# ------------------------------------------------------------------------------
 # Types
 # ------------------------------------------------------------------------------
 @dataclass(frozen=True)
@@ -102,10 +111,7 @@ class SubtitleFixes:
 # Execution
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Applies fixes decided by hand to text subtitles, after checking every fix against its subtitle.")
-    parser.add_argument("fixes", type=Path, help="JSON file: a list of {subtitle, entries: [{entry, old, new?, ignore?}]}")
-    Backups.add_argument(parser)
-    arguments = parser.parse_args()
+    arguments = create_parser().parse_args()
     fixes_file: Path = arguments.fixes
     backups = Backups.start(arguments.backups)
 

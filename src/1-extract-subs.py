@@ -42,7 +42,15 @@ TRACK_FORMATS = {
 
 VIDEO_EXTENSIONS = (".mkv", ".mp4")
 
+# ------------------------------------------------------------------------------
+# Args
+# ------------------------------------------------------------------------------
+def create_parser() -> argparse.ArgumentParser:
+    return argparse.ArgumentParser(description="Extracts the tracks of each video into text subtitles and image subtitles.")
 
+# ------------------------------------------------------------------------------
+# Types
+# ------------------------------------------------------------------------------
 @dataclass(frozen=True)
 class SubtitleExtraction:
     index: int
@@ -58,7 +66,7 @@ class SubtitleExtraction:
 # Execution
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
-    videos = find_files(argparse.ArgumentParser(description="Extracts the tracks of each video into text subtitles and image subtitles."), extensions_file=VIDEO_EXTENSIONS, extensions_folder=VIDEO_EXTENSIONS)
+    videos = find_files(create_parser(), extensions_file=VIDEO_EXTENSIONS, extensions_folder=VIDEO_EXTENSIONS)
 
     with Batch() as batch:
         for video in videos:

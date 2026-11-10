@@ -34,14 +34,20 @@ from comet.models import RegressionMetric
 COMET_BATCH_SIZE = 32
 
 # ------------------------------------------------------------------------------
-# Execution
+# Args
 # ------------------------------------------------------------------------------
-if __name__ == "__main__":
+def create_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Scores translations against references. Each job gives its aligned segments, with src, mt and ref, and the file to write its scores to.")
     parser.add_argument("--comet", type=Path, required=True, help="folder of the COMET model")
     parser.add_argument("--encoder", type=Path, required=True, help="folder of the encoder the COMET model was trained on")
     parser.add_argument("jobs", type=Path, help="JSON file with a list of jobs: {\"output\": path, \"segments\": [{\"src\", \"mt\", \"ref\"}, ...]}")
-    arguments = parser.parse_args()
+    return parser
+
+# ------------------------------------------------------------------------------
+# Execution
+# ------------------------------------------------------------------------------
+if __name__ == "__main__":
+    arguments = create_parser().parse_args()
 
     jobs = [job for job in json.loads(arguments.jobs.read_text(encoding="utf-8")) if not Path(job["output"]).exists()]
     if not jobs:
