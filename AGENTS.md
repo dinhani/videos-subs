@@ -100,7 +100,9 @@ All code is in `src`: the pipeline scripts, `check-draft.py`, `crosscheck-subs.p
 
 ## Git
 
-- Commit every major change on its own, as soon as it is done, with a Conventional Commits message. Push after committing.
+- Work on `main`; never create branches or PRs.
+- Commit and push each finished change on its own, without waiting to be asked.
+- Never combine unrelated changes in one commit.
 
 ## Collaboration
 
