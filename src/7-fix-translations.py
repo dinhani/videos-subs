@@ -29,7 +29,7 @@ from shared.subtitles import BRACKETS, FORMATTING_TAGS, LANGUAGE_TRANSLATION, QU
 LINE_WORDS = re.compile(r"[^\W\d_]|[♪♫]")
 NUMBER = re.compile(r"\d+")
 
-READ_WORKERS = 8
+NAS_WORKERS = 8
 
 # ------------------------------------------------------------------------------
 # Fixes
@@ -543,8 +543,8 @@ if __name__ == "__main__":
     arguments = parser.parse_args()
     backups = Backups.start(arguments.backups)
 
-    # read the subs READ_WORKERS at a time, ahead of the one being fixed
-    with Batch() as batch, ThreadPoolExecutor(max_workers=READ_WORKERS) as executor:
+    # read the subs NAS_WORKERS at a time, ahead of the one being fixed
+    with Batch() as batch, ThreadPoolExecutor(max_workers=NAS_WORKERS) as executor:
         translations_read = {sub: executor.submit(Translation.from_file, sub) for sub in subs}
         for sub in batch.walk(subs):
             with batch.attempt(sub.path):

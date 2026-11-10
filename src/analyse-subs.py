@@ -32,7 +32,7 @@ SUMMARY_FILE = "summary.txt"
 TITLES_MIN_DEFAULT = 3
 ROWS_DEFAULT = 300
 
-READ_WORKERS = 8
+NAS_WORKERS = 8
 
 NLP_BATCH_SIZE = 256
 NLP_VERB = "VERB"
@@ -403,8 +403,8 @@ if __name__ == "__main__":
     arguments = parser.parse_args()
     library = Library.create()
 
-    with Batch() as batch, cancel_on_interrupt(ProcessPoolExecutor(max_workers=READ_WORKERS)) as executor:
-        # read and parse every sub, READ_WORKERS at a time across movies
+    with Batch() as batch, cancel_on_interrupt(ProcessPoolExecutor(max_workers=NAS_WORKERS)) as executor:
+        # read and parse every sub, NAS_WORKERS at a time across movies
         observations_read: dict[SubtitleFile, Future[Observations]] = {sub: executor.submit(Observations.from_file, sub) for sub in subs}
 
         # add up every sub of a movie as its observations arrive, by video and by title

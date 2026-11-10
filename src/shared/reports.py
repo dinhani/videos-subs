@@ -14,7 +14,7 @@ from shared.console import Action, Color, log_heading
 from shared.files import write_text_replacing
 from shared.subtitles import IgnoreMarker
 
-CHECK_WORKERS = 8
+NAS_WORKERS = 8
 
 REPORT_HEADER = re.compile(r"^score ([\d.]+) .* · (\d+) issues$")
 REPORT_SUMMARY_START = 3

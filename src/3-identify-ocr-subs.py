@@ -22,10 +22,10 @@ from shared.subtitles import SubtitleKind
 # Constants
 # ------------------------------------------------------------------------------
 SAMPLE_ENTRIES = 200
-SAMPLE_WORKERS = 8
+NAS_WORKERS = 8
 
 TESSERACT_MODEL = "script/Latin"
-TESSERACT_WORKERS = 8
+CPU_WORKERS = 8
 
 # ------------------------------------------------------------------------------
 # OCR
@@ -41,13 +41,13 @@ def read_sample(sub: SubtitleFile) -> list[str] | None:
         images = [Path(images_dir) / f"{n}.png" for n in range(len(entries))]
         for entry, image in zip(entries, images):
             entry.to_black_on_white().save(image)
-        images_parts = list(itertools.batched(images, math.ceil(len(images) / TESSERACT_WORKERS)))
+        images_parts = list(itertools.batched(images, math.ceil(len(images) / CPU_WORKERS)))
         images_lists: list[Path] = []
         for n, images_part in enumerate(images_parts):
             images_list = Path(images_dir) / f"images.{n}.txt"
             images_list.write_text("\n".join(str(image) for image in images_part), encoding="utf-8")
             images_lists.append(images_list)
-        with ThreadPoolExecutor(max_workers=TESSERACT_WORKERS) as executor:
+        with ThreadPoolExecutor(max_workers=CPU_WORKERS) as executor:
             tesseracts = list(executor.map(
                 lambda images_list: subprocess.run(
                     ["tesseract", str(images_list), "stdout", "-l", TESSERACT_MODEL, "--psm", "6"],
@@ -69,8 +69,8 @@ def read_sample(sub: SubtitleFile) -> list[str] | None:
 if __name__ == "__main__":
     subs = find_subtitles(argparse.ArgumentParser(description="Identifies the language of image subtitles (PGS .sup, DVD .mks) by reading their first entries with Tesseract, and renames each file with that language code."), formats=(SubtitleFormat.PGS, SubtitleFormat.VOBSUB))
 
-    with Batch() as batch, cancel_on_interrupt(ThreadPoolExecutor(max_workers=SAMPLE_WORKERS)) as executor:
-        # read a sample of every sub not identified yet, SAMPLE_WORKERS at a time across movies
+    with Batch() as batch, cancel_on_interrupt(ThreadPoolExecutor(max_workers=NAS_WORKERS)) as executor:
+        # read a sample of every sub not identified yet, NAS_WORKERS at a time across movies
         samples: dict[SubtitleFile, Future[list[str] | None]] = {sub: executor.submit(read_sample, sub) for sub in subs if not sub.is_identified()}
 
         # identify every pending sub of a movie as its sample arrives, skipping subs already identified

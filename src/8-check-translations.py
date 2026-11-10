@@ -24,7 +24,7 @@ from shared.data_lists import CHECK_EXPRESSIONS, CHECK_WORDS, DICTIONARY_HUNSPEL
 from shared.files import TRANSLATION_FORMATS, SubtitleFile, find_subtitles, parse_srt
 from shared.languages import WORDS_PT_PT, TextLanguage, parse_words
 from shared.llm import Trace
-from shared.reports import CHECK_WORKERS, Issue, IssueKind, Report, ReportScore, log_ranking, quote_entries
+from shared.reports import NAS_WORKERS, Issue, IssueKind, Report, ReportScore, log_ranking, quote_entries
 from shared.subtitles import BRACKETS, FORMATTING_TAGS, LANGUAGE_TRANSLATION, parse_plain_text
 
 # ------------------------------------------------------------------------------
@@ -345,8 +345,8 @@ if __name__ == "__main__":
     subs_pending = [sub for sub in subs if sub not in scores_current]
 
     # start one LanguageTool server for all workers, only when there is a sub to check and a LanguageTool rule enabled
-    with Batch() as batch, (language_tool_python.LanguageTool(GrammarRule.LANGUAGE) if subs_pending and LANGUAGETOOL_RULES else contextlib.nullcontext()) as languagetool, cancel_on_interrupt(ProcessPoolExecutor(max_workers=CHECK_WORKERS)) as executor:
-        # check every sub without a report, CHECK_WORKERS at a time across movies
+    with Batch() as batch, (language_tool_python.LanguageTool(GrammarRule.LANGUAGE) if subs_pending and LANGUAGETOOL_RULES else contextlib.nullcontext()) as languagetool, cancel_on_interrupt(ProcessPoolExecutor(max_workers=NAS_WORKERS)) as executor:
+        # check every sub without a report, NAS_WORKERS at a time across movies
         languagetool_server = f"http://{languagetool.host}:{languagetool.port}" if languagetool is not None else ""
         checks: dict[SubtitleFile, Future[ReportScore]] = {sub: executor.submit(check_subtitle, sub, languagetool_server) for sub in subs_pending}
 

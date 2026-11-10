@@ -21,7 +21,7 @@ from shared.console import Action, Batch, cancel_on_interrupt
 from shared.files import SubtitleFile, SubtitleFormat, find_subtitles, parse_srt
 from shared.image_subtitles import SubtitleEntry, parse_image_subtitle
 from shared.languages import LANGUAGES_OCR
-from shared.reports import CHECK_WORKERS, Issue, IssueKind, Report, ReportScore, log_ranking, quote_entries
+from shared.reports import NAS_WORKERS, Issue, IssueKind, Report, ReportScore, log_ranking, quote_entries
 from shared.subtitles import OCR_FAILED_TEXT, parse_plain_text
 
 # ------------------------------------------------------------------------------
@@ -297,8 +297,8 @@ if __name__ == "__main__":
     scores_current = {sub: score for sub in subs if (score := ReportScore.find(sub.to_report())) is not None}
     scores = list(scores_current.values())
 
-    with Batch() as batch, cancel_on_interrupt(ProcessPoolExecutor(max_workers=CHECK_WORKERS)) as executor:
-        # check every sub without a report, CHECK_WORKERS at a time across movies
+    with Batch() as batch, cancel_on_interrupt(ProcessPoolExecutor(max_workers=NAS_WORKERS)) as executor:
+        # check every sub without a report, NAS_WORKERS at a time across movies
         checks: dict[SubtitleFile, Future[ReportScore]] = {sub: executor.submit(check_subtitle, sub) for sub in subs if sub not in scores_current}
 
         # report every pending sub of a movie as its check arrives, skipping subs with a report
