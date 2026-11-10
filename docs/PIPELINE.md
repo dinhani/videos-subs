@@ -59,6 +59,23 @@ Translates every `.eng.srt` with Gemma 4 26B A4B, thinking disabled, into `<name
 - Translated lines keep the source line breaks and are not wrapped; the player wraps lines that do not fit the screen.
 - The translation is written without renumbering, so its entries keep the numbers of the source.
 
+## 6. translate-claude
+
+Does the translate step with a Claude Code agent instead of Gemma: `claude -p` on the subscription, opus at effort high by default (`--model`, `--effort`). It writes the same `<name>.pob.translated.srt`, so fix-translations, check-translate and warn run after it unchanged.
+
+The script does what has one right answer; the agent does what needs judgment.
+
+- One translation per video, from the base `.eng.srt` with the most entries; a video without a base English subtitle is skipped, and so is a video with a translation of any of its base English subtitles.
+- The task prompt has the title and what the `.nfo` says (plot, and the credited characters named in the subtitle, as in translate), and the paths of the movie folder, the `.nfo`, and for an episode the series folder, `tvshow.nfo` and the translated episodes, for the agent to open if it wants more.
+- The work folder, `translate-claude/<video>` in the local temp folder, has `english.txt` (each entry with text as `#<number>` and its lines, the number being its position in the `.srt`) and one file per reference in `references/`: every other text subtitle of the video, any language, SDH, extracted or made by ocr, the Brazilian Portuguese one included, with the lines on screen during each English entry under its number (`AlignedSubtitle`, as translate matches its second language). `references.md` lists each one with its language code, kind, origin and how many English entries it matched.
+- The system prompt replaces the default Claude Code one with the goal, the files, the result the check enforces, how to use references (to understand the English, never to copy them), and the translation rules of translate. It suggests, without dictating, reading the English first and keeping notes in `notes.md`.
+- The agent runs with `--safe-mode` (no CLAUDE.md, skills, hooks or MCP); it may read anywhere, write only in the work folder, and run only `just check-draft`. It writes the draft in `translation/`, any number of `.txt` files in the format of `english.txt`, joined in name order.
+- `check-draft` (`src/check-draft.py`) reports only what cannot be right: an entry not in the source or written twice, a line count different from the English, tags or digits different from the English entry. It also says how many entries are translated.
+- After the agent finishes, the script checks the whole draft, missing entries included. On problems it resumes the session with the problem list, up to 3 runs in total; then it fails the video and keeps the work folder.
+- At the usage limit the run stops and keeps the work folder with the session id; the next run resumes that session.
+- The trace has the system and task prompts, the reference list, every event of every run, the problems of each check and `notes.md`. An existing trace, such as one from translate, is copied to the backups before it is replaced.
+- The translation is composed onto the timings of the English source, which keeps the numbers of its entries, and the work folder is deleted.
+
 ## 7. fix-translations
 
 Fixes every `.pob.translated.srt` where the fix is mechanical, by comparing each entry with its English source, and deletes the report of every translation it changes.

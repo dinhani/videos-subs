@@ -6,6 +6,8 @@ from datetime import timedelta
 
 import srt
 
+from shared.subtitles import parse_lines
+
 ALIGNMENT_OFFSET_MAX = timedelta(seconds=2)
 ALIGNMENT_OFFSET_WINDOW = 50
 ALIGNMENT_OVERLAP_MIN = timedelta(milliseconds=200)
@@ -46,3 +48,6 @@ class AlignedSubtitle:
 
     def find_overlapping(self, entry: srt.Subtitle) -> list[srt.Subtitle]:
         return [other for other in self.entries if min(entry.end, other.end) - max(entry.start, other.start) > ALIGNMENT_OVERLAP_MIN]
+
+    def find_lines(self, english: Sequence[srt.Subtitle]) -> dict[int, tuple[str, ...]]:
+        return {i: matched for i, entry in enumerate(english) if parse_lines(entry) and (matched := tuple(line for other in self.find_overlapping(entry) for line in parse_lines(other)))}

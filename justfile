@@ -72,13 +72,28 @@ check-ocr *paths:
     exit $LASTEXITCODE
 
 [group('run')]
-[doc('Translate subtitles')]
+[doc('Translate subtitles with llama')]
 [script]
 [extension('.ps1')]
 [positional-arguments]
-translate *paths:
-    uv run src/6-translate-subs.py @args
+translate-llama *paths:
+    uv run src/6-translate-subs-llama.py @args
     exit $LASTEXITCODE
+
+[group('run')]
+[doc('Translate subtitles with Claude agent')]
+[script]
+[extension('.ps1')]
+[positional-arguments]
+translate-claude *paths:
+    uv run src/6-translate-subs-claude.py @args
+    exit $LASTEXITCODE
+
+[group('run')]
+[doc('Check Claude translation draft in current folder')]
+[env('PYTHONIOENCODING', 'utf-8')]
+check-draft:
+    @uv run src/check-draft.py '{{invocation_directory_native()}}'
 
 [group('run')]
 [doc('Fix translations mechanically')]
@@ -397,6 +412,6 @@ stats *paths:
 [extension('.ps1')]
 [positional-arguments]
 print-prompt *paths:
-    uv run src/6-translate-subs.py --print-prompt @args
+    uv run src/6-translate-subs-llama.py --print-prompt @args
     exit $LASTEXITCODE
 alias pp := print-prompt

@@ -31,6 +31,8 @@ Use these terms, and only these, in code, logs, docs and conversation. Do not ro
 - **issue**: one problem a check step flags in an entry, with a kind (`wrong order`, `untranslated`, ...) and a weight.
 - **report**: the text file in `_checks` with the issues of one OCR output or translation, and its score: weighted issues per 100 entries.
 - **second language**: a text subtitle of the same video in a language other than English, such as Spanish, that translate sends with the English so the model sees how people translated each entry.
+- **draft**: the translation that translate-claude's agent writes in its work folder, numbered like the English entries and without timings, before the script composes it into the `.srt`.
+- **reference**: for translate-claude, another text subtitle of the same video (any language, SDH, OCR output) aligned by timing to the English entry numbers, for the agent to consult.
 
 ## Pipeline
 
@@ -41,7 +43,8 @@ Run the steps in order; each step skips files it already processed, so every ste
 3. `3-identify-ocr-subs.py`: puts the language code and kind in the name of each image subtitle, from a Tesseract reading.
 4. `4-ocr-subs.py`: transcribes the English and second-language image subtitles into text subtitles with Gemma vision.
 5. `5-check-ocr-subs.py`: checks each OCR output against its image subtitle and writes a report.
-6. `6-translate-subs.py`: translates each `.eng.srt`, with a second language when the video has one, into `<name>.pob.translated.srt` in the movie folder.
+6. `6-translate-subs-llama.py`: translates each `.eng.srt`, with a second language when the video has one, into `<name>.pob.translated.srt` in the movie folder.
+   `6-translate-subs-claude.py` does the same step with a Claude Code agent (`claude -p`, on the subscription), for the base `.eng.srt` with the most entries of each video, with every other text subtitle of the video as a reference.
 7. `7-fix-translations.py`: applies the mechanical fixes to each translation.
 8. `8-check-translations.py`: checks each translation against its English source and writes a report.
 9. `9-warn-subs.py`: adds warning entries at the start of each translation.
@@ -70,7 +73,7 @@ Z:/midias/filmes/<movie>/                 (series use the same layout under Z:/m
 
 Use the `justfile`; it is the source of truth for how to run things.
 
-ocr and translate need their llama server, `just llama-ocr` and `just llama-translate`. Both servers use port 9931, so run one at a time. The check steps need no llama server; check-translate starts its own LanguageTool server.
+ocr and translate need their llama server, `just llama-ocr` and `just llama-translate`. Both servers use port 9931, so run one at a time. translate-claude needs no llama server, only `claude` on the PATH, logged in. The check steps need no llama server; check-translate starts its own LanguageTool server.
 
 Without paths, a step processes both `Z:/midias/filmes` and `Z:/midias/series`. Every step also accepts files and folders. A folder is searched recursively, inside `_subs` folders except for videos and translations, and the step applies its filter, such as `.eng.srt` only for translate. A file passed by hand skips the filter, so translate accepts a text subtitle in any language.
 
@@ -78,10 +81,11 @@ The virtual environment lives outside the project, under the local data director
 
 ## Code layout
 
-All code is in `src`: the pipeline scripts, `crosscheck-subs.py`, `stats-subs.py`, `shared` and `fix-tools`. The data lists are in `_data`, the tests in `tests`.
+All code is in `src`: the pipeline scripts, `check-draft.py`, `crosscheck-subs.py`, `stats-subs.py`, `shared` and `fix-tools`. The data lists are in `_data`, the tests in `tests`.
 
-- `shared/`: code used by more than one script, one module per subject. Use it instead of writing another version: `files.py` (`SubtitleFile`, the names of a subtitle and its related files), `subtitles.py` (language codes, kinds, tags, markers), `image_subtitles.py`, `languages.py`, `descriptions.py`, `data_lists.py` (`DataList`, the one reader and writer of the lists in `_data`), `reports.py`, `console.py` (`Action`, the one list of log verbs; `Batch`), `llm.py` (the llama server, `JsonReply` and traces).
+- `shared/`: code used by more than one script, one module per subject. Use it instead of writing another version: `files.py` (`SubtitleFile`, the names of a subtitle and its related files), `subtitles.py` (language codes, kinds, tags, markers), `image_subtitles.py`, `languages.py`, `alignment.py` (`AlignedSubtitle`, the timing match of two subtitles), `movies.py` (`MovieInfo`, from the `.nfo`), `drafts.py` (the work folder and draft of translate-claude), `descriptions.py`, `data_lists.py` (`DataList`, the one reader and writer of the lists in `_data`), `reports.py`, `console.py` (`Action`, the one list of log verbs; `Batch`), `llm.py` (the llama server, `JsonReply` and traces).
 - `fix-tools/`: the tools of the app-fix-ocr and app-fix-translate skills, run through the `data/fix` recipes. `data/fix` holds only recipes a skill uses; a tool no skill mentions is removed.
+- `check-draft.py`: not a pipeline step; the check that translate-claude's agent runs on its draft through `just check-draft`.
 - `crosscheck-subs.py`: not a pipeline step; it only reads, and reports the files of one track that do not match each other.
 - `stats-subs.py`: not a pipeline step; it only reads the English text subtitles and writes one report file per subject to `_data/stats`, which is not committed, with what repeats across titles in the dialogue and the descriptions, and what the description tables do not cover: input for new fixed rules and for the translation prompt.
 - Each script has, in order: constants, its own types, then the execution loop. The check scripts put their rules between the constants and the types, and fix-translations its fixes.

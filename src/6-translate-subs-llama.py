@@ -5,12 +5,10 @@
 # ------------------------------------------------------------------------------
 import argparse
 import json
-import re
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import timedelta
 from typing import Any
-from xml.etree import ElementTree
 
 import srt
 from openai import OpenAI
@@ -19,8 +17,9 @@ from rich.highlighter import JSONHighlighter
 from shared.alignment import AlignedSubtitle
 from shared.console import Action, Answer, Batch, Color, confirm, console, log_heading, track
 from shared.files import SubtitleFile, SubtitleFormat, find_subtitles, parse_srt, write_text_replacing
-from shared.languages import WORD, SecondLanguage, parse_words
+from shared.languages import SecondLanguage
 from shared.llm import JsonReply, Trace, connect_llama
+from shared.movies import MovieInfo
 from shared.subtitles import LANGUAGE_SOURCE, parse_lines, replace_text
 
 # ------------------------------------------------------------------------------
@@ -136,61 +135,6 @@ SECOND_LANGUAGE_EXAMPLES = {
     SecondLanguage.ITALIAN: (("I'm ready.", "Sono pronta.", "Estou pronta.", "The {language} shows the speaker is a woman: \"pronta\"."), ("It's a piece of cake.", "È un gioco da ragazzi.", "É moleza.", "\"A piece of cake\" means easy: \"É moleza\".")),
 }
 
-NFO_CHARACTERS_MAX = 20
-NFO_SHOW = "tvshow.nfo"
-NFO_CREDIT_NOTES = re.compile(r"\s*\((?:voice|archive footage|archive sound)(?:,\s*(?:voice|archive footage|archive sound))*\)", re.IGNORECASE)
-NFO_TITLES = frozenset({"Agent", "Captain", "Chief", "Corporal", "Detective", "Doctor", "Director", "General", "Lieutenant", "Major", "Officer", "Private", "Senator", "Sergeant", "Sheriff", "Young", "Old"})
-
-# ------------------------------------------------------------------------------
-# Movie info
-# ------------------------------------------------------------------------------
-@dataclass(frozen=True)
-class Character:
-    role: str
-    actor: str
-
-    def is_named_in(self, names: set[str]) -> bool:
-        return any(word.upper() in names for word in WORD.findall(self.role) if word[0].isupper() and len(word) >= 3 and word not in NFO_TITLES and not word.endswith(("'s", "’s")))
-
-
-@dataclass(frozen=True)
-class MovieInfo:
-    plots: tuple[tuple[str, str], ...]
-    characters: tuple[Character, ...]
-
-    @classmethod
-    def find(cls, sub: SubtitleFile) -> "MovieInfo | None":
-        if not sub.nfo.exists():
-            return None
-        root = ElementTree.parse(sub.nfo).getroot()
-        show_nfo = sub.movie_dir.parent / NFO_SHOW
-        show = ElementTree.parse(show_nfo).getroot() if root.tag == "episodedetails" and show_nfo.exists() else None
-
-        # an episode takes the plot of its season, or of its series when the season has none
-        plots = [("Plot", root.findtext("plot"))]
-        if show is not None:
-            season = root.findtext("season", "")
-            season_plot = next((element.text for element in show.iter("seasonplot") if element.get("number") == season and element.text and element.text.strip()), None)
-            plots = [(f"Season {season}", season_plot) if season_plot else ("Series", show.findtext("plot")), ("Episode", root.findtext("plot"))]
-
-        # credited roles without credit notes, the first billed of each role
-        characters: dict[str, Character] = {}
-        for actor in root.findall("actor") or (show.findall("actor") if show is not None else []):
-            role = " ".join(NFO_CREDIT_NOTES.sub("", actor.findtext("role", "")).split())
-            name = " ".join(actor.findtext("name", "").split())
-            if role and name and "uncredited" not in role.lower():
-                characters.setdefault(role, Character(role=role, actor=name))
-        return cls(plots=tuple((label, " ".join(text.split())) for label, text in plots if text and text.strip()), characters=tuple(characters.values()))
-
-    def to_prompt(self, english: str) -> str:
-        names = {word.text.upper() for word in parse_words(english) if word.name and not word.text.isupper()}
-        characters = [character for character in self.characters if character.is_named_in(names)][:NFO_CHARACTERS_MAX]
-        lines = [f"{label}: {text}" for label, text in self.plots]
-        if characters:
-            lines.append("Characters named in the subtitles, each with the actor who plays them:")
-            lines += [f"- {character.role} ({character.actor})" for character in characters]
-        return "\n".join(lines)
-
 # ------------------------------------------------------------------------------
 # Second language
 # ------------------------------------------------------------------------------
@@ -213,8 +157,7 @@ class SecondLanguageSubtitle:
         # match lines on screen
         aligned = AlignedSubtitle.from_entries(entries, english=english_entries)
         english_texts = [i for i, entry in enumerate(english_entries) if parse_lines(entry)]
-        lines = {i: matched for i in english_texts if (matched := tuple(line for other in aligned.find_overlapping(english_entries[i]) for line in parse_lines(other)))}
-        return cls(language=language, file=file, offset=aligned.offset, lines=lines, entries_english=len(english_texts))
+        return cls(language=language, file=file, offset=aligned.offset, lines=aligned.find_lines(english_entries), entries_english=len(english_texts))
 
     def is_matched(self) -> bool:
         return len(self.lines) >= SECOND_LANGUAGE_MATCHED_MIN * self.entries_english
