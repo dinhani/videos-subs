@@ -18,10 +18,10 @@ from rich.text import Text
 
 from shared.console import Action, Answer, Batch, Color, confirm, console, log_heading
 from shared.drafts import WORK_ENGLISH, WORK_REFERENCES_INDEX, Reference, Session, Source, WorkFolder, format_references_index
-from shared.files import SEASON_PREFIX, Backups, SubtitleFile, SubtitleFormat, find_subtitles, list_folder, parse_srt, write_text_replacing
+from shared.files import SEASON_PREFIX, TRACK_INDEX, Backups, SubtitleFile, SubtitleFormat, find_subtitles, list_folder, parse_srt, write_text_replacing
 from shared.llm import Trace
 from shared.movies import NFO_SHOW, MovieInfo
-from shared.subtitles import LANGUAGE_SOURCE
+from shared.subtitles import LANGUAGE_SOURCE, LANGUAGE_TRANSLATION
 
 # ------------------------------------------------------------------------------
 # Constants
@@ -42,6 +42,7 @@ AGENT_ALLOWED = ("Read", "Grep", "Glob", "Write(./**)", "Edit(./**)", f"Bash({CH
 AGENT_TOOL_ACTIONS = {"Read": Action.READ, "Write": Action.WRITE, "Edit": Action.EDIT}
 AGENT_EVENTS_SKIPPED = frozenset({"thinking_tokens"})
 RATE_LIMIT_ALLOWED = "allowed"
+REFERENCE_LANGUAGES = (LANGUAGE_SOURCE, LANGUAGE_TRANSLATION, "por", "spa", "fra", "ita")
 
 AGENT_TASK = """\
 Translate the subtitle in this folder. It is from {movie}.{movie_info}
@@ -64,7 +65,7 @@ You translate a movie or TV subtitle from English to Brazilian Portuguese, for v
 # Files
 
 - `english.txt`: the English subtitle. Each entry starts with `#<number>` on its own line, followed by its lines.
-- `references/`: every other subtitle of the same video, one file per subtitle, matched to the English by timing: under `#<number>` are the lines on screen during English entry `<number>`. An entry with nothing on screen in a subtitle is not in its file. To see every reference for one entry, Grep `^#523$` in `references/` with 4 lines after.
+- `references/`: the English SDH, Brazilian Portuguese, European Portuguese, Spanish, French and Italian subtitles of the same video that exist, one file per subtitle, matched to the English by timing: under `#<number>` are the lines on screen during English entry `<number>`. An entry with nothing on screen in a subtitle is not in its file. To see every reference for one entry, Grep `^#523$` in `references/` with 4 lines after.
 - `references.md`: one line per reference: its language code (ISO 639-3; `por` is European Portuguese, `pob` Brazilian Portuguese), SDH or base, extracted from the video or made by OCR, and how many English entries it matched.
 - `translation/`: your translation. Write `.txt` files in the format of `english.txt`, with the Portuguese lines under each number. The files are joined in name order, so name them `0001.txt`, `0002.txt`, and so on. One tool call cannot write a whole subtitle, so split it over several files.
 
@@ -283,12 +284,13 @@ if __name__ == "__main__":
                 task = AGENT_TASK.replace("{movie_info}", f"\n\n{movie_info_text}" if movie_info_text else "").replace("{files}", "\n".join(files)).replace("{movie}", sub_src.movie_title)
                 system = AGENT_PROMPT.replace("{check}", CHECK_COMMAND)
 
-                # references: every other text subtitle of the video aligned to the English, unless continuing a draft a usage limit stopped
+                # references: the English SDH and the Portuguese, Spanish, French and Italian text subtitles of the video aligned to the English, unless continuing a draft a usage limit stopped
                 work = WorkFolder.for_video(video_name)
                 session = None if arguments.print_prompt else work.find_session()
                 references: list[Reference] = []
                 if session is None:
-                    subs_reference = [file for name in sorted(list_folder(sub_src.folder)) if (file := SubtitleFile.find(sub_src.folder / name)) and file.is_text() and file.video_name == video_name and file != sub_src]
+                    subs_reference = [file for name in list_folder(sub_src.folder) if (file := SubtitleFile.find(sub_src.folder / name)) and file.is_text() and file.video_name == video_name and file.language in REFERENCE_LANGUAGES and (file.is_sdh() or file.language != LANGUAGE_SOURCE)]
+                    subs_reference.sort(key=lambda file: (REFERENCE_LANGUAGES.index(file.language or ""), int(file.track.rpartition(".")[2]) if TRACK_INDEX.search(file.track) else 0))
                     references = [Reference.from_file(file, english_entries=sub_entries) for file in subs_reference]
 
                 # print the prompts sent to the agent, without translating

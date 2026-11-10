@@ -32,7 +32,7 @@ Use these terms, and only these, in code, logs, docs and conversation. Do not ro
 - **report**: the text file in `_checks` with the issues of one OCR output or translation, and its score: weighted issues per 100 entries.
 - **second language**: a text subtitle of the same video in a language other than English, such as Spanish, that translate sends with the English so the model sees how people translated each entry.
 - **draft**: the translation that translate-claude's agent writes in its work folder, numbered like the English entries and without timings, before the script composes it into the `.srt`.
-- **reference**: for translate-claude, another text subtitle of the same video (any language, SDH, OCR output) aligned by timing to the English entry numbers, for the agent to consult.
+- **reference**: for translate-claude, an English SDH, Brazilian Portuguese, European Portuguese, Spanish, French or Italian text subtitle of the same video, extracted or made by OCR, aligned by timing to the English entry numbers, for the agent to consult.
 
 ## Pipeline
 
@@ -44,7 +44,7 @@ Run the steps in order; each step skips files it already processed, so every ste
 4. `4-ocr-subs.py`: transcribes the English and second-language image subtitles into text subtitles with Gemma vision.
 5. `5-check-ocr-subs.py`: checks each OCR output against its image subtitle and writes a report.
 6. `6-translate-subs-llama.py`: translates each `.eng.srt`, with a second language when the video has one, into `<name>.pob.translated.srt` in the movie folder.
-   `6-translate-subs-claude.py` does the same step with a Claude Code agent (`claude -p`, on the subscription), for the base `.eng.srt` with the most entries of each video, with every other text subtitle of the video as a reference, into `<name>.pob.claude.translated.srt`.
+   `6-translate-subs-claude.py` does the same step with a Claude Code agent (`claude -p`, on the subscription), for the base `.eng.srt` with the most entries of each video, with its English SDH, Portuguese, Spanish, French and Italian text subtitles as references, into `<name>.pob.claude.translated.srt`.
 7. `7-fix-translations.py`: applies the mechanical fixes to each translation.
 8. `8-check-translations.py`: checks each translation against its English source and writes a report.
 9. `9-warn-subs.py`: adds warning entries at the start of each translation.
