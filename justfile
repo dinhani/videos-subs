@@ -74,12 +74,12 @@ check-ocr *paths:
     exit $LASTEXITCODE
 
 [group('run')]
-[doc('Translate subtitles with llama')]
+[doc('Translate subtitles')]
 [script]
 [extension('.ps1')]
 [positional-arguments]
-translate-llama *paths:
-    uv run src/6-translate-subs-llama.py @args
+translate *paths:
+    uv run src/6-translate-subs.py @args
     exit $LASTEXITCODE
 
 [group('run')]
@@ -394,11 +394,11 @@ stats *paths:
     exit $LASTEXITCODE
 
 [group('debug')]
-[doc('Print llama system prompt and first chunk of each English subtitle')]
+[doc('Print system prompt and first chunk of each English subtitle')]
 [script]
 [extension('.ps1')]
 [positional-arguments]
-print-prompt-llama *paths:
-    uv run src/6-translate-subs-llama.py --print-prompt @args
+print-prompt *paths:
+    uv run src/6-translate-subs.py --print-prompt @args
     exit $LASTEXITCODE
-alias pp := print-prompt-llama
+alias pp := print-prompt
