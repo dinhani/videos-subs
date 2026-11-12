@@ -46,12 +46,12 @@ def create_parser() -> argparse.ArgumentParser:
 # ------------------------------------------------------------------------------
 # Execution
 # ------------------------------------------------------------------------------
-if __name__ == "__main__":
+def main() -> None:
     arguments = create_parser().parse_args()
 
     jobs = [job for job in json.loads(arguments.jobs.read_text(encoding="utf-8")) if not Path(job["output"]).exists()]
     if not jobs:
-        raise SystemExit(0)
+        return
 
     model = RegressionMetric.load_from_checkpoint(arguments.comet / "checkpoints" / "model.ckpt", load_pretrained_weights=False, map_location=torch.device("cpu"), strict=False, pretrained_model=str(arguments.encoder))
     for job in jobs:
@@ -64,3 +64,7 @@ if __name__ == "__main__":
         output_part.write_text(json.dumps({"comet": round(100 * comet.system_score, 2), "chrf": round(chrf.score, 2), "segments": len(segments)}, indent=2), encoding="utf-8")
         output_part.replace(output)
         print(f"  score     {output.name}: comet {100 * comet.system_score:.2f}, chrf++ {chrf.score:.2f}")
+
+
+if __name__ == "__main__":
+    main()

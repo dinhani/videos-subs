@@ -47,7 +47,7 @@ def create_parser() -> argparse.ArgumentParser:
 # ------------------------------------------------------------------------------
 # Execution
 # ------------------------------------------------------------------------------
-if __name__ == "__main__":
+def main() -> None:
     models = {model.name: model for model in (*MODELS, *SCORING_MODELS)}
     runs = {run.name: run for run in RUNS}
     runs_active = {run.name: run for run in RUNS_ACTIVE}
@@ -70,11 +70,11 @@ if __name__ == "__main__":
                 choices_translated = [run.to_choice(SOURCES, name_width) for run in runs_sorted if run.is_translated(SOURCES)]
                 if all(choice.disabled for choice in [*choices_untranslated, *choices_translated]):
                     Action.SKIP.log("no run has its model downloaded")
-                    raise SystemExit(0)
+                    return
                 separator = [questionary.Separator()] if choices_untranslated and choices_translated else []
                 picked = questionary.checkbox("Runs to translate (space checks, enter starts)", choices=[*choices_untranslated, *separator, *choices_translated]).ask()
                 if not picked:
-                    raise SystemExit(0)
+                    return
                 runs_selected = [runs[name] for name in picked]
 
             for source in SOURCES:
@@ -146,3 +146,7 @@ if __name__ == "__main__":
                 compare = COMPARE_DIR / f"{source.name}.txt"
                 write_text_replacing(compare, comparison.text)
                 Action.COMPARE.log(f"{compare.name}: {', '.join(comparison.columns)}")
+
+
+if __name__ == "__main__":
+    main()
