@@ -2,4 +2,4 @@ __pycache__/
 .venv/
 *.part
 .msys*
-_data/stats/
+data/stats/

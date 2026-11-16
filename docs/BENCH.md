@@ -4,10 +4,10 @@
 
 ## Folders
 
-- `_data/sources/`: the copy of each source: its English subtitle, its `.nfo` and its second-language subtitles.
-- `_data/references/`: the reference translations. Only `_data/references/*/<name>.claude.srt` is committed.
-- `_data/runs/`: one folder per run with its translations. The bench copies the `.nfo` of each source into the movie folder of each run, so translate finds it as in the library.
-- `_data/compare/`: the output of `just bench compare`.
+- `data/sources/`: the copy of each source: its English subtitle, its `.nfo` and its second-language subtitles.
+- `data/references/`: the reference translations. Only `data/references/*/<name>.claude.srt` is committed.
+- `data/runs/`: one folder per run with its translations. The bench copies the `.nfo` of each source into the movie folder of each run, so translate finds it as in the library.
+- `data/compare/`: the output of `just bench compare`.
 
 ## Runs
 

@@ -23,7 +23,7 @@ from shared.subtitles import parse_plain_text, replace_text
 
 BENCH_DIR = Path(__file__).parent
 SRC_DIR = BENCH_DIR.parent / "src"
-DATA_DIR = BENCH_DIR / "_data"
+DATA_DIR = BENCH_DIR / "data"
 SOURCES_DIR = DATA_DIR / "sources"
 REFERENCES_DIR = DATA_DIR / "references"
 RUNS_DIR = DATA_DIR / "runs"
