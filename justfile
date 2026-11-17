@@ -83,7 +83,7 @@ ocr-check *paths:
 translate-gemma *paths:
     uv run src/translate-gemma.py @args
     exit $LASTEXITCODE
-alias gemma := translate-gemma
+alias translate := translate-gemma
 
 [group('run/translate')]
 [doc('Fix translations mechanically')]
