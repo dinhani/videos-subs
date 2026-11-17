@@ -51,7 +51,7 @@ class PipelineTranslator:
             *(["--temperatures", *map(str, self.temperatures)] if self.temperatures else []),
             *(["--justify"] if self.justify else []),
         ]
-        subprocess.run([sys.executable, str(SRC_DIR / "translate-gemma.py"), str(english), *options], check=True)
+        subprocess.run([sys.executable, str(SRC_DIR / "translate-llama.py"), str(english), *options], check=True)
 
 
 @dataclass(frozen=True)

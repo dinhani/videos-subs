@@ -30,18 +30,18 @@ Use these terms, and only these, in code, logs, docs and conversation. Do not ro
 - **trace**: the JSON record in `_traces` of every LLM request and reply for one OCR or translation.
 - **issue**: one problem a check step flags in an entry, with a kind (`wrong order`, `untranslated`, ...) and a weight.
 - **report**: the text file in `_checks` with the issues of one OCR output or translation, and its score: weighted issues per 100 entries.
-- **second language**: a text subtitle of the same video in a language other than English, such as Spanish, that translate-gemma sends with the English so the model sees how people translated each entry.
+- **second language**: a text subtitle of the same video in a language other than English, such as Spanish, that translate-llama sends with the English so the model sees how people translated each entry.
 
 ## Pipeline
 
-The steps are in `src`, named `<stage>-<action>.py`, and each runs through the recipe of the same name. A translation is made by translate-gemma, or by Claude with the app-translate skill; the steps after it run on both. Run the steps in this order; each step skips files it already processed, so every step can be run again safely. Read [docs/PIPELINE.md](docs/PIPELINE.md) before changing a step, and [docs/RULES.md](docs/RULES.md) before changing a check rule. Read [docs/FAILURES.md](docs/FAILURES.md) before proposing an improvement, and add to it every approach that is tried and fails.
+The steps are in `src`, named `<stage>-<action>.py`, and each runs through the recipe of the same name. A translation is made by translate-llama, or by Claude with the app-translate skill; the steps after it run on both. Run the steps in this order; each step skips files it already processed, so every step can be run again safely. Read [docs/PIPELINE.md](docs/PIPELINE.md) before changing a step, and [docs/RULES.md](docs/RULES.md) before changing a check rule. Read [docs/FAILURES.md](docs/FAILURES.md) before proposing an improvement, and add to it every approach that is tried and fails.
 
 - `extract-tracks.py`: extracts the tracks of each video into `_subs`, as text subtitles and image subtitles.
 - `identify-text.py`: puts the language code and kind in the name of each text subtitle.
 - `identify-images.py`: puts the language code and kind in the name of each image subtitle, from a Tesseract reading.
 - `ocr-transcribe.py`: transcribes the English and second-language image subtitles into text subtitles with Gemma vision.
 - `ocr-check.py`: checks each OCR output against its image subtitle and writes a report.
-- `translate-gemma.py`: translates each `.eng.srt`, with a second language when the video has one, into `<name>.pob.translated.srt` in the movie folder.
+- `translate-llama.py`: translates each `.eng.srt`, with a second language when the video has one, into `<name>.pob.translated.srt` in the movie folder.
 - `translate-fix.py`: applies the mechanical fixes to each translation, except Claude translations.
 - `translate-check.py`: checks each translation against its English source and writes a report.
 - `translate-warn.py`: adds warning entries at the start of each translation.
@@ -73,9 +73,9 @@ Z:/midias/filmes/<movie>/                 (series use the same layout under Z:/m
 
 Use the `justfile`; it is the source of truth for how to run things.
 
-ocr-transcribe and translate-gemma need their llama server, `just llama-ocr` and `just llama-translate`. Both servers use port 9931, so run one at a time. The check steps need no llama server; translate-check starts its own LanguageTool server.
+ocr-transcribe and translate-llama need their llama server, `just llama-ocr` and `just llama-translate`. Both servers use port 9931, so run one at a time. The check steps need no llama server; translate-check starts its own LanguageTool server.
 
-Without paths, a step processes both `Z:/midias/filmes` and `Z:/midias/series`. Every step also accepts files and folders. A folder is searched recursively, inside `_subs` folders except for videos and translations, and the step applies its filter, such as `.eng.srt` only for translate-gemma. A file passed by hand skips the filter, so translate-gemma accepts a text subtitle in any language.
+Without paths, a step processes both `Z:/midias/filmes` and `Z:/midias/series`. Every step also accepts files and folders. A folder is searched recursively, inside `_subs` folders except for videos and translations, and the step applies its filter, such as `.eng.srt` only for translate-llama. A file passed by hand skips the filter, so translate-llama accepts a text subtitle in any language.
 
 The virtual environment lives outside the project, under the local data directory. Running uv outside `just` creates a `.venv` in the project folder; go through `just`.
 

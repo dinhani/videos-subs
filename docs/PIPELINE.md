@@ -20,7 +20,7 @@ identify-images, ocr and ocr-check read image subtitles with PyAV (`shared/image
 
 A check step skips a file whose report exists; delete the reports to check again.
 
-A flag judged wrong is marked in the subtitle itself, with `ignore:<kinds>` at the end of the entry's timing line; the format is in [RULES.md](RULES.md). Marked flags are left out of the score. translate-gemma removes the markers from the source, so a marker in an OCR output does not reach the translation.
+A flag judged wrong is marked in the subtitle itself, with `ignore:<kinds>` at the end of the entry's timing line; the format is in [RULES.md](RULES.md). Marked flags are left out of the score. translate-llama removes the markers from the source, so a marker in an OCR output does not reach the translation.
 
 Each check script lists its rules in `RULES`, the one place to switch a rule on or off or change its settings. [RULES.md](RULES.md) describes every rule for whoever fixes its flags. Update it when a rule is added, removed or changed.
 
@@ -44,7 +44,7 @@ Reads the first entries of each image subtitle with Tesseract, detects the langu
 
 ### ocr-transcribe
 
-Transcribes the English image subtitles, and the image subtitles in every language translate-gemma can use as a second language (`SecondLanguage` in `shared/languages.py`), with Gemma 4 12B vision into `<name>.<language code>.srt`, next to the image subtitle. English is the source of the translation; the second languages are transcribed so translate-gemma can send them with it. Other languages are not transcribed, since nothing reads them. Entries with identical images are transcribed once. A failed chunk is retried, then split down to single entries; an entry that still fails is written as `[OCR failed]`.
+Transcribes the English image subtitles, and the image subtitles in every language translate-llama can use as a second language (`SecondLanguage` in `shared/languages.py`), with Gemma 4 12B vision into `<name>.<language code>.srt`, next to the image subtitle. English is the source of the translation; the second languages are transcribed so translate-llama can send them with it. Other languages are not transcribed, since nothing reads them. Entries with identical images are transcribed once. A failed chunk is retried, then split down to single entries; an entry that still fails is written as `[OCR failed]`.
 
 ### ocr-check
 
@@ -54,9 +54,9 @@ ocr-check compares the width of each line on the image with the width of its tex
 
 ## Translate
 
-A translation is made by translate-gemma, or by Claude with the app-translate skill. The other steps of this section run on both.
+A translation is made by translate-llama, or by Claude with the app-translate skill. The other steps of this section run on both.
 
-### translate-gemma
+### translate-llama
 
 Translates every `.eng.srt` with Gemma 4 26B A4B, thinking disabled, into `<name>.pob.translated.srt` in the movie folder, where the media server loads it.
 
@@ -64,7 +64,7 @@ Translates every `.eng.srt` with Gemma 4 26B A4B, thinking disabled, into `<name
 - The reply is constrained by a JSON schema that fixes the ids and the number of lines per entry. Each entry is an object with its English lines in `en`, and the reply gives each id `en` and `pt-BR`. The `en` field in the reply is not used by the code; it makes the model restate each line before translating it.
 - A failed chunk is retried at other temperatures, then split in halves. After that, the last reply is accepted and recorded in the trace as accepted with a problem; translate-warn adds a warning entry for it.
 - The system prompt gets the title of the movie or episode, and what the tinyMediaManager `.nfo` says that can change a translation: the plot, and the credited characters named in the subtitle with their actors. Without an `.nfo`, the prompt has the title only.
-- Each entry to translate and each entry of the context after also gets the lines of a second language on screen with it, under its language tag (`pt-PT`, `es`, `fr` or `it`); the context before has the accepted translation instead. The system prompt then gets a line in its Input section about that key, a section named after the language with the rules for using it, and a second example in that language in its Example section. translate-gemma tries European Portuguese, Spanish, French and Italian, in this order: for each language it takes the text subtitle of the same video in that language with the most entries, from `_subs`, extracted or made by ocr-transcribe, and shifts it onto the English by the median offset of the English entries around each entry. It uses the first one that matches at least 90% of the English entries, and sends the English alone when none does.
+- Each entry to translate and each entry of the context after also gets the lines of a second language on screen with it, under its language tag (`pt-PT`, `es`, `fr` or `it`); the context before has the accepted translation instead. The system prompt then gets a line in its Input section about that key, a section named after the language with the rules for using it, and a second example in that language in its Example section. translate-llama tries European Portuguese, Spanish, French and Italian, in this order: for each language it takes the text subtitle of the same video in that language with the most entries, from `_subs`, extracted or made by ocr-transcribe, and shifts it onto the English by the median offset of the English entries around each entry. It uses the first one that matches at least 90% of the English entries, and sends the English alone when none does.
 - `--justify` adds a `why` field after `pt-BR` to each entry of the reply: one sentence that justifies the translation, kept only in the trace. It is a diagnostic that shows how the model read an entry, such as `save` read as `except`; it does not improve the translation and makes it about 30% slower.
 - Translated lines keep the source line breaks and are not wrapped; the player wraps lines that do not fit the screen.
 - The translation is written without renumbering, so its entries keep the numbers of the source.

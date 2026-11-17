@@ -1,6 +1,6 @@
 ---
 name: app-fix-translate
-description: Fix the entries that translate-check flagged in the Brazilian Portuguese translations, deciding each entry on its own before changing it. Use after `just translate-gemma`, `just translate-fix` and `just translate-check`, when asked to fix translation errors or translate-check issues.
+description: Fix the entries that translate-check flagged in the Brazilian Portuguese translations, deciding each entry on its own before changing it. Use after `just translate-llama`, `just translate-fix` and `just translate-check`, when asked to fix translation errors or translate-check issues.
 ---
 
 # app-fix-translate
@@ -35,7 +35,7 @@ Work from the reports. Your job is the flagged entries; do not look for other er
    Fix every translation report with issues in its `_checks`, base and SDH. An error flagged in both gets the same fix in both.
 3. For each flagged entry, read it in the report: its `en` and `pt` lines are the exact text in the `.srt`, with the entries around it for context. Decide, then fix it with the Correction and Caution of its rule, or mark the flag when the text is right. Do not open the `.srt`; `just apply-fixes` checks every fix against it. When it stops because an entry's text is not the text of the report, the file changed after the check: leave the file.
 4. When an error shows up while you work, in a context entry or in anything else you read for a flagged entry, fix it too.
-5. Apply the fixes of the movie folder with `just apply-fixes`, then delete the report of every file you change. Never edit a report, never run translate-check or translate-gemma, and never change the English `.eng.srt`.
+5. Apply the fixes of the movie folder with `just apply-fixes`, then delete the report of every file you change. Never edit a report, never run translate-check or translate-llama, and never change the English `.eng.srt`.
 6. At the end, list: the fixes outside the flagged entries, the marked entries, the skipped entries and files, the words, expressions and pairs added to `data`, and the notes added to `docs/IMPROVEMENTS.md`. Then give the number of movie folders that still have a translation report with issues, and stop.
 
 ## Reference

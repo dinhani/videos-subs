@@ -80,10 +80,10 @@ ocr-check *paths:
 [script]
 [extension('.ps1')]
 [positional-arguments]
-translate-gemma *paths:
-    uv run src/translate-gemma.py @args
+translate-llama *paths:
+    uv run src/translate-llama.py @args
     exit $LASTEXITCODE
-alias translate := translate-gemma
+alias translate := translate-llama
 
 [group('run/translate')]
 [doc('Fix translations mechanically')]
@@ -417,6 +417,6 @@ alias stats := analyse-subs
 [extension('.ps1')]
 [positional-arguments]
 print-prompt *paths:
-    uv run src/translate-gemma.py --print-prompt @args
+    uv run src/translate-llama.py --print-prompt @args
     exit $LASTEXITCODE
 alias pp := print-prompt

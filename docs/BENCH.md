@@ -6,12 +6,12 @@
 
 - `data/sources/`: the copy of each source: its English subtitle, its `.nfo` and its second-language subtitles.
 - `data/references/`: the reference translations. Only `data/references/*/<name>.claude.srt` is committed.
-- `data/runs/`: one folder per run with its translations. The bench copies the `.nfo` of each source into the movie folder of each run, so translate-gemma finds it as in the library.
+- `data/runs/`: one folder per run with its translations. The bench copies the `.nfo` of each source into the movie folder of each run, so translate-llama finds it as in the library.
 - `data/compare/`: the output of `just bench compare`.
 
 ## Runs
 
-- A run of a model translates as translate-gemma does, with the second language of each source when it has one, and scores the raw model output, without translate-fix.
+- A run of a model translates as translate-llama does, with the second language of each source when it has one, and scores the raw model output, without translate-fix.
 - Each run copies the second-language subtitles of every source into its `_subs`, as they are in the library.
 - A run `gemma-4-26b+why` translates with `--justify`: the model writes a short justification of each entry after its translation, kept only in the trace.
 - A run `<run>-fix` copies the translations of its base run, applies translate-fix and scores the result. It keeps the translation time of the base run.
