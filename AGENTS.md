@@ -34,17 +34,21 @@ Use these terms, and only these, in code, logs, docs and conversation. Do not ro
 
 ## Pipeline
 
-Run the steps in order; each step skips files it already processed, so every step can be run again safely. Read [docs/PIPELINE.md](docs/PIPELINE.md) before changing a step, and [docs/RULES.md](docs/RULES.md) before changing a check rule. Read [docs/FAILURES.md](docs/FAILURES.md) before proposing an improvement, and add to it every approach that is tried and fails.
+The steps are grouped by subject in `src/<subject>/`, and each runs through the recipe of the same name. Run the subjects in this order; each step skips files it already processed, so every step can be run again safely. Read [docs/PIPELINE.md](docs/PIPELINE.md) before changing a step, and [docs/RULES.md](docs/RULES.md) before changing a check rule. Read [docs/FAILURES.md](docs/FAILURES.md) before proposing an improvement, and add to it every approach that is tried and fails.
 
-1. `1-extract-subs.py`: extracts the tracks of each video into `_subs`, as text subtitles and image subtitles.
-2. `2-identify-text-subs.py`: puts the language code and kind in the name of each text subtitle.
-3. `3-identify-ocr-subs.py`: puts the language code and kind in the name of each image subtitle, from a Tesseract reading.
-4. `4-ocr-subs.py`: transcribes the English and second-language image subtitles into text subtitles with Gemma vision.
-5. `5-check-ocr-subs.py`: checks each OCR output against its image subtitle and writes a report.
-6. `6-translate-subs.py`: translates each `.eng.srt`, with a second language when the video has one, into `<name>.pob.translated.srt` in the movie folder.
-7. `7-fix-translations.py`: applies the mechanical fixes to each translation, except Claude translations.
-8. `8-check-translations.py`: checks each translation against its English source and writes a report.
-9. `9-warn-subs.py`: adds warning entries at the start of each translation.
+- `extract/`:
+  - `extract-subs.py` (extract): extracts the tracks of each video into `_subs`, as text subtitles and image subtitles.
+  - `identify-text-subs.py` (identify-text): puts the language code and kind in the name of each text subtitle.
+  - `identify-ocr-subs.py` (identify-ocr): puts the language code and kind in the name of each image subtitle, from a Tesseract reading.
+- `ocr/`:
+  - `ocr-subs.py` (ocr): transcribes the English and second-language image subtitles into text subtitles with Gemma vision.
+  - `check-ocr-subs.py` (check-ocr): checks each OCR output against its image subtitle and writes a report.
+- `translate/`: a translation is made by translate with Gemma, or by Claude with the app-translate skill.
+  - `translate-subs.py` (translate): translates each `.eng.srt`, with a second language when the video has one, into `<name>.pob.translated.srt` in the movie folder.
+  - `fix-translations.py` (fix-translations): applies the mechanical fixes to each translation, except Claude translations.
+  - `check-translations.py` (check-translate): checks each translation against its English source and writes a report.
+  - `warn-subs.py` (warn): adds warning entries at the start of each translation.
+  - `convert-sdh-translations.py` (convert-sdh): writes a copy of each SDH translation without descriptions and uppercase speaker labels.
 
 ## Media layout
 
@@ -80,13 +84,12 @@ The virtual environment lives outside the project, under the local data director
 
 ## Code layout
 
-All code is in `src`: the pipeline scripts, `check-subs.py`, `analyse-subs.py`, `convert-sdh-translations.py`, `shared` and `fix-tools`. The data lists are in `data`, the tests in `tests`.
+The pipeline scripts are in `src/extract`, `src/ocr` and `src/translate`, and the code they share in `src/shared`. The helper scripts, which are not pipeline steps, are in `tools`. The data lists are in `data`, the tests in `tests`.
 
 - `shared/`: code used by more than one script, one module per subject. Use it instead of writing another version: `files.py` (`SubtitleFile`, the names of a subtitle and its related files), `subtitles.py` (language codes, kinds, tags, markers), `image_subtitles.py`, `languages.py`, `alignment.py` (`AlignedSubtitle`, the timing match of two subtitles), `movies.py` (`MovieInfo`, from the `.nfo`), `translation_rules.py` (the translation rules of the translate prompt: edit them there, never in the prompt), `descriptions.py`, `data_lists.py` (`DataList`, the one reader and writer of the lists in `data`), `reports.py`, `console.py` (`Action`, the one list of log verbs; `Batch`), `llm.py` (the llama server, `JsonReply` and traces).
-- `fix-tools/`: the tools of the app-fix-ocr and app-fix-translate skills, run through the `data/fix` recipes. `data/fix` holds only recipes a skill uses; a tool no skill mentions is removed.
-- `convert-sdh-translations.py`: not a pipeline step; it writes a copy of each SDH translation without descriptions and uppercase speaker labels, keeping song lyrics and the warnings other than SDH.
-- `check-subs.py`: not a pipeline step; it only reads, and reports the files of one track that do not match each other.
-- `analyse-subs.py`: not a pipeline step; it only reads the English text subtitles and writes one report file per subject to `data/stats`, which is not committed, with what repeats across titles in the dialogue and the descriptions, and what the description tables do not cover: input for new fixed rules and for the translation prompt.
+- `tools/apply-fixes.py` and `tools/add-to-dictionary.py`: the tools of the app-fix-ocr and app-fix-translate skills, run through the `data/fix` recipes. `data/fix` holds only recipes a skill uses; a tool no skill mentions is removed.
+- `tools/check-subs.py`: it only reads, and reports the files of one track that do not match each other.
+- `tools/analyse-subs.py`: it only reads the English text subtitles and writes one report file per subject to `data/stats`, which is not committed, with what repeats across titles in the dialogue and the descriptions, and what the description tables do not cover: input for new fixed rules and for the translation prompt.
 - Each script has, in order: constants, its argument parser in `create_parser()`, its own types, its functions, then the execution loop. The check scripts put their rules between the parser and the types, and fix-translations its fixes.
 - Every script follows the same per-file pattern: find its files with `find_subtitles`, loop with `batch.walk`, skip when already done, do the work inside `with batch.attempt(...)`, log through `Action`, and write output through a `.part` file that is then renamed.
 

@@ -28,94 +28,94 @@ setup:
 cloc:
     cloc --exclude-dir=__pycache__ .
 
-[group('run')]
+[group('run/extract')]
 [doc('Extract subtitle tracks')]
 [script]
 [extension('.ps1')]
 [positional-arguments]
 extract *paths:
-    uv run src/1-extract-subs.py @args
+    uv run src/extract/extract-subs.py @args
     exit $LASTEXITCODE
 
-[group('run')]
+[group('run/extract')]
 [doc('Identify text subtitle languages')]
 [script]
 [extension('.ps1')]
 [positional-arguments]
 identify-text *paths:
-    uv run src/2-identify-text-subs.py @args
+    uv run src/extract/identify-text-subs.py @args
     exit $LASTEXITCODE
 
-[group('run')]
+[group('run/extract')]
 [doc('Identify image subtitle languages')]
 [script]
 [extension('.ps1')]
 [positional-arguments]
 identify-ocr *paths:
-    uv run src/3-identify-ocr-subs.py @args
+    uv run src/extract/identify-ocr-subs.py @args
     exit $LASTEXITCODE
 
-[group('run')]
+[group('run/ocr')]
 [doc('OCR image subtitles')]
 [script]
 [extension('.ps1')]
 [positional-arguments]
 ocr *paths:
-    uv run src/4-ocr-subs.py @args
+    uv run src/ocr/ocr-subs.py @args
     exit $LASTEXITCODE
 
-[group('run')]
+[group('run/ocr')]
 [doc('Check OCR')]
 [script]
 [extension('.ps1')]
 [positional-arguments]
 check-ocr *paths:
-    uv run src/5-check-ocr-subs.py @args
+    uv run src/ocr/check-ocr-subs.py @args
     exit $LASTEXITCODE
 
-[group('run')]
+[group('run/translate')]
 [doc('Translate subtitles')]
 [script]
 [extension('.ps1')]
 [positional-arguments]
 translate *paths:
-    uv run src/6-translate-subs.py @args
+    uv run src/translate/translate-subs.py @args
     exit $LASTEXITCODE
 
-[group('run')]
+[group('run/translate')]
 [doc('Fix translations mechanically')]
 [script]
 [extension('.ps1')]
 [positional-arguments]
 fix-translations *paths:
-    uv run src/7-fix-translations.py @args
+    uv run src/translate/fix-translations.py @args
     exit $LASTEXITCODE
 
-[group('run')]
+[group('run/translate')]
 [doc('Check translations')]
 [script]
 [extension('.ps1')]
 [positional-arguments]
 check-translate *paths:
-    uv run src/8-check-translations.py @args
+    uv run src/translate/check-translations.py @args
     exit $LASTEXITCODE
 
-[group('run')]
+[group('run/translate')]
 [doc('Add warnings to translations')]
 [script]
 [extension('.ps1')]
 [positional-arguments]
 warn *paths:
-    uv run src/9-warn-subs.py @args
+    uv run src/translate/warn-subs.py @args
     exit $LASTEXITCODE
 
-[group('run')]
+[group('run/translate')]
 [doc('Write translations without SDH')]
 [script]
 [extension('.ps1')]
 [positional-arguments]
 convert-sdh *paths:
-    uv run src/convert-sdh-translations.py @args
+    uv run src/translate/convert-sdh-translations.py @args
     exit $LASTEXITCODE
 
 [group('llm')]
@@ -210,7 +210,7 @@ reset-identifier-pt *paths:
 [extension('.ps1')]
 [positional-arguments]
 apply-fixes fixes *options:
-    uv run src/fix-tools/apply-fixes.py @args
+    uv run tools/apply-fixes.py @args
     exit $LASTEXITCODE
 
 [group('data/fix')]
@@ -219,7 +219,7 @@ apply-fixes fixes *options:
 [extension('.ps1')]
 [positional-arguments]
 add-check-words +words:
-    uv run src/fix-tools/add-to-dictionary.py check-words @args
+    uv run tools/add-to-dictionary.py check-words @args
     exit $LASTEXITCODE
 
 [group('data/fix')]
@@ -228,7 +228,7 @@ add-check-words +words:
 [extension('.ps1')]
 [positional-arguments]
 add-check-expressions +expressions:
-    uv run src/fix-tools/add-to-dictionary.py check-expressions @args
+    uv run tools/add-to-dictionary.py check-expressions @args
     exit $LASTEXITCODE
 
 [group('data/fix')]
@@ -237,7 +237,7 @@ add-check-expressions +expressions:
 [extension('.ps1')]
 [positional-arguments]
 add-fix-sounds +pairs:
-    uv run src/fix-tools/add-to-dictionary.py fix-sounds @args
+    uv run tools/add-to-dictionary.py fix-sounds @args
     exit $LASTEXITCODE
 
 [group('data/fix')]
@@ -246,7 +246,7 @@ add-fix-sounds +pairs:
 [extension('.ps1')]
 [positional-arguments]
 add-fix-music +pairs:
-    uv run src/fix-tools/add-to-dictionary.py fix-music @args
+    uv run tools/add-to-dictionary.py fix-music @args
     exit $LASTEXITCODE
 
 [group('data/fix')]
@@ -255,7 +255,7 @@ add-fix-music +pairs:
 [extension('.ps1')]
 [positional-arguments]
 add-fix-languages +pairs:
-    uv run src/fix-tools/add-to-dictionary.py fix-languages @args
+    uv run tools/add-to-dictionary.py fix-languages @args
     exit $LASTEXITCODE
 
 [group('data/fix')]
@@ -264,7 +264,7 @@ add-fix-languages +pairs:
 [extension('.ps1')]
 [positional-arguments]
 add-fix-channels +pairs:
-    uv run src/fix-tools/add-to-dictionary.py fix-channels @args
+    uv run tools/add-to-dictionary.py fix-channels @args
     exit $LASTEXITCODE
 
 [group('data/fix')]
@@ -273,7 +273,7 @@ add-fix-channels +pairs:
 [extension('.ps1')]
 [positional-arguments]
 add-fix-objects +pairs:
-    uv run src/fix-tools/add-to-dictionary.py fix-objects @args
+    uv run tools/add-to-dictionary.py fix-objects @args
     exit $LASTEXITCODE
 
 [group('data/fix')]
@@ -282,7 +282,7 @@ add-fix-objects +pairs:
 [extension('.ps1')]
 [positional-arguments]
 add-fix-manners +pairs:
-    uv run src/fix-tools/add-to-dictionary.py fix-manners @args
+    uv run tools/add-to-dictionary.py fix-manners @args
     exit $LASTEXITCODE
 
 [group('data/fix')]
@@ -291,7 +291,7 @@ add-fix-manners +pairs:
 [extension('.ps1')]
 [positional-arguments]
 add-fix-music-moods +pairs:
-    uv run src/fix-tools/add-to-dictionary.py fix-music-moods @args
+    uv run tools/add-to-dictionary.py fix-music-moods @args
     exit $LASTEXITCODE
 
 [group('data/fix')]
@@ -300,7 +300,7 @@ add-fix-music-moods +pairs:
 [extension('.ps1')]
 [positional-arguments]
 add-fix-voice-moods +pairs:
-    uv run src/fix-tools/add-to-dictionary.py fix-voice-moods @args
+    uv run tools/add-to-dictionary.py fix-voice-moods @args
     exit $LASTEXITCODE
 
 [group('data/fix')]
@@ -309,7 +309,7 @@ add-fix-voice-moods +pairs:
 [extension('.ps1')]
 [positional-arguments]
 add-fix-subjects +pairs:
-    uv run src/fix-tools/add-to-dictionary.py fix-subjects @args
+    uv run tools/add-to-dictionary.py fix-subjects @args
     exit $LASTEXITCODE
 
 [group('data/fix')]
@@ -318,7 +318,7 @@ add-fix-subjects +pairs:
 [extension('.ps1')]
 [positional-arguments]
 add-fix-interjections +pairs:
-    uv run src/fix-tools/add-to-dictionary.py fix-interjections @args
+    uv run tools/add-to-dictionary.py fix-interjections @args
     exit $LASTEXITCODE
 
 [group('data/fix')]
@@ -327,7 +327,7 @@ add-fix-interjections +pairs:
 [extension('.ps1')]
 [positional-arguments]
 add-fix-ranks +pairs:
-    uv run src/fix-tools/add-to-dictionary.py fix-ranks @args
+    uv run tools/add-to-dictionary.py fix-ranks @args
     exit $LASTEXITCODE
 
 [group('data/fix')]
@@ -336,7 +336,7 @@ add-fix-ranks +pairs:
 [extension('.ps1')]
 [positional-arguments]
 add-fix-addresses +pairs:
-    uv run src/fix-tools/add-to-dictionary.py fix-addresses @args
+    uv run tools/add-to-dictionary.py fix-addresses @args
     exit $LASTEXITCODE
 
 [group('data/fix')]
@@ -345,7 +345,7 @@ add-fix-addresses +pairs:
 [extension('.ps1')]
 [positional-arguments]
 add-fix-units +pairs:
-    uv run src/fix-tools/add-to-dictionary.py fix-units @args
+    uv run tools/add-to-dictionary.py fix-units @args
     exit $LASTEXITCODE
 
 [group('data/fix')]
@@ -354,7 +354,7 @@ add-fix-units +pairs:
 [extension('.ps1')]
 [positional-arguments]
 add-fix-expressions +triples:
-    uv run src/fix-tools/add-to-dictionary.py fix-expressions @args
+    uv run tools/add-to-dictionary.py fix-expressions @args
     exit $LASTEXITCODE
 
 [group('data/fix')]
@@ -363,7 +363,7 @@ add-fix-expressions +triples:
 [extension('.ps1')]
 [positional-arguments]
 add-fix-portugal +triples:
-    uv run src/fix-tools/add-to-dictionary.py fix-portugal @args
+    uv run tools/add-to-dictionary.py fix-portugal @args
     exit $LASTEXITCODE
 
 [group('data/fix')]
@@ -372,7 +372,7 @@ add-fix-portugal +triples:
 [extension('.ps1')]
 [positional-arguments]
 add-fix-verbs +triples:
-    uv run src/fix-tools/add-to-dictionary.py fix-verbs @args
+    uv run tools/add-to-dictionary.py fix-verbs @args
     exit $LASTEXITCODE
 
 [group('data/fix')]
@@ -381,7 +381,7 @@ add-fix-verbs +triples:
 [extension('.ps1')]
 [positional-arguments]
 add-fix-words +triples:
-    uv run src/fix-tools/add-to-dictionary.py fix-words @args
+    uv run tools/add-to-dictionary.py fix-words @args
     exit $LASTEXITCODE
 
 [group('debug')]
@@ -390,7 +390,7 @@ add-fix-words +triples:
 [extension('.ps1')]
 [positional-arguments]
 crosscheck *paths:
-    uv run src/check-subs.py @args
+    uv run tools/check-subs.py @args
     exit $LASTEXITCODE
 
 [group('debug')]
@@ -399,7 +399,7 @@ crosscheck *paths:
 [extension('.ps1')]
 [positional-arguments]
 stats *paths:
-    uv run src/analyse-subs.py @args
+    uv run tools/analyse-subs.py @args
     exit $LASTEXITCODE
 
 [group('debug')]
@@ -408,6 +408,6 @@ stats *paths:
 [extension('.ps1')]
 [positional-arguments]
 print-prompt *paths:
-    uv run src/6-translate-subs.py --print-prompt @args
+    uv run src/translate/translate-subs.py --print-prompt @args
     exit $LASTEXITCODE
 alias pp := print-prompt

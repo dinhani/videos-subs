@@ -24,29 +24,37 @@ A flag judged wrong is marked in the subtitle itself, with `ignore:<kinds>` at t
 
 Each check script lists its rules in `RULES`, the one place to switch a rule on or off or change its settings. [RULES.md](RULES.md) describes every rule for whoever fixes its flags. Update it when a rule is added, removed or changed.
 
-## 1. extract
+## Extract
+
+### extract
 
 Extracts the tracks of each video into `_subs/<video>.embed.<stream index>.<ext>`: text tracks become `.srt`, PGS tracks `.sup`, VobSub tracks `.mks`.
 
-## 2. identify-text
+### identify-text
 
 Detects the language and kind of each text subtitle and puts them in its name. A text subtitle with an image subtitle of the same name next to it was made by ocr and is skipped; identify-ocr names it with its image subtitle.
 
-## 3. identify-ocr
+### identify-ocr
 
 Reads the first entries of each image subtitle with Tesseract, detects the language and kind of that text, and renames the image subtitle, with its OCR output and OCR trace when they exist. The Tesseract text is only good enough for language detection and is not kept; non-Latin image subtitles get a wrong language code or `und`.
 
-## 4. ocr
+## OCR
+
+### ocr
 
 Transcribes the English image subtitles, and the image subtitles in every language translate can use as a second language (`SecondLanguage` in `shared/languages.py`), with Gemma 4 12B vision into `<name>.<language code>.srt`, next to the image subtitle. English is the source of the translation; the second languages are transcribed so translate can send them with it. Other languages are not transcribed, since nothing reads them. Entries with identical images are transcribed once. A failed chunk is retried, then split down to single entries; an entry that still fails is written as `[OCR failed]`.
 
-## 5. check-ocr
+### check-ocr
 
 Checks every text subtitle made by ocr, in English and in the second languages, against its image subtitle and writes a report. Its rules are in [RULES.md](RULES.md), section 1.
 
 check-ocr compares the width of each line on the image with the width of its text. An entry is in the wrong order when its lines fit the image only in reverse order; this happens in SDH tracks, where two speakers' lines sit at opposite sides of the screen and Gemma reads the left one first. Width differences alone are not flagged: a track may use a second, narrower font, such as for translated foreign dialogue.
 
-## 6. translate
+## Translate
+
+A translation is made by translate with Gemma, or by Claude with the app-translate skill. The other steps of this section run on both.
+
+### translate
 
 Translates every `.eng.srt` with Gemma 4 26B A4B, thinking disabled, into `<name>.pob.translated.srt` in the movie folder, where the media server loads it.
 
@@ -59,7 +67,7 @@ Translates every `.eng.srt` with Gemma 4 26B A4B, thinking disabled, into `<name
 - Translated lines keep the source line breaks and are not wrapped; the player wraps lines that do not fit the screen.
 - The translation is written without renumbering, so its entries keep the numbers of the source.
 
-## 7. fix-translations
+### fix-translations
 
 Fixes every `.pob.translated.srt` where the fix is mechanical, by comparing each entry with its English source, and deletes the report of every translation it changes. Claude translations, `.pob.translated.claude.srt`, are not touched.
 
@@ -92,7 +100,7 @@ The description lists are the phrases of `data/fix-sounds.txt` (people), `data/f
 
 The tables are written by hand: each phrase is translated once, with the verb in the third person for -s and in the gerund for -ing, so a subject in front of it keeps the sentence right. A phrase or a subject whose Portuguese depends on the scene is not in the tables: a sound that is different for a person, an animal or a machine (`cries`, `clicks`), a word with several meanings (`choking`, `blows`), and a subject whose gender the English does not tell (`both`, `everyone`). Nothing that needs reading the sentence is fixed here: duplicated lines, gender and grammar are left to check-translate.
 
-## 8. check-translate
+### check-translate
 
 Checks every translation, `.pob.translated.srt` and `.pob.translated.claude.srt`, against its English source and writes a report. Its rules are in [RULES.md](RULES.md), section 2.
 
@@ -100,6 +108,10 @@ check-translate is deterministic: word frequency, the pt_BR hunspell dictionary,
 
 The main process starts one LanguageTool server, only when a file needs checking, and the worker processes connect to it.
 
-## 9. warn
+### warn
 
 Adds warning entries at the start of every translation, `.pob.translated.srt` and `.pob.translated.claude.srt`: one when it is SDH, and one when its trace records an entry accepted with a problem. Each warning is entry 0, so the other entries keep the numbers of the English source.
+
+### convert-sdh
+
+Writes a copy of every SDH translation next to it, with `nosdh` in place of `sdh` in its name. The copy has no descriptions, no uppercase speaker labels, no lines of music notes alone, and no SDH warning; song lyrics and the other warnings stay. Mixed-case labels such as `Rainha Gorgo:` stay, since dialogue such as `Eu disse:` has the same shape. An entry left empty is dropped, and the entries are numbered again.

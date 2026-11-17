@@ -8,7 +8,7 @@ import srt
 from shared.data_lists import DataList, DataListFormat
 from shared.descriptions import MovieNames
 
-fix_translations = importlib.import_module("7-fix-translations")
+fix_translations = importlib.import_module("fix-translations")
 TranslationEntry = fix_translations.TranslationEntry
 TranslationFix = fix_translations.TranslationFix
 WordsFix = fix_translations.WordsFix

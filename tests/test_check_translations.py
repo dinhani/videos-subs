@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 import srt
 
-check_translations = importlib.import_module("8-check-translations")
+check_translations = importlib.import_module("check-translations")
 TranslationCheck = check_translations.TranslationCheck
 
 
