@@ -36,6 +36,7 @@ cloc:
 extract-tracks *paths:
     uv run src/extract-tracks.py @args
     exit $LASTEXITCODE
+alias et := extract-tracks
 
 [group('run/identify')]
 [doc('Identify text subtitle languages')]
@@ -45,6 +46,7 @@ extract-tracks *paths:
 identify-text *paths:
     uv run src/identify-text.py @args
     exit $LASTEXITCODE
+alias it := identify-text
 
 [group('run/identify')]
 [doc('Identify image subtitle languages')]
@@ -54,6 +56,7 @@ identify-text *paths:
 identify-images *paths:
     uv run src/identify-images.py @args
     exit $LASTEXITCODE
+alias ii := identify-images
 
 [group('run/ocr')]
 [doc('OCR image subtitles')]
@@ -63,6 +66,7 @@ identify-images *paths:
 ocr-transcribe *paths:
     uv run src/ocr-transcribe.py @args
     exit $LASTEXITCODE
+alias ot := ocr-transcribe
 
 [group('run/ocr')]
 [doc('Check OCR')]
@@ -72,6 +76,7 @@ ocr-transcribe *paths:
 ocr-check *paths:
     uv run src/ocr-check.py @args
     exit $LASTEXITCODE
+alias oc := ocr-check
 
 [group('run/translate')]
 [doc('Translate subtitles')]
@@ -81,6 +86,7 @@ ocr-check *paths:
 translate-gemma *paths:
     uv run src/translate-gemma.py @args
     exit $LASTEXITCODE
+alias tg := translate-gemma
 
 [group('run/translate')]
 [doc('Fix translations mechanically')]
@@ -90,6 +96,7 @@ translate-gemma *paths:
 translate-fix *paths:
     uv run src/translate-fix.py @args
     exit $LASTEXITCODE
+alias tf := translate-fix
 
 [group('run/translate')]
 [doc('Check translations')]
@@ -99,6 +106,7 @@ translate-fix *paths:
 translate-check *paths:
     uv run src/translate-check.py @args
     exit $LASTEXITCODE
+alias tc := translate-check
 
 [group('run/translate')]
 [doc('Add warnings to translations')]
@@ -108,6 +116,7 @@ translate-check *paths:
 translate-warn *paths:
     uv run src/translate-warn.py @args
     exit $LASTEXITCODE
+alias tw := translate-warn
 
 [group('run/translate')]
 [doc('Write translations without SDH')]
@@ -117,6 +126,7 @@ translate-warn *paths:
 translate-remove-sdh *paths:
     uv run src/translate-remove-sdh.py @args
     exit $LASTEXITCODE
+alias tr := translate-remove-sdh
 
 [group('llm')]
 [doc('Start OCR llama server')]
@@ -128,6 +138,7 @@ llama-ocr:
         --mmproj D:/AI/lmstudio-community/gemma-4-12B-it-QAT-GGUF/mmproj-gemma-4-12B-it-QAT-BF16.gguf \
         --device CUDA0 --n-gpu-layers all --fit off --flash-attn on --jinja --reasoning-budget 0 \
         --ctx-size 32768 --parallel 8 --top-p 0.95 --top-k 64 --port 9931
+alias lo := llama-ocr
 
 [group('llm')]
 [doc('Start translation llama server')]
@@ -138,6 +149,7 @@ llama-translate:
         --model D:/AI/lmstudio-community/gemma-4-26B-A4B-it-QAT-GGUF/gemma-4-26B-A4B-it-QAT-Q4_0.gguf \
         --device CUDA0 --n-gpu-layers all --fit off --flash-attn on --jinja --reasoning-budget 0 --no-mmproj \
         --ctx-size 16384 --parallel 1 --top-p 0.95 --top-k 64 --port 9931
+alias lt := llama-translate
 
 [group('test')]
 [doc('Run unit tests')]
@@ -212,6 +224,7 @@ reset-identifier-pt *paths:
 apply-fixes fixes *options:
     uv run tools/apply-fixes.py @args
     exit $LASTEXITCODE
+alias af := apply-fixes
 
 [group('data/fix')]
 [doc('Add right words to translate-check')]
@@ -392,6 +405,7 @@ add-fix-words +triples:
 check-subs *paths:
     uv run tools/check-subs.py @args
     exit $LASTEXITCODE
+alias cs := check-subs
 
 [group('debug')]
 [doc('Collect English subtitle statistics')]
@@ -401,6 +415,7 @@ check-subs *paths:
 analyse-subs *paths:
     uv run tools/analyse-subs.py @args
     exit $LASTEXITCODE
+alias as := analyse-subs
 
 [group('debug')]
 [doc('Print system prompt and first chunk of each English subtitle')]
