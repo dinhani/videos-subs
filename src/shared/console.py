@@ -43,6 +43,7 @@ class Action(Enum):
     TRANSLATE = ("translate", Color.GREEN)
     FIX = ("fix", Color.GREEN)
     WARN = ("warn", Color.GREEN)
+    CONVERT = ("convert", Color.GREEN)
     ADD = ("add", Color.GREEN)
     SCORE = ("score", Color.GREEN)
     COUNT = ("count", Color.GREEN)

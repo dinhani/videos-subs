@@ -25,7 +25,7 @@ Use these terms, and only these, in code, logs, docs and conversation. Do not ro
 - **image subtitle**: a `.sup` (PGS, Blu-ray) or `.mks` (VobSub, DVD) file: subtitles stored as pictures, which need OCR to become a text subtitle.
 - **entry**: one subtitle on screen, with a start and an end time; one numbered block in a `.srt`. `SubtitleEntry` is an entry of an image subtitle.
 - **language code**: the ISO 639-3 code that identify-text and identify-ocr put in a file name (`eng`, `por`, ...), plus `pob` for Brazilian Portuguese and `und` for undetected.
-- **kind**: base or SDH (subtitles for the deaf and hard of hearing, which describe sounds). identify-text and identify-ocr put `sdh` after the language code of an SDH subtitle: `<name>.eng.sdh.srt`. The translation of an SDH subtitle keeps the marker: `<name>.pob.sdh.translated.srt`. In this file, `.eng.srt`, `.eng.sup` and `.pob.translated.srt` also stand for `.eng.sdh.srt`, `.eng.sdh.sup` and `.pob.sdh.translated.srt`, and `.pob.translated.srt` also for `.pob.claude.translated.srt`.
+- **kind**: base or SDH (subtitles for the deaf and hard of hearing, which describe sounds). identify-text and identify-ocr put `sdh` after the language code of an SDH subtitle: `<name>.eng.sdh.srt`. The translation of an SDH subtitle keeps the marker: `<name>.pob.sdh.translated.srt`. convert-sdh-translations writes a copy of an SDH translation without descriptions and speaker labels, with the marker `nosdh`: `<name>.pob.nosdh.translated.srt`. In this file, `.eng.srt`, `.eng.sup` and `.pob.translated.srt` also stand for `.eng.sdh.srt`, `.eng.sdh.sup` and `.pob.sdh.translated.srt`, and `.pob.translated.srt` also for `.pob.claude.translated.srt`.
 - **description**: text in `[...]` or `(...)` that describes a sound or names who speaks, such as `[GRUNTS]` or `(Avi)`; most of them are in SDH subtitles.
 - **trace**: the JSON record in `_traces` of every LLM request and reply for one OCR or translation.
 - **issue**: one problem a check step flags in an entry, with a kind (`wrong order`, `untranslated`, ...) and a weight.
@@ -53,6 +53,7 @@ Z:/midias/filmes/<movie>/                 (series use the same layout under Z:/m
   <video>.mkv
   <video>.embed.2.pob.translated.srt      translation output
   <video>.embed.2.pob.claude.translated.srt   translation output of Claude
+  <video>.embed.2.pob.nosdh.translated.srt    SDH translation without SDH, written by convert-sdh-translations
   _subs/<video>.embed.2.eng.srt           text subtitle, extracted and identified
   _subs/<video>.embed.3.eng.sup           image subtitle, extracted and identified
   _subs/<video>.embed.3.eng.srt           text subtitle made from that image subtitle by ocr
@@ -79,10 +80,11 @@ The virtual environment lives outside the project, under the local data director
 
 ## Code layout
 
-All code is in `src`: the pipeline scripts, `check-subs.py`, `analyse-subs.py`, `shared` and `fix-tools`. The data lists are in `data`, the tests in `tests`.
+All code is in `src`: the pipeline scripts, `check-subs.py`, `analyse-subs.py`, `convert-sdh-translations.py`, `shared` and `fix-tools`. The data lists are in `data`, the tests in `tests`.
 
 - `shared/`: code used by more than one script, one module per subject. Use it instead of writing another version: `files.py` (`SubtitleFile`, the names of a subtitle and its related files), `subtitles.py` (language codes, kinds, tags, markers), `image_subtitles.py`, `languages.py`, `alignment.py` (`AlignedSubtitle`, the timing match of two subtitles), `movies.py` (`MovieInfo`, from the `.nfo`), `translation_rules.py` (the translation rules of the translate prompt: edit them there, never in the prompt), `descriptions.py`, `data_lists.py` (`DataList`, the one reader and writer of the lists in `data`), `reports.py`, `console.py` (`Action`, the one list of log verbs; `Batch`), `llm.py` (the llama server, `JsonReply` and traces).
 - `fix-tools/`: the tools of the app-fix-ocr and app-fix-translate skills, run through the `data/fix` recipes. `data/fix` holds only recipes a skill uses; a tool no skill mentions is removed.
+- `convert-sdh-translations.py`: not a pipeline step; it writes a copy of each SDH translation without descriptions and uppercase speaker labels, keeping song lyrics and the warnings other than SDH.
 - `check-subs.py`: not a pipeline step; it only reads, and reports the files of one track that do not match each other.
 - `analyse-subs.py`: not a pipeline step; it only reads the English text subtitles and writes one report file per subject to `data/stats`, which is not committed, with what repeats across titles in the dialogue and the descriptions, and what the description tables do not cover: input for new fixed rules and for the translation prompt.
 - Each script has, in order: constants, its argument parser in `create_parser()`, its own types, its functions, then the execution loop. The check scripts put their rules between the parser and the types, and fix-translations its fixes.

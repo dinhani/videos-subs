@@ -11,13 +11,11 @@ import srt
 from shared.console import Action, Batch
 from shared.files import TRANSLATION_FORMATS, Backups, find_subtitles, parse_srt, write_text_replacing
 from shared.llm import Trace
-from shared.subtitles import LANGUAGE_TRANSLATION
+from shared.subtitles import LANGUAGE_TRANSLATION, WARNING_PROBLEM, WARNING_SDH
 
 # ------------------------------------------------------------------------------
 # Constants
 # ------------------------------------------------------------------------------
-WARNING_SDH = "[Legenda SDH: descreve sons, músicas e quem fala.]"
-WARNING_PROBLEM = "[Legenda traduzida automaticamente. Alguns trechos podem estar errados ou em inglês.]"
 WARNING_DURATION = timedelta(seconds=5)
 
 # ------------------------------------------------------------------------------

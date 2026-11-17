@@ -109,6 +109,15 @@ warn *paths:
     uv run src/9-warn-subs.py @args
     exit $LASTEXITCODE
 
+[group('run')]
+[doc('Write translations without SDH')]
+[script]
+[extension('.ps1')]
+[positional-arguments]
+convert-sdh *paths:
+    uv run src/convert-sdh-translations.py @args
+    exit $LASTEXITCODE
+
 [group('llm')]
 [doc('Start OCR llama server')]
 [env('GGML_CUDA_PDL', '1')]

@@ -17,6 +17,9 @@ LANGUAGE_UNDETECTED = "und"
 
 OCR_FAILED_TEXT = "[OCR failed]"
 
+WARNING_SDH = "[Legenda SDH: descreve sons, músicas e quem fala.]"
+WARNING_PROBLEM = "[Legenda traduzida automaticamente. Alguns trechos podem estar errados ou em inglês.]"
+
 SOUND_DESCRIPTION = re.compile(r"\[([^\]]+)\]|\(([^)]+)\)")
 
 SDH_ENTRIES_DESCRIBED_MIN = 0.05
