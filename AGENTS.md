@@ -25,7 +25,7 @@ Use these terms, and only these, in code, logs, docs and conversation. Do not ro
 - **image subtitle**: a `.sup` (PGS, Blu-ray) or `.mks` (VobSub, DVD) file: subtitles stored as pictures, which need OCR to become a text subtitle.
 - **entry**: one subtitle on screen, with a start and an end time; one numbered block in a `.srt`. `SubtitleEntry` is an entry of an image subtitle.
 - **language code**: the ISO 639-3 code that identify-text and identify-ocr put in a file name (`eng`, `por`, ...), plus `pob` for Brazilian Portuguese and `und` for undetected.
-- **kind**: base or SDH (subtitles for the deaf and hard of hearing, which describe sounds). identify-text and identify-ocr put `sdh` after the language code of an SDH subtitle: `<name>.eng.sdh.srt`. The translation of an SDH subtitle keeps the marker: `<name>.pob.sdh.translated.srt`. convert-sdh-translations writes a copy of an SDH translation without descriptions and speaker labels, with the marker `nosdh`: `<name>.pob.nosdh.translated.srt`. In this file, `.eng.srt`, `.eng.sup` and `.pob.translated.srt` also stand for `.eng.sdh.srt`, `.eng.sdh.sup` and `.pob.sdh.translated.srt`, and `.pob.translated.srt` also for `.pob.translated.claude.srt`.
+- **kind**: base or SDH (subtitles for the deaf and hard of hearing, which describe sounds). identify-text and identify-ocr put `sdh` after the language code of an SDH subtitle: `<name>.eng.sdh.srt`. The translation of an SDH subtitle keeps the marker: `<name>.pob.sdh.translated.srt`. convert-sdh writes a copy of an SDH translation without descriptions and speaker labels, with the marker `nosdh`: `<name>.pob.nosdh.translated.srt`. In this file, `.eng.srt`, `.eng.sup` and `.pob.translated.srt` also stand for `.eng.sdh.srt`, `.eng.sdh.sup` and `.pob.sdh.translated.srt`, and `.pob.translated.srt` also for `.pob.translated.claude.srt`.
 - **description**: text in `[...]` or `(...)` that describes a sound or names who speaks, such as `[GRUNTS]` or `(Avi)`; most of them are in SDH subtitles.
 - **trace**: the JSON record in `_traces` of every LLM request and reply for one OCR or translation.
 - **issue**: one problem a check step flags in an entry, with a kind (`wrong order`, `untranslated`, ...) and a weight.
@@ -37,18 +37,18 @@ Use these terms, and only these, in code, logs, docs and conversation. Do not ro
 The steps are in `src`, grouped below by subject, and each runs through the recipe in parentheses. Run the subjects in this order; each step skips files it already processed, so every step can be run again safely. Read [docs/PIPELINE.md](docs/PIPELINE.md) before changing a step, and [docs/RULES.md](docs/RULES.md) before changing a check rule. Read [docs/FAILURES.md](docs/FAILURES.md) before proposing an improvement, and add to it every approach that is tried and fails.
 
 - extract:
-  - `extract-subs.py` (extract): extracts the tracks of each video into `_subs`, as text subtitles and image subtitles.
-  - `identify-text-subs.py` (identify-text): puts the language code and kind in the name of each text subtitle.
-  - `identify-ocr-subs.py` (identify-ocr): puts the language code and kind in the name of each image subtitle, from a Tesseract reading.
+  - `extract-tracks.py` (extract): extracts the tracks of each video into `_subs`, as text subtitles and image subtitles.
+  - `extract-identify-text.py` (identify-text): puts the language code and kind in the name of each text subtitle.
+  - `extract-identify-images.py` (identify-ocr): puts the language code and kind in the name of each image subtitle, from a Tesseract reading.
 - ocr:
-  - `ocr-subs.py` (ocr): transcribes the English and second-language image subtitles into text subtitles with Gemma vision.
-  - `check-ocr-subs.py` (check-ocr): checks each OCR output against its image subtitle and writes a report.
+  - `ocr-transcribe.py` (ocr): transcribes the English and second-language image subtitles into text subtitles with Gemma vision.
+  - `ocr-check.py` (check-ocr): checks each OCR output against its image subtitle and writes a report.
 - translate: a translation is made by translate with Gemma, or by Claude with the app-translate skill.
-  - `translate-subs.py` (translate): translates each `.eng.srt`, with a second language when the video has one, into `<name>.pob.translated.srt` in the movie folder.
-  - `fix-translations.py` (fix-translations): applies the mechanical fixes to each translation, except Claude translations.
-  - `check-translations.py` (check-translate): checks each translation against its English source and writes a report.
-  - `warn-subs.py` (warn): adds warning entries at the start of each translation.
-  - `convert-sdh-translations.py` (convert-sdh): writes a copy of each SDH translation without descriptions and uppercase speaker labels.
+  - `translate-gemma.py` (translate): translates each `.eng.srt`, with a second language when the video has one, into `<name>.pob.translated.srt` in the movie folder.
+  - `translate-fix.py` (fix-translations): applies the mechanical fixes to each translation, except Claude translations.
+  - `translate-check.py` (check-translate): checks each translation against its English source and writes a report.
+  - `translate-warn.py` (warn): adds warning entries at the start of each translation.
+  - `translate-remove-sdh.py` (convert-sdh): writes a copy of each SDH translation without descriptions and uppercase speaker labels.
 
 ## Media layout
 
@@ -57,7 +57,7 @@ Z:/midias/filmes/<movie>/                 (series use the same layout under Z:/m
   <video>.mkv
   <video>.embed.2.pob.translated.srt      translation output
   <video>.embed.2.pob.translated.claude.srt   translation output of Claude
-  <video>.embed.2.pob.nosdh.translated.srt    SDH translation without SDH, written by convert-sdh-translations
+  <video>.embed.2.pob.nosdh.translated.srt    SDH translation without SDH, written by convert-sdh
   _subs/<video>.embed.2.eng.srt           text subtitle, extracted and identified
   _subs/<video>.embed.3.eng.sup           image subtitle, extracted and identified
   _subs/<video>.embed.3.eng.srt           text subtitle made from that image subtitle by ocr

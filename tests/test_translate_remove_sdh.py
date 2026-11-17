@@ -2,7 +2,7 @@ import importlib
 
 import pytest
 
-convert_sdh_translations = importlib.import_module("convert-sdh-translations")
+translate_remove_sdh = importlib.import_module("translate-remove-sdh")
 
 
 @pytest.mark.parametrize(("sdh", "converted"), [
@@ -26,4 +26,4 @@ convert_sdh_translations = importlib.import_module("convert-sdh-translations")
     ("♪ Row, row, row your boat ♪", "♪ Row, row, row your boat ♪"),
 ])
 def test_remove_sdh(sdh: str, converted: str) -> None:
-    assert convert_sdh_translations.remove_sdh(sdh) == converted
+    assert translate_remove_sdh.remove_sdh(sdh) == converted

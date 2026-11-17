@@ -8,10 +8,10 @@ import srt
 from shared.data_lists import DataList, DataListFormat
 from shared.descriptions import MovieNames
 
-fix_translations = importlib.import_module("fix-translations")
-TranslationEntry = fix_translations.TranslationEntry
-TranslationFix = fix_translations.TranslationFix
-WordsFix = fix_translations.WordsFix
+translate_fix = importlib.import_module("translate-fix")
+TranslationEntry = translate_fix.TranslationEntry
+TranslationFix = translate_fix.TranslationFix
+WordsFix = translate_fix.WordsFix
 
 
 def entry(english: str, translated: str) -> TranslationEntry:
@@ -26,20 +26,20 @@ def fix(fix: TranslationFix, english: str, translated: str, names: frozenset[str
 
 
 def fix_all(english: str, translated: str, names: frozenset[str] = frozenset()) -> str:
-    translation, _ = entry(english, translated).apply_fixes(fix_translations.FIXES, MovieNames(names_known=names, dialogue=()))
+    translation, _ = entry(english, translated).apply_fixes(translate_fix.FIXES, MovieNames(names_known=names, dialogue=()))
     return "\n".join(translation.target_lines)
 
 
-TAGS = fix_translations.TagsFix(enabled=True)
-LEFTOVERS = fix_translations.LeftoversFix(enabled=True)
-BRACKETS = fix_translations.BracketsFix(enabled=True)
-QUOTES = fix_translations.QuotesFix(enabled=True)
-DASHES = fix_translations.DashesFix(enabled=True)
-SYMBOLS = fix_translations.SymbolsFix(enabled=True)
-DESCRIPTIONS = fix_translations.DescriptionsFix(enabled=True, sounds=fix_translations.FIX_SOUND_LISTS, subjects=fix_translations.FIX_SUBJECTS, verbs=fix_translations.FIX_VERBS, music_moods=fix_translations.FIX_MUSIC_MOODS, voice_moods=fix_translations.FIX_VOICE_MOODS, languages=fix_translations.FIX_LANGUAGES, channels=fix_translations.FIX_CHANNELS)
-KEPT_WORDS = fix_translations.KeptWordsFix(enabled=True, words=(fix_translations.FIX_INTERJECTIONS, fix_translations.FIX_RANKS, fix_translations.FIX_ADDRESSES), english_case=fix_translations.EnglishCase.ANY)
-KEPT_UNITS = fix_translations.KeptWordsFix(enabled=True, words=(fix_translations.FIX_UNITS,), english_case=fix_translations.EnglishCase.LOWERCASE)
-EXPRESSIONS = fix_translations.ExpressionsFix(enabled=True, expressions=fix_translations.FIX_EXPRESSIONS)
+TAGS = translate_fix.TagsFix(enabled=True)
+LEFTOVERS = translate_fix.LeftoversFix(enabled=True)
+BRACKETS = translate_fix.BracketsFix(enabled=True)
+QUOTES = translate_fix.QuotesFix(enabled=True)
+DASHES = translate_fix.DashesFix(enabled=True)
+SYMBOLS = translate_fix.SymbolsFix(enabled=True)
+DESCRIPTIONS = translate_fix.DescriptionsFix(enabled=True, sounds=translate_fix.FIX_SOUND_LISTS, subjects=translate_fix.FIX_SUBJECTS, verbs=translate_fix.FIX_VERBS, music_moods=translate_fix.FIX_MUSIC_MOODS, voice_moods=translate_fix.FIX_VOICE_MOODS, languages=translate_fix.FIX_LANGUAGES, channels=translate_fix.FIX_CHANNELS)
+KEPT_WORDS = translate_fix.KeptWordsFix(enabled=True, words=(translate_fix.FIX_INTERJECTIONS, translate_fix.FIX_RANKS, translate_fix.FIX_ADDRESSES), english_case=translate_fix.EnglishCase.ANY)
+KEPT_UNITS = translate_fix.KeptWordsFix(enabled=True, words=(translate_fix.FIX_UNITS,), english_case=translate_fix.EnglishCase.LOWERCASE)
+EXPRESSIONS = translate_fix.ExpressionsFix(enabled=True, expressions=translate_fix.FIX_EXPRESSIONS)
 
 
 @pytest.mark.parametrize(("english", "translated", "expected"), [
@@ -182,7 +182,7 @@ def test_expressions(english: str, translated: str, expected: str) -> None:
     assert fix(EXPRESSIONS, english, translated) == expected
 
 
-PORTUGAL = WordsFix(enabled=True, words=fix_translations.FIX_PORTUGAL)
+PORTUGAL = WordsFix(enabled=True, words=translate_fix.FIX_PORTUGAL)
 
 
 @pytest.mark.parametrize(("english", "translated", "expected"), [

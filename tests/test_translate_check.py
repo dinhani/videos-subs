@@ -5,19 +5,19 @@ from pathlib import Path
 import pytest
 import srt
 
-check_translations = importlib.import_module("check-translations")
-TranslationCheck = check_translations.TranslationCheck
+translate_check = importlib.import_module("translate-check")
+TranslationCheck = translate_check.TranslationCheck
 
 
 def check(english: str, translated: str) -> TranslationCheck:
     def subtitle(content: str) -> srt.Subtitle:
         return srt.Subtitle(index=1, start=timedelta(0), end=timedelta(seconds=1), content=content)
 
-    entry = check_translations.TranslationEntry.from_entries(subtitle(english), subtitle(translated))
+    entry = translate_check.TranslationEntry.from_entries(subtitle(english), subtitle(translated))
     return TranslationCheck(subtitle=Path("movie.pob.translated.srt"), entries=[entry], problems_accepted={}, languagetool_server="")
 
 
-BROKEN_LINE = check_translations.BrokenLineRule(enabled=True)
+BROKEN_LINE = translate_check.BrokenLineRule(enabled=True)
 
 
 @pytest.mark.parametrize(("english", "translated", "flagged"), [
