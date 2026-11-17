@@ -1,0 +1,238 @@
+set windows-shell := ["pwsh.exe", "-NoLogo", "-NoProfile", "-Command"]
+set script-interpreter := ["pwsh.exe", "-NoLogo", "-NoProfile"]
+
+export UV_PROJECT_ENVIRONMENT := data_local_directory() / "_dev" / "uv" / "envs" / "videos-subs"
+export UV_FROZEN := "1"
+export PYTHONPATH := source_directory() / ".." / "src"
+
+[group('project')]
+[doc('List recipes')]
+default:
+    @just --justfile '{{source_file()}}' --list --unsorted
+
+[group('data')]
+[doc('Delete OCR reports')]
+[confirm('Delete every OCR report in _checks under the given paths, or under Z:/midias/filmes and Z:/midias/series without paths? (y/N)')]
+[script]
+[extension('.ps1')]
+[positional-arguments]
+reset-checks-ocr *paths:
+    $folders = if ($args) { $args } else { 'Z:/midias/filmes', 'Z:/midias/series' }
+    Get-ChildItem -LiteralPath $folders -File -Recurse -Filter '*.ocr.txt' | Where-Object { $_.Directory.Name -eq '_checks' } | ForEach-Object {
+        Remove-Item -LiteralPath $_.FullName
+        Write-Output $_.Name
+    }
+
+[group('data')]
+[doc('Delete translation reports')]
+[confirm('Delete every translation report in _checks under the given paths, or under Z:/midias/filmes and Z:/midias/series without paths? (y/N)')]
+[script]
+[extension('.ps1')]
+[positional-arguments]
+reset-checks-translate *paths:
+    $folders = if ($args) { $args } else { 'Z:/midias/filmes', 'Z:/midias/series' }
+    Get-ChildItem -LiteralPath $folders -File -Recurse -Filter '*.translated.txt' | Where-Object { $_.Directory.Name -eq '_checks' } | ForEach-Object {
+        Remove-Item -LiteralPath $_.FullName
+        Write-Output $_.Name
+    }
+
+[group('data')]
+[doc('Remove English language codes from subtitles')]
+[confirm('Remove the eng and eng.sdh codes from every subtitle in _subs and every OCR trace in _traces under the given paths, or under Z:/midias/filmes and Z:/midias/series without paths? (y/N)')]
+[script]
+[extension('.ps1')]
+[positional-arguments]
+reset-identifier-en *paths:
+    $folders = if ($args) { $args } else { 'Z:/midias/filmes', 'Z:/midias/series' }
+    $patterns = @{ '_subs' = '\.eng(\.sdh)?(\.(srt|sup|mks))$'; '_traces' = '\.eng(\.sdh)?(\.ocr\.json)$' }
+    Get-ChildItem -LiteralPath $folders -File -Recurse | Where-Object { $patterns.ContainsKey($_.Directory.Name) -and $_.Name -match $patterns[$_.Directory.Name] } | ForEach-Object {
+        $name = $_.Name -replace $patterns[$_.Directory.Name], '$2'
+        Rename-Item -LiteralPath $_.FullName -NewName $name
+        Write-Output $name
+    }
+
+[group('data')]
+[doc('Remove Portuguese language codes from subtitles')]
+[confirm('Remove the por, por.sdh, pob and pob.sdh codes from every subtitle in _subs and every OCR trace in _traces under the given paths, or under Z:/midias/filmes and Z:/midias/series without paths? (y/N)')]
+[script]
+[extension('.ps1')]
+[positional-arguments]
+reset-identifier-pt *paths:
+    $folders = if ($args) { $args } else { 'Z:/midias/filmes', 'Z:/midias/series' }
+    $patterns = @{ '_subs' = '\.(por|pob)(\.sdh)?(\.(srt|sup|mks))$'; '_traces' = '\.(por|pob)(\.sdh)?(\.ocr\.json)$' }
+    Get-ChildItem -LiteralPath $folders -File -Recurse | Where-Object { $patterns.ContainsKey($_.Directory.Name) -and $_.Name -match $patterns[$_.Directory.Name] } | ForEach-Object {
+        $name = $_.Name -replace $patterns[$_.Directory.Name], '$3'
+        Rename-Item -LiteralPath $_.FullName -NewName $name
+        Write-Output $name
+    }
+
+[group('data/lists')]
+[doc('Add right words to translate-check')]
+[script]
+[extension('.ps1')]
+[positional-arguments]
+add-check-words +words:
+    uv run add-to-dictionary.py check-words @args
+    exit $LASTEXITCODE
+
+[group('data/lists')]
+[doc('Add right expressions to translate-check')]
+[script]
+[extension('.ps1')]
+[positional-arguments]
+add-check-expressions +expressions:
+    uv run add-to-dictionary.py check-expressions @args
+    exit $LASTEXITCODE
+
+[group('data/lists')]
+[doc('Add description translations to translate-fix')]
+[script]
+[extension('.ps1')]
+[positional-arguments]
+add-fix-sounds +pairs:
+    uv run add-to-dictionary.py fix-sounds @args
+    exit $LASTEXITCODE
+
+[group('data/lists')]
+[doc('Add music descriptions to translate-fix')]
+[script]
+[extension('.ps1')]
+[positional-arguments]
+add-fix-music +pairs:
+    uv run add-to-dictionary.py fix-music @args
+    exit $LASTEXITCODE
+
+[group('data/lists')]
+[doc('Add language descriptions to translate-fix')]
+[script]
+[extension('.ps1')]
+[positional-arguments]
+add-fix-languages +pairs:
+    uv run add-to-dictionary.py fix-languages @args
+    exit $LASTEXITCODE
+
+[group('data/lists')]
+[doc('Add channel descriptions to translate-fix')]
+[script]
+[extension('.ps1')]
+[positional-arguments]
+add-fix-channels +pairs:
+    uv run add-to-dictionary.py fix-channels @args
+    exit $LASTEXITCODE
+
+[group('data/lists')]
+[doc('Add object sounds to translate-fix')]
+[script]
+[extension('.ps1')]
+[positional-arguments]
+add-fix-objects +pairs:
+    uv run add-to-dictionary.py fix-objects @args
+    exit $LASTEXITCODE
+
+[group('data/lists')]
+[doc('Add description manners to translate-fix')]
+[script]
+[extension('.ps1')]
+[positional-arguments]
+add-fix-manners +pairs:
+    uv run add-to-dictionary.py fix-manners @args
+    exit $LASTEXITCODE
+
+[group('data/lists')]
+[doc('Add music moods to translate-fix')]
+[script]
+[extension('.ps1')]
+[positional-arguments]
+add-fix-music-moods +pairs:
+    uv run add-to-dictionary.py fix-music-moods @args
+    exit $LASTEXITCODE
+
+[group('data/lists')]
+[doc('Add voice moods to translate-fix')]
+[script]
+[extension('.ps1')]
+[positional-arguments]
+add-fix-voice-moods +pairs:
+    uv run add-to-dictionary.py fix-voice-moods @args
+    exit $LASTEXITCODE
+
+[group('data/lists')]
+[doc('Add description subjects to translate-fix')]
+[script]
+[extension('.ps1')]
+[positional-arguments]
+add-fix-subjects +pairs:
+    uv run add-to-dictionary.py fix-subjects @args
+    exit $LASTEXITCODE
+
+[group('data/lists')]
+[doc('Add interjections to translate-fix')]
+[script]
+[extension('.ps1')]
+[positional-arguments]
+add-fix-interjections +pairs:
+    uv run add-to-dictionary.py fix-interjections @args
+    exit $LASTEXITCODE
+
+[group('data/lists')]
+[doc('Add ranks to translate-fix')]
+[script]
+[extension('.ps1')]
+[positional-arguments]
+add-fix-ranks +pairs:
+    uv run add-to-dictionary.py fix-ranks @args
+    exit $LASTEXITCODE
+
+[group('data/lists')]
+[doc('Add forms of address to translate-fix')]
+[script]
+[extension('.ps1')]
+[positional-arguments]
+add-fix-addresses +pairs:
+    uv run add-to-dictionary.py fix-addresses @args
+    exit $LASTEXITCODE
+
+[group('data/lists')]
+[doc('Add units to translate-fix')]
+[script]
+[extension('.ps1')]
+[positional-arguments]
+add-fix-units +pairs:
+    uv run add-to-dictionary.py fix-units @args
+    exit $LASTEXITCODE
+
+[group('data/lists')]
+[doc('Add wrong expression translations to translate-fix')]
+[script]
+[extension('.ps1')]
+[positional-arguments]
+add-fix-expressions +triples:
+    uv run add-to-dictionary.py fix-expressions @args
+    exit $LASTEXITCODE
+
+[group('data/lists')]
+[doc('Add Portugal words to translate-fix')]
+[script]
+[extension('.ps1')]
+[positional-arguments]
+add-fix-portugal +triples:
+    uv run add-to-dictionary.py fix-portugal @args
+    exit $LASTEXITCODE
+
+[group('data/lists')]
+[doc('Add bare verbs to translate-fix')]
+[script]
+[extension('.ps1')]
+[positional-arguments]
+add-fix-verbs +triples:
+    uv run add-to-dictionary.py fix-verbs @args
+    exit $LASTEXITCODE
+
+[group('data/lists')]
+[doc('Add misspellings to translate-fix')]
+[script]
+[extension('.ps1')]
+[positional-arguments]
+add-fix-words +triples:
+    uv run add-to-dictionary.py fix-words @args
+    exit $LASTEXITCODE
