@@ -1,4 +1,4 @@
-# Collects statistics of the English text subtitles: what repeats across titles in the dialogue and in the descriptions, and what the description tables of fix-translations do not cover. It shows what fix-translations could translate with fixed rules and what the translation prompt should cover.
+# Collects statistics of the English text subtitles: what repeats across titles in the dialogue and in the descriptions, and what the description tables of translate-fix do not cover. It shows what translate-fix could translate with fixed rules and what the translation prompt should cover.
 
 # ------------------------------------------------------------------------------
 # Libraries
@@ -63,7 +63,7 @@ DETAILS_SHOWN = 6
 # Args
 # ------------------------------------------------------------------------------
 def create_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Collects statistics of the English text subtitles, to find what fix-translations could translate with fixed rules and what the translation prompt should cover.")
+    parser = argparse.ArgumentParser(description="Collects statistics of the English text subtitles, to find what translate-fix could translate with fixed rules and what the translation prompt should cover.")
     parser.add_argument("--output", type=Path, default=OUTPUT_DEFAULT, help=f"folder to write the report files to (default: {OUTPUT_DEFAULT})")
     parser.add_argument("--titles-min", type=int, default=TITLES_MIN_DEFAULT, help=f"list only items found in at least this many movies or series (default: {TITLES_MIN_DEFAULT})")
     parser.add_argument("--rows", type=int, default=ROWS_DEFAULT, help=f"most items listed in each section (default: {ROWS_DEFAULT})")
@@ -79,7 +79,7 @@ class Section(Enum):
     INTERJECTIONS = ("interjections.txt", "Interjections of the dialogue", "", 0)
     ADDRESSES = ("addresses.txt", "Nouns that address a person, at the start or the end of a sentence", "", 0)
     LABELS = ("labels.txt", "Speaker labels", "", 0)
-    DESCRIPTIONS = ("descriptions.txt", "Descriptions the tables of fix-translations do not cover", "", 0)
+    DESCRIPTIONS = ("descriptions.txt", "Descriptions the tables of translate-fix do not cover", "", 0)
     PHRASES = ("description-phrases.txt", "Phrases after a subject, in description parts the tables do not cover, missing from the sound lists", "subjects", 0)
     SUBJECTS = ("description-subjects.txt", "Subjects before a verb, in description parts the tables do not translate with a subject, missing from fix-subjects", "phrases", 0)
     DESCRIPTION_VERBS = ("description-verbs.txt", "Verbs of description parts, by lemma", "tables", 0)

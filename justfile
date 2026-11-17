@@ -33,26 +33,26 @@ cloc:
 [script]
 [extension('.ps1')]
 [positional-arguments]
-extract *paths:
+extract-tracks *paths:
     uv run src/extract-tracks.py @args
     exit $LASTEXITCODE
 
-[group('run/extract')]
+[group('run/identify')]
 [doc('Identify text subtitle languages')]
 [script]
 [extension('.ps1')]
 [positional-arguments]
 identify-text *paths:
-    uv run src/extract-identify-text.py @args
+    uv run src/identify-text.py @args
     exit $LASTEXITCODE
 
-[group('run/extract')]
+[group('run/identify')]
 [doc('Identify image subtitle languages')]
 [script]
 [extension('.ps1')]
 [positional-arguments]
-identify-ocr *paths:
-    uv run src/extract-identify-images.py @args
+identify-images *paths:
+    uv run src/identify-images.py @args
     exit $LASTEXITCODE
 
 [group('run/ocr')]
@@ -60,7 +60,7 @@ identify-ocr *paths:
 [script]
 [extension('.ps1')]
 [positional-arguments]
-ocr *paths:
+ocr-transcribe *paths:
     uv run src/ocr-transcribe.py @args
     exit $LASTEXITCODE
 
@@ -69,7 +69,7 @@ ocr *paths:
 [script]
 [extension('.ps1')]
 [positional-arguments]
-check-ocr *paths:
+ocr-check *paths:
     uv run src/ocr-check.py @args
     exit $LASTEXITCODE
 
@@ -78,7 +78,7 @@ check-ocr *paths:
 [script]
 [extension('.ps1')]
 [positional-arguments]
-translate *paths:
+translate-gemma *paths:
     uv run src/translate-gemma.py @args
     exit $LASTEXITCODE
 
@@ -87,7 +87,7 @@ translate *paths:
 [script]
 [extension('.ps1')]
 [positional-arguments]
-fix-translations *paths:
+translate-fix *paths:
     uv run src/translate-fix.py @args
     exit $LASTEXITCODE
 
@@ -96,7 +96,7 @@ fix-translations *paths:
 [script]
 [extension('.ps1')]
 [positional-arguments]
-check-translate *paths:
+translate-check *paths:
     uv run src/translate-check.py @args
     exit $LASTEXITCODE
 
@@ -105,7 +105,7 @@ check-translate *paths:
 [script]
 [extension('.ps1')]
 [positional-arguments]
-warn *paths:
+translate-warn *paths:
     uv run src/translate-warn.py @args
     exit $LASTEXITCODE
 
@@ -114,7 +114,7 @@ warn *paths:
 [script]
 [extension('.ps1')]
 [positional-arguments]
-convert-sdh *paths:
+translate-remove-sdh *paths:
     uv run src/translate-remove-sdh.py @args
     exit $LASTEXITCODE
 
@@ -214,7 +214,7 @@ apply-fixes fixes *options:
     exit $LASTEXITCODE
 
 [group('data/fix')]
-[doc('Add right words to check-translate')]
+[doc('Add right words to translate-check')]
 [script]
 [extension('.ps1')]
 [positional-arguments]
@@ -223,7 +223,7 @@ add-check-words +words:
     exit $LASTEXITCODE
 
 [group('data/fix')]
-[doc('Add right expressions to check-translate')]
+[doc('Add right expressions to translate-check')]
 [script]
 [extension('.ps1')]
 [positional-arguments]
@@ -232,7 +232,7 @@ add-check-expressions +expressions:
     exit $LASTEXITCODE
 
 [group('data/fix')]
-[doc('Add description translations to fix-translations')]
+[doc('Add description translations to translate-fix')]
 [script]
 [extension('.ps1')]
 [positional-arguments]
@@ -241,7 +241,7 @@ add-fix-sounds +pairs:
     exit $LASTEXITCODE
 
 [group('data/fix')]
-[doc('Add music descriptions to fix-translations')]
+[doc('Add music descriptions to translate-fix')]
 [script]
 [extension('.ps1')]
 [positional-arguments]
@@ -250,7 +250,7 @@ add-fix-music +pairs:
     exit $LASTEXITCODE
 
 [group('data/fix')]
-[doc('Add language descriptions to fix-translations')]
+[doc('Add language descriptions to translate-fix')]
 [script]
 [extension('.ps1')]
 [positional-arguments]
@@ -259,7 +259,7 @@ add-fix-languages +pairs:
     exit $LASTEXITCODE
 
 [group('data/fix')]
-[doc('Add channel descriptions to fix-translations')]
+[doc('Add channel descriptions to translate-fix')]
 [script]
 [extension('.ps1')]
 [positional-arguments]
@@ -268,7 +268,7 @@ add-fix-channels +pairs:
     exit $LASTEXITCODE
 
 [group('data/fix')]
-[doc('Add object sounds to fix-translations')]
+[doc('Add object sounds to translate-fix')]
 [script]
 [extension('.ps1')]
 [positional-arguments]
@@ -277,7 +277,7 @@ add-fix-objects +pairs:
     exit $LASTEXITCODE
 
 [group('data/fix')]
-[doc('Add description manners to fix-translations')]
+[doc('Add description manners to translate-fix')]
 [script]
 [extension('.ps1')]
 [positional-arguments]
@@ -286,7 +286,7 @@ add-fix-manners +pairs:
     exit $LASTEXITCODE
 
 [group('data/fix')]
-[doc('Add music moods to fix-translations')]
+[doc('Add music moods to translate-fix')]
 [script]
 [extension('.ps1')]
 [positional-arguments]
@@ -295,7 +295,7 @@ add-fix-music-moods +pairs:
     exit $LASTEXITCODE
 
 [group('data/fix')]
-[doc('Add voice moods to fix-translations')]
+[doc('Add voice moods to translate-fix')]
 [script]
 [extension('.ps1')]
 [positional-arguments]
@@ -304,7 +304,7 @@ add-fix-voice-moods +pairs:
     exit $LASTEXITCODE
 
 [group('data/fix')]
-[doc('Add description subjects to fix-translations')]
+[doc('Add description subjects to translate-fix')]
 [script]
 [extension('.ps1')]
 [positional-arguments]
@@ -313,7 +313,7 @@ add-fix-subjects +pairs:
     exit $LASTEXITCODE
 
 [group('data/fix')]
-[doc('Add interjections to fix-translations')]
+[doc('Add interjections to translate-fix')]
 [script]
 [extension('.ps1')]
 [positional-arguments]
@@ -322,7 +322,7 @@ add-fix-interjections +pairs:
     exit $LASTEXITCODE
 
 [group('data/fix')]
-[doc('Add ranks to fix-translations')]
+[doc('Add ranks to translate-fix')]
 [script]
 [extension('.ps1')]
 [positional-arguments]
@@ -331,7 +331,7 @@ add-fix-ranks +pairs:
     exit $LASTEXITCODE
 
 [group('data/fix')]
-[doc('Add forms of address to fix-translations')]
+[doc('Add forms of address to translate-fix')]
 [script]
 [extension('.ps1')]
 [positional-arguments]
@@ -340,7 +340,7 @@ add-fix-addresses +pairs:
     exit $LASTEXITCODE
 
 [group('data/fix')]
-[doc('Add units to fix-translations')]
+[doc('Add units to translate-fix')]
 [script]
 [extension('.ps1')]
 [positional-arguments]
@@ -349,7 +349,7 @@ add-fix-units +pairs:
     exit $LASTEXITCODE
 
 [group('data/fix')]
-[doc('Add wrong expression translations to fix-translations')]
+[doc('Add wrong expression translations to translate-fix')]
 [script]
 [extension('.ps1')]
 [positional-arguments]
@@ -358,7 +358,7 @@ add-fix-expressions +triples:
     exit $LASTEXITCODE
 
 [group('data/fix')]
-[doc('Add Portugal words to fix-translations')]
+[doc('Add Portugal words to translate-fix')]
 [script]
 [extension('.ps1')]
 [positional-arguments]
@@ -367,7 +367,7 @@ add-fix-portugal +triples:
     exit $LASTEXITCODE
 
 [group('data/fix')]
-[doc('Add bare verbs to fix-translations')]
+[doc('Add bare verbs to translate-fix')]
 [script]
 [extension('.ps1')]
 [positional-arguments]
@@ -376,7 +376,7 @@ add-fix-verbs +triples:
     exit $LASTEXITCODE
 
 [group('data/fix')]
-[doc('Add misspellings to fix-translations')]
+[doc('Add misspellings to translate-fix')]
 [script]
 [extension('.ps1')]
 [positional-arguments]
@@ -389,7 +389,7 @@ add-fix-words +triples:
 [script]
 [extension('.ps1')]
 [positional-arguments]
-crosscheck *paths:
+check-subs *paths:
     uv run tools/check-subs.py @args
     exit $LASTEXITCODE
 
@@ -398,7 +398,7 @@ crosscheck *paths:
 [script]
 [extension('.ps1')]
 [positional-arguments]
-stats *paths:
+analyse-subs *paths:
     uv run tools/analyse-subs.py @args
     exit $LASTEXITCODE
 

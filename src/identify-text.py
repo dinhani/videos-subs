@@ -24,7 +24,7 @@ if __name__ == "__main__":
 
     with Batch() as batch:
         for sub in batch.walk(subs):
-            # skip subs already identified, and subs made by ocr, which identify-ocr names with their image subtitle
+            # skip subs already identified, and subs made by ocr-transcribe, which identify-images names with their image subtitle
             if sub.is_identified():
                 Action.EXISTS.log(f"{sub.describe_language()} {sub.name}")
                 continue

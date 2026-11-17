@@ -14,7 +14,7 @@ Gender errors were treated as the most important problem of the translations, an
 
 ### SDH as the target
 
-SDH subtitles are not watched; they are a benchmark and the last priority. The description errors of SDH translations are covered by fix-translations, and work aimed at them does not improve the subtitles that are watched.
+SDH subtitles are not watched; they are a benchmark and the last priority. The description errors of SDH translations are covered by translate-fix, and work aimed at them does not improve the subtitles that are watched.
 
 ## Translating
 
@@ -80,7 +80,7 @@ Table entries whose Portuguese depends on the scene were written wrong in some e
 
 ### Mechanical fixes for object sounds
 
-Object sounds, such as `engine humming` or `camera clicks`, have many right wordings, nouns as often as verbs: `ZUMBIDO DO MOTOR`, `BIP DE ALARME`, `CLIQUE DE CÂMERA`. Table entries for them replaced right translations far more often than wrong ones, and the wrong ones are misspellings and English words that check-translate already flags.
+Object sounds, such as `engine humming` or `camera clicks`, have many right wordings, nouns as often as verbs: `ZUMBIDO DO MOTOR`, `BIP DE ALARME`, `CLIQUE DE CÂMERA`. Table entries for them replaced right translations far more often than wrong ones, and the wrong ones are misspellings and English words that translate-check already flags.
 
 ### Human subtitles or a review at watch time
 
@@ -94,11 +94,11 @@ Tesseract reads image subtitles worse than Gemma. It is used only to read the fi
 
 ### The metadata of the video
 
-The language tags and flags of the tracks in a video are not trusted for anything. identify-text and identify-ocr detect the language and kind from the text.
+The language tags and flags of the tracks in a video are not trusted for anything. identify-text and identify-images detect the language and kind from the text.
 
 ### Images or a new OCR run to fix OCR errors
 
-Fixing an OCR error by looking at the image of the entry, or by running ocr again, costs too much: ocr takes hours. The fix skill acts on the text of the report.
+Fixing an OCR error by looking at the image of the entry, or by running ocr-transcribe again, costs too much: it takes hours. The fix skill acts on the text of the report.
 
 ## Checking
 

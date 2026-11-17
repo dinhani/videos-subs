@@ -1,4 +1,4 @@
-# Adds items judged right to the data lists that check-translate and fix-translations read, in lowercase and in alphabetical order: words and expressions that are right, and the pairs and triples that fix-translations writes for a description, a subject or a misspelled word. Skips the items already in the list.
+# Adds items judged right to the data lists that translate-check and translate-fix read, in lowercase and in alphabetical order: words and expressions that are right, and the pairs and triples that translate-fix writes for a description, a subject or a misspelled word. Skips the items already in the list.
 
 # ------------------------------------------------------------------------------
 # Libraries
@@ -12,7 +12,7 @@ from shared.data_lists import DATA_LISTS
 # Args
 # ------------------------------------------------------------------------------
 def create_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Adds items judged right to the data lists of check-translate and fix-translations.")
+    parser = argparse.ArgumentParser(description="Adds items judged right to the data lists of translate-check and translate-fix.")
     parser.add_argument("list", choices=[data_list.name for data_list in DATA_LISTS], help="the data list, by its file name in data")
     parser.add_argument("items", nargs="+", help="words, expressions as they are in the entry, or pairs as 'english = português' (fix-sounds, fix-verbs, fix-interjections, fix-ranks, fix-addresses, fix-units, fix-music, fix-objects, fix-manners, fix-music-moods, fix-voice-moods, fix-languages, fix-channels, fix-subjects, fix-interjections), or triples as 'english = misspelled = right' (fix-words) 'english = wrong expression = right expression' (fix-expressions) and 'english = word of Portugal = word of Brazil' (fix-portugal), where the English word must be in the English entry")
     return parser

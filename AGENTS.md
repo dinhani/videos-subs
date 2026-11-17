@@ -6,11 +6,11 @@ Personal scripts that extract the tracks of the videos in the media library, ide
 
 The only subtitle this project makes for viewers is the Brazilian Portuguese translation, `<name>.pob.translated.srt`, or `<name>.pob.translated.claude.srt` when Claude made it. Its source is an English text subtitle, either extracted from a text track or made by OCR from an image subtitle. Viewers who want English watch the original track inside the video, which the media server shows as it is; nobody watches an extracted or OCR text subtitle.
 
-So an OCR output is only input for translation: an English one is translated, and one in a second language is sent with the English for the model to read. Judge an OCR issue, a check-ocr rule or a fix by whether it changes the translation: wrong or missing text, lines in the wrong order, and markup that can reach the translated `.srt` matter; punctuation style that is faithful to the image, such as `....` for an ellipsis, does not.
+So an OCR output is only input for translation: an English one is translated, and one in a second language is sent with the English for the model to read. Judge an OCR issue, a ocr-check rule or a fix by whether it changes the translation: wrong or missing text, lines in the wrong order, and markup that can reach the translated `.srt` matter; punctuation style that is faithful to the image, such as `....` for an ellipsis, does not.
 
 Subtitles are written by people, and `♪` follows no fixed format: it may mark every line of a song, only some, or none. A rule judges a line by the `♪` on that line and does not infer it from other lines or entries.
 
-The English source is the source of truth for every fix. fix-translations changes an entry only when the change cannot be wrong: it never changes an entry that is already right, and never writes text that is right only in some contexts. Everything that needs judgment is left to check-translate and the app-fix-translate skill, which always run after it and read each flagged entry. So a mechanical fix, or an entry of its data lists, that can be wrong in some case is removed, even when it is right most of the time; a missed fix costs nothing, since the skill handles it, and a wrong fix reaches the viewer unflagged.
+The English source is the source of truth for every fix. translate-fix changes an entry only when the change cannot be wrong: it never changes an entry that is already right, and never writes text that is right only in some contexts. Everything that needs judgment is left to translate-check and the app-fix-translate skill, which always run after it and read each flagged entry. So a mechanical fix, or an entry of its data lists, that can be wrong in some case is removed, even when it is right most of the time; a missed fix costs nothing, since the skill handles it, and a wrong fix reaches the viewer unflagged.
 
 No kind of translation error gets special treatment, gender errors included: a wrong gender is one more error, weighed like the others by how often it appears in a sample of real translations.
 
@@ -24,31 +24,28 @@ Use these terms, and only these, in code, logs, docs and conversation. Do not ro
 - **text subtitle**: a `.srt` file.
 - **image subtitle**: a `.sup` (PGS, Blu-ray) or `.mks` (VobSub, DVD) file: subtitles stored as pictures, which need OCR to become a text subtitle.
 - **entry**: one subtitle on screen, with a start and an end time; one numbered block in a `.srt`. `SubtitleEntry` is an entry of an image subtitle.
-- **language code**: the ISO 639-3 code that identify-text and identify-ocr put in a file name (`eng`, `por`, ...), plus `pob` for Brazilian Portuguese and `und` for undetected.
-- **kind**: base or SDH (subtitles for the deaf and hard of hearing, which describe sounds). identify-text and identify-ocr put `sdh` after the language code of an SDH subtitle: `<name>.eng.sdh.srt`. The translation of an SDH subtitle keeps the marker: `<name>.pob.sdh.translated.srt`. convert-sdh writes a copy of an SDH translation without descriptions and speaker labels, with the marker `nosdh`: `<name>.pob.nosdh.translated.srt`. In this file, `.eng.srt`, `.eng.sup` and `.pob.translated.srt` also stand for `.eng.sdh.srt`, `.eng.sdh.sup` and `.pob.sdh.translated.srt`, and `.pob.translated.srt` also for `.pob.translated.claude.srt`.
+- **language code**: the ISO 639-3 code that identify-text and identify-images put in a file name (`eng`, `por`, ...), plus `pob` for Brazilian Portuguese and `und` for undetected.
+- **kind**: base or SDH (subtitles for the deaf and hard of hearing, which describe sounds). identify-text and identify-images put `sdh` after the language code of an SDH subtitle: `<name>.eng.sdh.srt`. The translation of an SDH subtitle keeps the marker: `<name>.pob.sdh.translated.srt`. translate-remove-sdh writes a copy of an SDH translation without descriptions and speaker labels, with the marker `nosdh`: `<name>.pob.nosdh.translated.srt`. In this file, `.eng.srt`, `.eng.sup` and `.pob.translated.srt` also stand for `.eng.sdh.srt`, `.eng.sdh.sup` and `.pob.sdh.translated.srt`, and `.pob.translated.srt` also for `.pob.translated.claude.srt`.
 - **description**: text in `[...]` or `(...)` that describes a sound or names who speaks, such as `[GRUNTS]` or `(Avi)`; most of them are in SDH subtitles.
 - **trace**: the JSON record in `_traces` of every LLM request and reply for one OCR or translation.
 - **issue**: one problem a check step flags in an entry, with a kind (`wrong order`, `untranslated`, ...) and a weight.
 - **report**: the text file in `_checks` with the issues of one OCR output or translation, and its score: weighted issues per 100 entries.
-- **second language**: a text subtitle of the same video in a language other than English, such as Spanish, that translate sends with the English so the model sees how people translated each entry.
+- **second language**: a text subtitle of the same video in a language other than English, such as Spanish, that translate-gemma sends with the English so the model sees how people translated each entry.
 
 ## Pipeline
 
-The steps are in `src`, grouped below by subject, and each runs through the recipe in parentheses. Run the subjects in this order; each step skips files it already processed, so every step can be run again safely. Read [docs/PIPELINE.md](docs/PIPELINE.md) before changing a step, and [docs/RULES.md](docs/RULES.md) before changing a check rule. Read [docs/FAILURES.md](docs/FAILURES.md) before proposing an improvement, and add to it every approach that is tried and fails.
+The steps are in `src`, named `<stage>-<action>.py`, and each runs through the recipe of the same name. A translation is made by translate-gemma, or by Claude with the app-translate skill; the steps after it run on both. Run the steps in this order; each step skips files it already processed, so every step can be run again safely. Read [docs/PIPELINE.md](docs/PIPELINE.md) before changing a step, and [docs/RULES.md](docs/RULES.md) before changing a check rule. Read [docs/FAILURES.md](docs/FAILURES.md) before proposing an improvement, and add to it every approach that is tried and fails.
 
-- extract:
-  - `extract-tracks.py` (extract): extracts the tracks of each video into `_subs`, as text subtitles and image subtitles.
-  - `extract-identify-text.py` (identify-text): puts the language code and kind in the name of each text subtitle.
-  - `extract-identify-images.py` (identify-ocr): puts the language code and kind in the name of each image subtitle, from a Tesseract reading.
-- ocr:
-  - `ocr-transcribe.py` (ocr): transcribes the English and second-language image subtitles into text subtitles with Gemma vision.
-  - `ocr-check.py` (check-ocr): checks each OCR output against its image subtitle and writes a report.
-- translate: a translation is made by translate with Gemma, or by Claude with the app-translate skill.
-  - `translate-gemma.py` (translate): translates each `.eng.srt`, with a second language when the video has one, into `<name>.pob.translated.srt` in the movie folder.
-  - `translate-fix.py` (fix-translations): applies the mechanical fixes to each translation, except Claude translations.
-  - `translate-check.py` (check-translate): checks each translation against its English source and writes a report.
-  - `translate-warn.py` (warn): adds warning entries at the start of each translation.
-  - `translate-remove-sdh.py` (convert-sdh): writes a copy of each SDH translation without descriptions and uppercase speaker labels.
+- `extract-tracks.py`: extracts the tracks of each video into `_subs`, as text subtitles and image subtitles.
+- `identify-text.py`: puts the language code and kind in the name of each text subtitle.
+- `identify-images.py`: puts the language code and kind in the name of each image subtitle, from a Tesseract reading.
+- `ocr-transcribe.py`: transcribes the English and second-language image subtitles into text subtitles with Gemma vision.
+- `ocr-check.py`: checks each OCR output against its image subtitle and writes a report.
+- `translate-gemma.py`: translates each `.eng.srt`, with a second language when the video has one, into `<name>.pob.translated.srt` in the movie folder.
+- `translate-fix.py`: applies the mechanical fixes to each translation, except Claude translations.
+- `translate-check.py`: checks each translation against its English source and writes a report.
+- `translate-warn.py`: adds warning entries at the start of each translation.
+- `translate-remove-sdh.py`: writes a copy of each SDH translation without descriptions and uppercase speaker labels.
 
 ## Media layout
 
@@ -57,10 +54,10 @@ Z:/midias/filmes/<movie>/                 (series use the same layout under Z:/m
   <video>.mkv
   <video>.embed.2.pob.translated.srt      translation output
   <video>.embed.2.pob.translated.claude.srt   translation output of Claude
-  <video>.embed.2.pob.nosdh.translated.srt    SDH translation without SDH, written by convert-sdh
+  <video>.embed.2.pob.nosdh.translated.srt    SDH translation without SDH, written by translate-remove-sdh
   _subs/<video>.embed.2.eng.srt           text subtitle, extracted and identified
   _subs/<video>.embed.3.eng.sup           image subtitle, extracted and identified
-  _subs/<video>.embed.3.eng.srt           text subtitle made from that image subtitle by ocr
+  _subs/<video>.embed.3.eng.srt           text subtitle made from that image subtitle by ocr-transcribe
   _traces/<video>.embed.2.pob.translated.json   translation trace
   _traces/<video>.embed.3.eng.ocr.json          OCR trace
   _checks/<video>.embed.2.pob.translated.txt    translation report (.pob.translated.claude.txt for a Claude translation)
@@ -70,15 +67,15 @@ Z:/midias/filmes/<movie>/                 (series use the same layout under Z:/m
 - `_subs` holds the extracted text subtitles and image subtitles, and the text subtitles made from image subtitles. They stay out of the movie folder because the media server already reads the tracks inside the video and would show them twice.
 - `_traces` holds one trace per OCR and per translation: every request, reply, retry and accepted problem. It is valid and current during a run. Traces are never deleted.
 - `_checks` holds one report per checked OCR output and translation.
-- `Z:/midias/_backups/<run>/` holds a copy of every file that fix-translations, warn and `just apply-fixes` overwrite, made before writing it, under its path from `Z:/midias`. The other steps write only new files. Each run has its own folder, named by its start time. Backups are never deleted.
+- `Z:/midias/_backups/<run>/` holds a copy of every file that translate-fix, translate-warn and `just apply-fixes` overwrite, made before writing it, under its path from `Z:/midias`. The other steps write only new files. Each run has its own folder, named by its start time. Backups are never deleted.
 
 ## Running
 
 Use the `justfile`; it is the source of truth for how to run things.
 
-ocr and translate need their llama server, `just llama-ocr` and `just llama-translate`. Both servers use port 9931, so run one at a time. The check steps need no llama server; check-translate starts its own LanguageTool server.
+ocr-transcribe and translate-gemma need their llama server, `just llama-ocr` and `just llama-translate`. Both servers use port 9931, so run one at a time. The check steps need no llama server; translate-check starts its own LanguageTool server.
 
-Without paths, a step processes both `Z:/midias/filmes` and `Z:/midias/series`. Every step also accepts files and folders. A folder is searched recursively, inside `_subs` folders except for videos and translations, and the step applies its filter, such as `.eng.srt` only for translate. A file passed by hand skips the filter, so translate accepts a text subtitle in any language.
+Without paths, a step processes both `Z:/midias/filmes` and `Z:/midias/series`. Every step also accepts files and folders. A folder is searched recursively, inside `_subs` folders except for videos and translations, and the step applies its filter, such as `.eng.srt` only for translate-gemma. A file passed by hand skips the filter, so translate-gemma accepts a text subtitle in any language.
 
 The virtual environment lives outside the project, under the local data directory. Running uv outside `just` creates a `.venv` in the project folder; go through `just`.
 
@@ -90,7 +87,7 @@ The pipeline scripts are in `src`, and the code they share in `src/shared`. The 
 - `tools/apply-fixes.py` and `tools/add-to-dictionary.py`: the tools of the app-fix-ocr and app-fix-translate skills, run through the `data/fix` recipes. `data/fix` holds only recipes a skill uses; a tool no skill mentions is removed.
 - `tools/check-subs.py`: it only reads, and reports the files of one track that do not match each other.
 - `tools/analyse-subs.py`: it only reads the English text subtitles and writes one report file per subject to `data/stats`, which is not committed, with what repeats across titles in the dialogue and the descriptions, and what the description tables do not cover: input for new fixed rules and for the translation prompt.
-- Each script has, in order: constants, its argument parser in `create_parser()`, its own types, its functions, then the execution loop. The check scripts put their rules between the parser and the types, and fix-translations its fixes.
+- Each script has, in order: constants, its argument parser in `create_parser()`, its own types, its functions, then the execution loop. The check scripts put their rules between the parser and the types, and translate-fix its fixes.
 - Every script follows the same per-file pattern: find its files with `find_subtitles`, loop with `batch.walk`, skip when already done, do the work inside `with batch.attempt(...)`, log through `Action`, and write output through a `.part` file that is then renamed.
 
 `bench` benchmarks translation models, with its own `justfile`, loaded as the `bench` module. Read [docs/BENCH.md](docs/BENCH.md) before changing the bench.
@@ -98,7 +95,7 @@ The pipeline scripts are in `src`, and the code they share in `src/shared`. The 
 ## Constraints
 
 - The media library is on a Synology NAS with HDDs. Any parallel NAS I/O is capped at 8 workers.
-- `just test` runs the unit tests in `tests` with pytest. They build entries in the test itself and read the real data lists, so a data list entry that breaks a rule fails a test; they never read the library. A test case is a rule the project depends on, such as an entry fix-translations must leave unchanged; tests are not written for coverage. Verify a change to a step also on a scratch copy of a few movie folders, never on the library: run the step before and after the change and compare the outputs file by file.
+- `just test` runs the unit tests in `tests` with pytest. They build entries in the test itself and read the real data lists, so a data list entry that breaks a rule fails a test; they never read the library. A test case is a rule the project depends on, such as an entry translate-fix must leave unchanged; tests are not written for coverage. Verify a change to a step also on a scratch copy of a few movie folders, never on the library: run the step before and after the change and compare the outputs file by file.
 
 ## Git
 

@@ -113,7 +113,7 @@ class LeftoversFix:
             quote = end["quote"] if end["quote"] and source_plain.endswith(end["quote"]) else ""
             lines[n] = (line[:end.start()] + quote).rstrip()
 
-        # an entry left with other quotes than the English entry keeps its leftovers, so check-translate still flags it
+        # an entry left with other quotes than the English entry keeps its leftovers, so translate-check still flags it
         if sum(line.count(quote) for line in lines for quote in QUOTES) != sum(line.count(quote) for line in entry.source_lines for quote in QUOTES):
             return entry.target_lines
         return tuple(lines)
@@ -445,7 +445,7 @@ class TranslationEntry:
         return any(not line.strip() for line in self.target_lines) or lines_without_words > sum(1 for line in self.source_lines if not LINE_WORDS.search(FORMATTING_TAGS.sub("", line))) or bool(numbers_added)
 
     def apply_fixes(self, fixes: tuple[TranslationFix, ...], movie_names: MovieNames) -> tuple["TranslationEntry", tuple[str, ...]]:
-        # a broken entry is left whole for check-translate; a fix that leaves a blank line is not applied
+        # a broken entry is left whole for translate-check; a fix that leaves a blank line is not applied
         if self.is_broken:
             return self, ()
         entry = self
@@ -482,7 +482,7 @@ class Translation:
         return cls(entries=parse_srt(file.path), sources_by_index={entry.index: entry for entry in parse_srt(source.path)}, movie_names=MovieNames.from_subs_folder(source.folder))
 
     def fix(self, fixes: tuple[TranslationFix, ...]) -> list[EntryChange]:
-        # fix every entry that has a source entry; a changed entry loses its marker, so check-translate judges it again
+        # fix every entry that has a source entry; a changed entry loses its marker, so translate-check judges it again
         changes: list[EntryChange] = []
         for position, entry in enumerate(self.entries):
             source = self.sources_by_index.get(entry.index)

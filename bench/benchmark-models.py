@@ -125,7 +125,7 @@ def main() -> None:
 
         case "report":
             console.print("COMET and chrF++: closeness to the reference translation, 0-100, higher is better.")
-            console.print("check: check-translate score, weighted issues per 100 entries, lower is better. time: translation time in minutes:seconds, lower is better.")
+            console.print("check: translate-check score, weighted issues per 100 entries, lower is better. time: translation time in minutes:seconds, lower is better.")
             console.print(f"Each value shows its difference from {BASELINE_RUN}, the model of the translate step: green is better, red is worse.")
             for source in SOURCES:
                 report = SourceReport.from_runs(source, RUNS, baseline=BASELINE_RUN)
