@@ -61,7 +61,7 @@ Translates every `.eng.srt` with Gemma 4 26B A4B, thinking disabled, into `<name
 
 ## 7. fix-translations
 
-Fixes every `.pob.translated.srt` where the fix is mechanical, by comparing each entry with its English source, and deletes the report of every translation it changes. Claude translations, `.pob.claude.translated.srt`, are not touched.
+Fixes every `.pob.translated.srt` where the fix is mechanical, by comparing each entry with its English source, and deletes the report of every translation it changes. Claude translations, `.pob.translated.claude.srt`, are not touched.
 
 fix-translations is deterministic and changes only what the English source decides; a second run changes nothing. Before writing, it shows each changed entry and asks, and backs up the translation. A changed entry loses its `ignore:` marker, so check-translate judges it again. An entry that looks broken, such as one with a blank line or a number its English entry does not have, is not changed at all, so check-translate still sees it whole.
 
@@ -94,7 +94,7 @@ The tables are written by hand: each phrase is translated once, with the verb in
 
 ## 8. check-translate
 
-Checks every translation, `.pob.translated.srt` and `.pob.claude.translated.srt`, against its English source and writes a report. Its rules are in [RULES.md](RULES.md), section 2.
+Checks every translation, `.pob.translated.srt` and `.pob.translated.claude.srt`, against its English source and writes a report. Its rules are in [RULES.md](RULES.md), section 2.
 
 check-translate is deterministic: word frequency, the pt_BR hunspell dictionary, a LanguageTool server, and comparisons with the English source. A rule is kept only when most of its flags on real translations are errors a viewer would see. A rule may skip a word or a flag only when the skip cannot hide an error; anything else goes to the data lists in `data`. Most grammar errors it finds are broken at a line break, since the model translates each line of an entry on its own. An entry **reads as** a language when most of its words are clearly more frequent in that language.
 
@@ -102,4 +102,4 @@ The main process starts one LanguageTool server, only when a file needs checking
 
 ## 9. warn
 
-Adds warning entries at the start of every translation, `.pob.translated.srt` and `.pob.claude.translated.srt`: one when it is SDH, and one when its trace records an entry accepted with a problem. Each warning is entry 0, so the other entries keep the numbers of the English source.
+Adds warning entries at the start of every translation, `.pob.translated.srt` and `.pob.translated.claude.srt`: one when it is SDH, and one when its trace records an entry accepted with a problem. Each warning is entry 0, so the other entries keep the numbers of the English source.

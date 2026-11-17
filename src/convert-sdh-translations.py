@@ -9,7 +9,7 @@ import re
 import srt
 
 from shared.console import Action, Batch
-from shared.files import SubtitleFile, find_files, parse_srt, write_text_replacing
+from shared.files import TRANSLATION_FORMATS, find_subtitles, parse_srt, write_text_replacing
 from shared.subtitles import FORMATTING_TAGS, LANGUAGE_TRANSLATION, WARNING_SDH, SubtitleKind
 
 # ------------------------------------------------------------------------------
@@ -18,7 +18,6 @@ from shared.subtitles import FORMATTING_TAGS, LANGUAGE_TRANSLATION, WARNING_SDH,
 NOSDH_MARKER = ".nosdh"
 SDH_NAME = f".{LANGUAGE_TRANSLATION}{SubtitleKind.SDH}."
 NOSDH_NAME = f".{LANGUAGE_TRANSLATION}{NOSDH_MARKER}."
-SDH_SUFFIXES = tuple(f"{SDH_NAME}{extension}" for extension in ("translated.srt", "claude.translated.srt", "translated.claude.srt"))
 
 TAG = r"(?:<[^>]+>|\{[^}]*\})"
 DESCRIPTION = re.compile(r"\[[^\[\]]*\]|\([^()]*\)")
@@ -66,7 +65,7 @@ def remove_sdh(text: str) -> str:
 # Execution
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
-    translations = [SubtitleFile.from_path(file) for file in find_files(create_parser(), extensions_file=SDH_SUFFIXES, extensions_folder=SDH_SUFFIXES)]
+    translations = [sub for sub in find_subtitles(create_parser(), formats=TRANSLATION_FORMATS, languages=(LANGUAGE_TRANSLATION,)) if sub.is_sdh()]
 
     with Batch() as batch:
         for translation in batch.walk(translations):

@@ -91,7 +91,7 @@ def move_replacing(source: Path, target: Path) -> None:
 
 
 class SubtitleFormat(Enum):
-    TRANSLATION_CLAUDE = (".claude.translated.srt", ".claude.translated.json", ".claude.translated.txt")
+    TRANSLATION_CLAUDE = (".translated.claude.srt", ".translated.claude.json", ".translated.claude.txt")
     TRANSLATION = (".translated.srt", ".translated.json", ".translated.txt")
     TEXT = (".srt", ".ocr.json", ".ocr.txt")
     PGS = (".sup", ".ocr.json", ".ocr.txt")
