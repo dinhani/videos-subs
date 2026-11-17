@@ -67,7 +67,7 @@ Z:/midias/filmes/<movie>/                 (series use the same layout under Z:/m
 - `_subs` holds the extracted text subtitles and image subtitles, and the text subtitles made from image subtitles. They stay out of the movie folder because the media server already reads the tracks inside the video and would show them twice.
 - `_traces` holds one trace per OCR and per translation: every request, reply, retry and accepted problem. It is valid and current during a run. Traces are never deleted.
 - `_checks` holds one report per checked OCR output and translation.
-- `Z:/midias/_backups/<run>/` holds a copy of every file that translate-fix, translate-warn and `just apply-fixes` overwrite, made before writing it, under its path from `Z:/midias`. The other steps write only new files. Each run has its own folder, named by its start time. Backups are never deleted.
+- `Z:/midias/_backups/<run>/` holds a copy of every file that translate-fix, translate-warn and `just tools apply-fixes` overwrite, made before writing it, under its path from `Z:/midias`. The other steps write only new files. Each run has its own folder, named by its start time. Backups are never deleted.
 
 ## Running
 
@@ -81,10 +81,10 @@ The virtual environment lives outside the project, under the local data director
 
 ## Code layout
 
-The pipeline scripts are in `src`, and the code they share in `src/shared`. The helper scripts, which are not pipeline steps, are in `tools`. The data lists are in `data`, the tests in `tests`.
+The pipeline scripts are in `src`, and the code they share in `src/shared`. The helper scripts, which are not pipeline steps, are in `tools`, and their recipes in the `tools` module, `tools/justfile`, with the `reset-*` recipes; the root justfile has only the recipes of `src`. The data lists are in `data`, the tests in `tests`.
 
 - `shared/`: code used by more than one script, one module per subject. Use it instead of writing another version: `files.py` (`SubtitleFile`, the names of a subtitle and its related files), `subtitles.py` (language codes, kinds, tags, markers), `image_subtitles.py`, `languages.py`, `alignment.py` (`AlignedSubtitle`, the timing match of two subtitles), `movies.py` (`MovieInfo`, from the `.nfo`), `translation_rules.py` (the translation rules of the translate prompt: edit them there, never in the prompt), `descriptions.py`, `data_lists.py` (`DataList`, the one reader and writer of the lists in `data`), `reports.py`, `console.py` (`Action`, the one list of log verbs; `Batch`), `llm.py` (the llama server, `JsonReply` and traces).
-- `tools/apply-fixes.py` and `tools/add-to-dictionary.py`: the tools of the app-fix-ocr and app-fix-translate skills, run through `just apply-fixes` and the `data/lists` recipes of the `data` module, `tools/data.just`. `data/lists` holds only recipes a skill uses; a tool no skill mentions is removed. The `data` module also holds the `reset-*` recipes.
+- `tools/apply-fixes.py` and `tools/add-to-dictionary.py`: the tools of the app-fix-ocr and app-fix-translate skills, run through `just tools apply-fixes` and the `data/lists` recipes. `data/lists` holds only recipes a skill uses; a tool no skill mentions is removed.
 - `tools/check-subs.py`: it only reads, and reports the files of one track that do not match each other.
 - `tools/analyse-subs.py`: it only reads the English text subtitles and writes one report file per subject to `data/stats`, which is not committed, with what repeats across titles in the dialogue and the descriptions, and what the description tables do not cover: input for new fixed rules and for the translation prompt.
 - Each script has, in order: constants, its argument parser in `create_parser()`, its own types, its functions, then the execution loop. The check scripts put their rules between the parser and the types, and translate-fix its fixes.

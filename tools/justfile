@@ -10,6 +10,15 @@ export PYTHONPATH := source_directory() / ".." / "src"
 default:
     @just --justfile '{{source_file()}}' --list --unsorted
 
+[group('run')]
+[doc('Apply fixes decided by hand to subtitles')]
+[script]
+[extension('.ps1')]
+[positional-arguments]
+apply-fixes fixes *options:
+    uv run apply-fixes.py @args
+    exit $LASTEXITCODE
+
 [group('data')]
 [doc('Delete OCR reports')]
 [confirm('Delete every OCR report in _checks under the given paths, or under Z:/midias/filmes and Z:/midias/series without paths? (y/N)')]
@@ -236,3 +245,23 @@ add-fix-verbs +triples:
 add-fix-words +triples:
     uv run add-to-dictionary.py fix-words @args
     exit $LASTEXITCODE
+
+[group('debug')]
+[doc('Crosscheck subtitles, translations and reports')]
+[script]
+[extension('.ps1')]
+[positional-arguments]
+check-subs *paths:
+    uv run check-subs.py @args
+    exit $LASTEXITCODE
+alias crosscheck := check-subs
+
+[group('debug')]
+[doc('Collect English subtitle statistics')]
+[script]
+[extension('.ps1')]
+[positional-arguments]
+analyse-subs *paths:
+    uv run analyse-subs.py @args
+    exit $LASTEXITCODE
+alias stats := analyse-subs

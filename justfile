@@ -10,9 +10,9 @@ dictionary_dir := data_local_directory() / "hunspell"
 [group('modules')]
 mod bench
 
-[doc('Reset and edit data lists')]
+[doc('Run helper tools')]
 [group('modules')]
-mod data 'tools/data.just'
+mod tools
 
 [group('project')]
 [doc('List recipes')]
@@ -129,15 +129,6 @@ translate-remove-sdh *paths:
     exit $LASTEXITCODE
 alias nosdh := translate-remove-sdh
 
-[group('run/fix')]
-[doc('Apply fixes decided by hand to subtitles')]
-[script]
-[extension('.ps1')]
-[positional-arguments]
-apply-fixes fixes *options:
-    uv run tools/apply-fixes.py @args
-    exit $LASTEXITCODE
-
 [group('llm')]
 [doc('Start OCR llama server')]
 [env('GGML_CUDA_PDL', '1')]
@@ -167,26 +158,6 @@ llama-translate:
 test *args:
     uv run pytest @args
     exit $LASTEXITCODE
-
-[group('debug')]
-[doc('Crosscheck subtitles, translations and reports')]
-[script]
-[extension('.ps1')]
-[positional-arguments]
-check-subs *paths:
-    uv run tools/check-subs.py @args
-    exit $LASTEXITCODE
-alias crosscheck := check-subs
-
-[group('debug')]
-[doc('Collect English subtitle statistics')]
-[script]
-[extension('.ps1')]
-[positional-arguments]
-analyse-subs *paths:
-    uv run tools/analyse-subs.py @args
-    exit $LASTEXITCODE
-alias stats := analyse-subs
 
 [group('debug')]
 [doc('Print system prompt and first chunk of each English subtitle')]
