@@ -34,16 +34,16 @@ Use these terms, and only these, in code, logs, docs and conversation. Do not ro
 
 ## Pipeline
 
-The steps are grouped by subject in `src/<subject>/`, and each runs through the recipe of the same name. Run the subjects in this order; each step skips files it already processed, so every step can be run again safely. Read [docs/PIPELINE.md](docs/PIPELINE.md) before changing a step, and [docs/RULES.md](docs/RULES.md) before changing a check rule. Read [docs/FAILURES.md](docs/FAILURES.md) before proposing an improvement, and add to it every approach that is tried and fails.
+The steps are in `src`, grouped below by subject, and each runs through the recipe in parentheses. Run the subjects in this order; each step skips files it already processed, so every step can be run again safely. Read [docs/PIPELINE.md](docs/PIPELINE.md) before changing a step, and [docs/RULES.md](docs/RULES.md) before changing a check rule. Read [docs/FAILURES.md](docs/FAILURES.md) before proposing an improvement, and add to it every approach that is tried and fails.
 
-- `extract/`:
+- extract:
   - `extract-subs.py` (extract): extracts the tracks of each video into `_subs`, as text subtitles and image subtitles.
   - `identify-text-subs.py` (identify-text): puts the language code and kind in the name of each text subtitle.
   - `identify-ocr-subs.py` (identify-ocr): puts the language code and kind in the name of each image subtitle, from a Tesseract reading.
-- `ocr/`:
+- ocr:
   - `ocr-subs.py` (ocr): transcribes the English and second-language image subtitles into text subtitles with Gemma vision.
   - `check-ocr-subs.py` (check-ocr): checks each OCR output against its image subtitle and writes a report.
-- `translate/`: a translation is made by translate with Gemma, or by Claude with the app-translate skill.
+- translate: a translation is made by translate with Gemma, or by Claude with the app-translate skill.
   - `translate-subs.py` (translate): translates each `.eng.srt`, with a second language when the video has one, into `<name>.pob.translated.srt` in the movie folder.
   - `fix-translations.py` (fix-translations): applies the mechanical fixes to each translation, except Claude translations.
   - `check-translations.py` (check-translate): checks each translation against its English source and writes a report.
@@ -84,7 +84,7 @@ The virtual environment lives outside the project, under the local data director
 
 ## Code layout
 
-The pipeline scripts are in `src/extract`, `src/ocr` and `src/translate`, and the code they share in `src/shared`. The helper scripts, which are not pipeline steps, are in `tools`. The data lists are in `data`, the tests in `tests`.
+The pipeline scripts are in `src`, and the code they share in `src/shared`. The helper scripts, which are not pipeline steps, are in `tools`. The data lists are in `data`, the tests in `tests`.
 
 - `shared/`: code used by more than one script, one module per subject. Use it instead of writing another version: `files.py` (`SubtitleFile`, the names of a subtitle and its related files), `subtitles.py` (language codes, kinds, tags, markers), `image_subtitles.py`, `languages.py`, `alignment.py` (`AlignedSubtitle`, the timing match of two subtitles), `movies.py` (`MovieInfo`, from the `.nfo`), `translation_rules.py` (the translation rules of the translate prompt: edit them there, never in the prompt), `descriptions.py`, `data_lists.py` (`DataList`, the one reader and writer of the lists in `data`), `reports.py`, `console.py` (`Action`, the one list of log verbs; `Batch`), `llm.py` (the llama server, `JsonReply` and traces).
 - `tools/apply-fixes.py` and `tools/add-to-dictionary.py`: the tools of the app-fix-ocr and app-fix-translate skills, run through the `data/fix` recipes. `data/fix` holds only recipes a skill uses; a tool no skill mentions is removed.

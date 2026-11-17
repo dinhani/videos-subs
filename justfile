@@ -34,7 +34,7 @@ cloc:
 [extension('.ps1')]
 [positional-arguments]
 extract *paths:
-    uv run src/extract/extract-subs.py @args
+    uv run src/extract-subs.py @args
     exit $LASTEXITCODE
 
 [group('run/extract')]
@@ -43,7 +43,7 @@ extract *paths:
 [extension('.ps1')]
 [positional-arguments]
 identify-text *paths:
-    uv run src/extract/identify-text-subs.py @args
+    uv run src/identify-text-subs.py @args
     exit $LASTEXITCODE
 
 [group('run/extract')]
@@ -52,7 +52,7 @@ identify-text *paths:
 [extension('.ps1')]
 [positional-arguments]
 identify-ocr *paths:
-    uv run src/extract/identify-ocr-subs.py @args
+    uv run src/identify-ocr-subs.py @args
     exit $LASTEXITCODE
 
 [group('run/ocr')]
@@ -61,7 +61,7 @@ identify-ocr *paths:
 [extension('.ps1')]
 [positional-arguments]
 ocr *paths:
-    uv run src/ocr/ocr-subs.py @args
+    uv run src/ocr-subs.py @args
     exit $LASTEXITCODE
 
 [group('run/ocr')]
@@ -70,7 +70,7 @@ ocr *paths:
 [extension('.ps1')]
 [positional-arguments]
 check-ocr *paths:
-    uv run src/ocr/check-ocr-subs.py @args
+    uv run src/check-ocr-subs.py @args
     exit $LASTEXITCODE
 
 [group('run/translate')]
@@ -79,7 +79,7 @@ check-ocr *paths:
 [extension('.ps1')]
 [positional-arguments]
 translate *paths:
-    uv run src/translate/translate-subs.py @args
+    uv run src/translate-subs.py @args
     exit $LASTEXITCODE
 
 [group('run/translate')]
@@ -88,7 +88,7 @@ translate *paths:
 [extension('.ps1')]
 [positional-arguments]
 fix-translations *paths:
-    uv run src/translate/fix-translations.py @args
+    uv run src/fix-translations.py @args
     exit $LASTEXITCODE
 
 [group('run/translate')]
@@ -97,7 +97,7 @@ fix-translations *paths:
 [extension('.ps1')]
 [positional-arguments]
 check-translate *paths:
-    uv run src/translate/check-translations.py @args
+    uv run src/check-translations.py @args
     exit $LASTEXITCODE
 
 [group('run/translate')]
@@ -106,7 +106,7 @@ check-translate *paths:
 [extension('.ps1')]
 [positional-arguments]
 warn *paths:
-    uv run src/translate/warn-subs.py @args
+    uv run src/warn-subs.py @args
     exit $LASTEXITCODE
 
 [group('run/translate')]
@@ -115,7 +115,7 @@ warn *paths:
 [extension('.ps1')]
 [positional-arguments]
 convert-sdh *paths:
-    uv run src/translate/convert-sdh-translations.py @args
+    uv run src/convert-sdh-translations.py @args
     exit $LASTEXITCODE
 
 [group('llm')]
@@ -408,6 +408,6 @@ stats *paths:
 [extension('.ps1')]
 [positional-arguments]
 print-prompt *paths:
-    uv run src/translate/translate-subs.py --print-prompt @args
+    uv run src/translate-subs.py --print-prompt @args
     exit $LASTEXITCODE
 alias pp := print-prompt

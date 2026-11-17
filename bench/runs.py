@@ -51,7 +51,7 @@ class PipelineTranslator:
             *(["--temperatures", *map(str, self.temperatures)] if self.temperatures else []),
             *(["--justify"] if self.justify else []),
         ]
-        subprocess.run([sys.executable, str(SRC_DIR / "translate" / "translate-subs.py"), str(english), *options], check=True)
+        subprocess.run([sys.executable, str(SRC_DIR / "translate-subs.py"), str(english), *options], check=True)
 
 
 @dataclass(frozen=True)
@@ -109,7 +109,7 @@ class FixTranslator:
         if not base_translation.exists():
             raise FileNotFoundError(f"{self.base} has not translated {translation.name} yet")
         shutil.copy2(base_translation, translation)
-        subprocess.run([sys.executable, str(SRC_DIR / "translate" / "fix-translations.py"), str(translation), "--yes", "--backups", str(RUNS_DIR / BACKUPS_FOLDER)], check=True)
+        subprocess.run([sys.executable, str(SRC_DIR / "fix-translations.py"), str(translation), "--yes", "--backups", str(RUNS_DIR / BACKUPS_FOLDER)], check=True)
 
     def find_base(self, translation: Path) -> Path:
         return RUNS_DIR / self.base / translation.parent.name / translation.name

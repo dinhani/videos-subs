@@ -100,7 +100,7 @@ def main() -> None:
                 if translations_unchecked:
                     Action.CHECK.log(f"{len(translations_unchecked)} translations without a report")
                     with batch.attempt(RUNS_DIR):
-                        subprocess.run([sys.executable, str(SRC_DIR / "translate" / "check-translations.py"), *map(str, translations_unchecked)], check=True)
+                        subprocess.run([sys.executable, str(SRC_DIR / "check-translations.py"), *map(str, translations_unchecked)], check=True)
 
                 scorings = [scoring for source in SOURCES if (scoring := source.find_scoring_claude())] + [scoring for run in runs_translated for scoring in run.to_scorings(SOURCES)]
                 jobs = [scoring.to_job() for scoring in scorings if not scoring.output.exists()]
